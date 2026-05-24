@@ -449,7 +449,21 @@ verify_installation() {
 # Main
 # ============================================
 
+check_model_api_key() {
+    log_info "IMPORTANT: Before running this bootstrap, ensure you have:"
+    log_info "  - An API key for your LLM provider (OpenAI, Anthropic, OpenRouter, etc.)"
+    log_info "  - You will need to configure this in Hermes after installation"
+    log_info ""
+    
+    if [ -z "${MODEL_API_KEY:-}" ]; then
+        log_warn "MODEL_API_KEY not set - you will need to configure it manually after install"
+    fi
+    echo ""
+}
+
 main() {
+    check_model_api_key
+    
     echo ""
     echo "============================================"
     echo "  Hermes Infrastructure Bootstrap"
