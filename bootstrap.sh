@@ -14,7 +14,7 @@ set -e
 # ============================================
 
 # Repository URL for skills and configs
-INFRA_REPO="${INFRA_REPO:-https://github.com/youruser/hermes-infrastructure.git}"
+INFRA_REPO="${INFRA_REPO:-https://github.com/rylanddufour/AIAMSBS.git}"
 INFRA_BRANCH="${INFRA_BRANCH:-main}"
 
 # Installation directories
