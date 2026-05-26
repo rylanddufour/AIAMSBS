@@ -141,16 +141,67 @@ docker compose up -d
 # All containers have restart: unless-stopped - auto-start on boot enabled
 ```
 
-### 3. Install Host Alloy Agent
+### 3. Install and Configure Host Alloy Agent
+
+**Download and install Alloy:**
 ```bash
 curl -sSL https://github.com/grafana/alloy/releases/latest/download/alloy-linux-amd64.zip -o /tmp/alloy.zip
 unzip -o /tmp/alloy.zip -d /tmp/
-sudo mv /tmp/alloy-linux-amd64/alloy /usr/local/bin/
+sudo mv /tmp/alloy-linux-amd64 /usr/local/bin/alloy
 sudo chmod +x /usr/local/bin/alloy
+```
 
-# Create /etc/alloy/config.yml
-# Create systemd service at /etc/systemd/system/alloy.service
-sudo systemctl enable alloy && sudo systemctl start alloy
+**Create Alloy config at `/etc/alloy/config.yml`:**
+```yaml
+prometheus.scrape "host" {
+  targets = [
+    {"__address__" = "localhost:9100"},
+    {"__address__" = "localhost:8081"},
+    {"__address__" = "localhost:9325"},
+  ]
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}
+
+loki.source.journal "systemd" {
+  path = "/var/log/journal"
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+```
+
+**Create systemd service at `/etc/systemd/system/alloy.service`:**
+```ini
+[Unit]
+Description=Alloy Observability Agent
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/alloy run /etc/alloy/config.yml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Enable and start:**
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable alloy
+sudo systemctl start alloy
 ```
 
 ### 4. Install Hermes Web Dashboard
