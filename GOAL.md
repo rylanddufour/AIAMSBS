@@ -188,11 +188,22 @@ npm run build
 - System journal logs
 ## Backlog (Future Research)
 
-### 1. cAdvisor Docker-Only Mode
+### 1. cAdvisor Docker-Only Mode ✅ RESOLVED
 - **Issue**: cAdvisor registers multiple container factories (systemd, containerd, Docker, Raw), creating duplicate metrics
-- **Current Workaround**: Use `sum by (name)` aggregation in Prometheus queries to deduplicate
-- **Research**: Find cAdvisor version that properly supports `--docker_only=true` flag to use only Docker factory
-- **Alternative**: Configure Prometheus relabel_config to drop metrics without the `name` label
+- **Solution Applied**:
+  1. Restarted cAdvisor with `--docker_only=true` flag to use only Docker factory
+  2. Added `metric_relabel_configs` in Prometheus to drop metrics without `name` label:
+     ```yaml
+     - job_name: 'cAdvisor'
+       static_configs:
+         - targets: ['cadvisor:8080']
+       metric_relabel_configs:
+         - source_labels: [name]
+           regex: '^$'
+           action: drop
+     ```
+  3. Connected cAdvisor container to monitoring Docker network
+- **Result**: 59 metrics → 8 metrics (only named Docker containers)
 
 ### 2. Container Name Label Enhancement
 - **Issue**: cAdvisor provides container names via the `name` label (from Docker labels), but only for containers with docker-compose labels
