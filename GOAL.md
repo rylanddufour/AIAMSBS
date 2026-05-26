@@ -186,3 +186,40 @@ npm run build
 - container_blkio_device_usage_total (via cAdvisor)
 - Docker daemon metrics (builder, engine actions)
 - System journal logs
+## Backlog (Future Research)
+
+### 1. cAdvisor Docker-Only Mode
+- **Issue**: cAdvisor registers multiple container factories (systemd, containerd, Docker, Raw), creating duplicate metrics
+- **Current Workaround**: Use `sum by (name)` aggregation in Prometheus queries to deduplicate
+- **Research**: Find cAdvisor version that properly supports `--docker_only=true` flag to use only Docker factory
+- **Alternative**: Configure Prometheus relabel_config to drop metrics without the `name` label
+
+### 2. Container Name Label Enhancement
+- **Issue**: cAdvisor provides container names via the `name` label (from Docker labels), but only for containers with docker-compose labels
+- **Current State**: Works for docker-compose containers (shows names like "grafana", "prometheus", etc.)
+- **Research**: Explore if there's a way to get container names for ALL containers without requiring docker-compose labels
+- **Note**: Current setup uses `container_label_*` labels from docker-compose for name resolution
+
+## Current Dashboard Configuration
+
+### Container Metrics Queries
+The Grafana dashboard uses these Prometheus queries for container metrics:
+
+```promql
+# Container CPU Usage
+sum by (name) (rate(container_cpu_usage_seconds_total{name!=""}[5m])) * 100
+
+# Container Memory Usage  
+sum by (name) (container_memory_usage_bytes{name!=""}) / 1048576
+
+# Container Network RX
+sum by (name) (rate(container_network_receive_bytes_total{name!=""}[5m]))
+
+# Container Network TX
+sum by (name) (rate(container_network_transmit_bytes_total{name!=""}[5m]))
+```
+
+**Key Points:**
+- Filter `{name!=""}` ensures we only get containers with names (filters out root cgroup)
+- `sum by (name)` aggregates any duplicate metrics from multiple cAdvisor factories
+- The `name` label comes from Docker container labels (via cAdvisor Docker factory)
