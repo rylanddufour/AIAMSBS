@@ -4,9 +4,9 @@
 Deploy a complete monitoring and observability stack on a target VM (Ubuntu) using Docker Compose. The stack must collect host metrics, Docker container metrics, system logs, and provide visualization dashboards.
 
 ## Target Environment
-- **VM**: 192.168.0.220 (ansible user)
+- **VM**: localhost (current user with sudo rights)
 - **OS**: Ubuntu Server
-- **Network**: Internal LAN (192.168.0.x)
+- **User**: $USER (must have sudo privileges)
 
 ## Stack Components
 
@@ -112,7 +112,7 @@ sudo systemctl enable hermes-dashboard.service
 sudo systemctl start hermes-dashboard.service
 ```
 
-- **URL**: http://192.168.0.220:9119
+- **URL**: http://localhost:9119
 - **Note**: The --insecure flag allows binding to 0.0.0.0 (network access). Use with caution on untrusted networks.
 
 ## Data Collection Flow
@@ -171,13 +171,13 @@ npm run build
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| Grafana | http://192.168.0.220:3000 | admin/admin123 |
-| Prometheus | http://192.168.0.220:9090 | None |
-| Loki | http://192.168.0.220:3100 | None |
-| Traefik | http://192.168.0.220:8080 | None |
-| Portainer | https://192.168.0.220:9443 | admin/admin123 |
-| cAdvisor | http://192.168.0.220:8081 | None |
-| Hermes Dashboard | http://192.168.0.220:9119 | None (API keys exposed) |
+| Grafana | http://localhost:3000 | admin/admin123 |
+| Prometheus | http://localhost:9090 | None |
+| Loki | http://localhost:3100 | None |
+| Traefik | http://localhost:8080 | None |
+| Portainer | https://localhost:9443 | admin/admin123 |
+| cAdvisor | http://localhost:8081 | None |
+| Hermes Dashboard | http://localhost:9119 | None (API keys exposed) |
 
 ## Verified Working Metrics
 - node_cpu_seconds_total
