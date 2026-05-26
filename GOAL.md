@@ -15,6 +15,7 @@ Deploy a complete monitoring and observability stack on a target VM (Ubuntu) usi
 - **Ports**: 80 (HTTP), 443 (HTTPS), 8080 (dashboard)
 - **Purpose**: Reverse proxy with automatic HTTPS via Let's Encrypt and service discovery
 - **Config**: /stack/traefik/traefik.yml
+- **Restart Policy**: unless-stopped (auto-start on boot)
 
 ### 2. Prometheus (Metrics Database)
 - **Image**: prom/prometheus:v2.54.1
@@ -22,19 +23,22 @@ Deploy a complete monitoring and observability stack on a target VM (Ubuntu) usi
 - **Purpose**: Time-series metrics database with PromQL queries
 - **Config**: /stack/prometheus/prometheus.yml
 - **Scrape Targets**: node-exporter, cadvisor, grafana, loki, traefik
+- **Restart Policy**: unless-stopped (auto-start on boot)
 
 ### 3. Grafana (Visualization)
-- **Image**: grafana/grafana:11.2.2
+- **Image**: grafana/grafana:13.0.1
 - **Port**: 3000
-- **Purpose**: Dashboards and visualization
+- **Purpose**: Dashboards and visualization (includes AI Assistant in 13+)
 - **Data Sources**: Prometheus (port 9090), Loki (port 3100)
 - **Credentials**: admin / admin123
+- **Restart Policy**: unless-stopped (auto-start on boot)
 
 ### 4. Loki (Log Aggregation)
 - **Image**: grafana/loki:3.2.0
 - **Port**: 3100
 - **Purpose**: Centralized log storage
 - **Config**: /stack/loki/loki.yml
+- **Restart Policy**: unless-stopped (auto-start on boot)
 
 ### 5. Alloy (Observability Agent - Host-based)
 - **Installation**: Binary at /usr/local/bin/alloy (v1.16.1)
@@ -49,26 +53,75 @@ Deploy a complete monitoring and observability stack on a target VM (Ubuntu) usi
 - **Outputs**:
   - Metrics -> Prometheus (http://localhost:9090)
   - Logs -> Loki (http://localhost:3100)
+- **Restart Policy**: systemd service enabled (auto-start on boot)
 
 ### 6. Node Exporter (Host Metrics)
 - **Image**: prom/node-exporter:v1.8.2
 - **Port**: 9100
 - **Purpose**: Host CPU, memory, disk, network metrics
+- **Restart Policy**: unless-stopped (auto-start on boot)
 
 ### 7. Portainer (Container Management GUI)
 - **Image**: portainer/portainer-ce:2.21.4
 - **Ports**: 9000 (HTTP), 9443 (HTTPS)
 - **Purpose**: Web-based Docker container management
+- **Restart Policy**: unless-stopped (auto-start on boot)
 
 ### 8. cAdvisor (Container Advisor)
 - **Image**: gcr.io/cadvisor/cadvisor:latest
 - **Port**: 8081
 - **Purpose**: Per-container resource usage (CPU, memory, disk, network)
+- **Restart Policy**: unless-stopped (auto-start on boot)
+
+## Hermes Agent Web Dashboard
+
+### Installation
+```bash
+# Install Node.js 20 (required for web UI)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Build the web UI
+cd ~/.hermes/hermes-agent/web
+npm install
+npm run build
+```
+
+### Startup on Boot (systemd service)
+```bash
+sudo tee /etc/systemd/system/hermes-dashboard.service > /dev/null << 'EOF'
+[Unit]
+Description=Hermes Agent Web Dashboard
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=ansible
+WorkingDirectory=/home/ansible/.hermes/hermes-agent
+ExecStart=/bin/bash -c 'source .venv/bin/activate && exec hermes dashboard --port 9119 --host 0.0.0.0 --insecure --skip-build --no-open'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable hermes-dashboard.service
+sudo systemctl start hermes-dashboard.service
+```
+
+- **URL**: http://192.168.0.220:9119
+- **Note**: The --insecure flag allows binding to 0.0.0.0 (network access). Use with caution on untrusted networks.
 
 ## Data Collection Flow
-- Node Exporter + cAdvisor + Docker Daemon -> Prometheus <- Host Alloy Agent
-- System Journal -> Loki <- Host Alloy Agent
-- Prometheus + Loki -> Grafana (dashboards)
+
+```
+Node Exporter + cAdvisor + Docker Daemon -> Prometheus <- Host Alloy Agent
+System Journal -> Loki <- Host Alloy Agent
+Prometheus + Loki -> Grafana (dashboards)
+```
 
 ## Deployment Steps
 
@@ -85,6 +138,7 @@ sudo systemctl restart docker
 git clone https://github.com/rylanddufour/AIAMSBS.git
 cd AIAMSBS
 docker compose up -d
+# All containers have restart: unless-stopped - auto-start on boot enabled
 ```
 
 ### 3. Install Host Alloy Agent
@@ -93,9 +147,24 @@ curl -sSL https://github.com/grafana/alloy/releases/latest/download/alloy-linux-
 unzip -o /tmp/alloy.zip -d /tmp/
 sudo mv /tmp/alloy-linux-amd64/alloy /usr/local/bin/
 sudo chmod +x /usr/local/bin/alloy
+
 # Create /etc/alloy/config.yml
 # Create systemd service at /etc/systemd/system/alloy.service
 sudo systemctl enable alloy && sudo systemctl start alloy
+```
+
+### 4. Install Hermes Web Dashboard
+```bash
+# Install Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Build web UI
+cd ~/.hermes/hermes-agent/web
+npm install
+npm run build
+
+# Create systemd service (see Hermes Agent Web Dashboard section above)
 ```
 
 ## Access Information
@@ -108,6 +177,7 @@ sudo systemctl enable alloy && sudo systemctl start alloy
 | Traefik | http://192.168.0.220:8080 | None |
 | Portainer | https://192.168.0.220:9443 | admin/admin123 |
 | cAdvisor | http://192.168.0.220:8081 | None |
+| Hermes Dashboard | http://192.168.0.220:9119 | None (API keys exposed) |
 
 ## Verified Working Metrics
 - node_cpu_seconds_total
