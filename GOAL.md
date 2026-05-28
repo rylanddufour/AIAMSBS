@@ -22,7 +22,7 @@ Deploy a complete monitoring and observability stack on a target VM (Ubuntu) usi
 - **Port**: 9090
 - **Purpose**: Time-series metrics database with PromQL queries
 - **Config**: /stack/prometheus/prometheus.yml
-- **Scrape Targets**: node-exporter, cadvisor, grafana, loki, traefik
+- **Scrape Targets**: alloy, grafana, loki, traefik
 - **Restart Policy**: unless-stopped (auto-start on boot)
 
 ### 3. Grafana (Visualization)
@@ -40,38 +40,43 @@ Deploy a complete monitoring and observability stack on a target VM (Ubuntu) usi
 - **Config**: /stack/loki/loki.yml
 - **Restart Policy**: unless-stopped (auto-start on boot)
 
-### 5. Alloy (Observability Agent - Host-based)
-- **Installation**: Binary at /usr/local/bin/alloy (v1.16.1)
-- **Running as**: systemd service
-- **Config**: /etc/alloy/config.yml
-- **Purpose**: Collects host metrics, Docker metrics, system journal logs
-- **Data Sources**:
-  - node-exporter (localhost:9100) - Host system metrics
-  - cadvisor (localhost:8081) - Per-container metrics
-  - Docker daemon (localhost:9325) - Docker engine metrics
-  - journald - System logs
+### 5. Alloy (Observability Agent - Container)
+- **Image**: grafana/alloy:latest
+- **Port**: 12345 (debug UI)
+- **Purpose**: Unified metrics and log collection (replaces node-exporter, cAdvisor, and host-based Alloy)
+- **Running as**: Docker container (privileged mode)
+- **Config**: /stack/alloy/config.alloy
+- **Data Collection**:
+  - **Embedded cAdvisor** - Container metrics (CPU, memory, disk, network)
+  - **Embedded node_exporter** - Host system metrics (CPU, memory, disk, network, filesystems)
+  - **loki.source.docker** - Docker container stdout/stderr logs
+  - **loki.source.journal** - Systemd journal logs
 - **Outputs**:
-  - Metrics -> Prometheus (http://localhost:9090)
-  - Logs -> Loki (http://localhost:3100)
-- **Restart Policy**: systemd service enabled (auto-start on boot)
-
-### 6. Node Exporter (Host Metrics)
-- **Image**: prom/node-exporter:v1.8.2
-- **Port**: 9100
-- **Purpose**: Host CPU, memory, disk, network metrics
+  - Metrics -> Prometheus via remote_write (http://prometheus:9090)
+  - Logs -> Loki (http://loki:3100)
+- **Volume Mounts**: Docker socket, host rootfs, /sys, /var/lib/docker, journal
 - **Restart Policy**: unless-stopped (auto-start on boot)
 
-### 7. Portainer (Container Management GUI)
+### 6. Portainer (Container Management GUI)
 - **Image**: portainer/portainer-ce:2.21.4
 - **Ports**: 9000 (HTTP), 9443 (HTTPS)
 - **Purpose**: Web-based Docker container management
 - **Restart Policy**: unless-stopped (auto-start on boot)
 
-### 8. cAdvisor (Container Advisor)
-- **Image**: gcr.io/cadvisor/cadvisor:latest
-- **Port**: 8081
-- **Purpose**: Per-container resource usage (CPU, memory, disk, network)
-- **Restart Policy**: unless-stopped (auto-start on boot)
+## What Was Slimmed Down (v2.0)
+The following components were **removed** in favor of Alloy's embedded exporters:
+
+| Removed Component | Reason | Replaced By |
+|-------------------|--------|-------------|
+| node-exporter container | Redundant | Alloy's `prometheus.exporter.unix` |
+| cAdvisor container | Redundant | Alloy's `prometheus.exporter.cadvisor` |
+| Host-based Alloy (systemd) | No longer needed | Alloy container with full config |
+
+**Benefits:**
+- Single container handles all metrics collection
+- No host package installation required
+- Unified configuration in docker-compose
+- Easier to update (just update the container image)
 
 ## Hermes Agent Web Dashboard
 
@@ -118,8 +123,8 @@ sudo systemctl start hermes-dashboard.service
 ## Data Collection Flow
 
 ```
-Node Exporter + cAdvisor + Docker Daemon -> Prometheus <- Host Alloy Agent
-System Journal -> Loki <- Host Alloy Agent
+Alloy Container (embedded cAdvisor + node_exporter) -> Prometheus
+Alloy Container (container logs + journal logs) -> Loki
 Prometheus + Loki -> Grafana (dashboards)
 ```
 
@@ -128,7 +133,7 @@ Prometheus + Loki -> Grafana (dashboards)
 ### 1. Docker Setup
 ```bash
 curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker ansible
+sudo usermod -aG docker $USER
 echo '{"metrics-addr":"0.0.0.0:9325","experimental":true}' | sudo tee /etc/docker/daemon.json
 sudo systemctl restart docker
 ```
@@ -141,70 +146,7 @@ docker compose up -d
 # All containers have restart: unless-stopped - auto-start on boot enabled
 ```
 
-### 3. Install and Configure Host Alloy Agent
-
-**Download and install Alloy:**
-```bash
-curl -sSL https://github.com/grafana/alloy/releases/latest/download/alloy-linux-amd64.zip -o /tmp/alloy.zip
-unzip -o /tmp/alloy.zip -d /tmp/
-sudo mv /tmp/alloy-linux-amd64 /usr/local/bin/alloy
-sudo chmod +x /usr/local/bin/alloy
-```
-
-**Create Alloy config at `/etc/alloy/config.yml`:**
-```yaml
-prometheus.scrape "host" {
-  targets = [
-    {"__address__" = "localhost:9100"},
-    {"__address__" = "localhost:8081"},
-    {"__address__" = "localhost:9325"},
-  ]
-  forward_to = [prometheus.remote_write.default.receiver]
-}
-
-prometheus.remote_write "default" {
-  endpoint {
-    url = "http://prometheus:9090/api/v1/write"
-  }
-}
-
-loki.source.journal "systemd" {
-  path = "/var/log/journal"
-  forward_to = [loki.write.default.receiver]
-}
-
-loki.write "default" {
-  endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
-  }
-}
-```
-
-**Create systemd service at `/etc/systemd/system/alloy.service`:**
-```ini
-[Unit]
-Description=Alloy Observability Agent
-After=network.target docker.service
-
-[Service]
-Type=simple
-User=root
-ExecStart=/usr/local/bin/alloy run /etc/alloy/config.yml
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Enable and start:**
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable alloy
-sudo systemctl start alloy
-```
-
-### 4. Install Hermes Web Dashboard
+### 3. Install Hermes Web Dashboard (Optional)
 ```bash
 # Install Node.js 20
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
@@ -227,61 +169,71 @@ npm run build
 | Loki | http://localhost:3100 | None |
 | Traefik | http://localhost:8080 | None |
 | Portainer | https://localhost:9443 | admin/admin123 |
-| cAdvisor | http://localhost:8081 | None |
+| Alloy | http://localhost:12345 | None (debug UI) |
 | Hermes Dashboard | http://localhost:9119 | None (API keys exposed) |
 
 ## Verified Working Metrics
+
+### Host Metrics (via prometheus.exporter.unix)
 - node_cpu_seconds_total
 - node_memory_MemTotal_bytes
-- container_cpu_usage_seconds_total (via cAdvisor)
-- container_blkio_device_usage_total (via cAdvisor)
-- Docker daemon metrics (builder, engine actions)
-- System journal logs
-## Backlog (Future Research)
+- node_disk_*
+- node_network_*
+- node_filesystem_*
 
-### 1. cAdvisor Docker-Only Mode ✅ RESOLVED
-- **Issue**: cAdvisor registers multiple container factories (systemd, containerd, Docker, Raw), creating duplicate metrics
-- **Solution Applied**:
-  1. Restarted cAdvisor with `--docker_only=true` flag to use only Docker factory
-  2. Added `metric_relabel_configs` in Prometheus to drop metrics without `name` label:
-     ```yaml
-     - job_name: 'cAdvisor'
-       static_configs:
-         - targets: ['cadvisor:8080']
-       metric_relabel_configs:
-         - source_labels: [name]
-           regex: '^$'
-           action: drop
-     ```
-  3. Connected cAdvisor container to monitoring Docker network
-- **Result**: 59 metrics → 8 metrics (only named Docker containers)
+### Container Metrics (via prometheus.exporter.cadvisor)
+- container_cpu_usage_seconds_total
+- container_memory_usage_bytes
+- container_blkio_device_usage_total
+- container_network_receive_bytes_total
+- container_network_transmit_bytes_total
 
-### 2. Container Name Label Enhancement
-- **Issue**: cAdvisor provides container names via the `name` label (from Docker labels), but only for containers with docker-compose labels
-- **Current State**: Works for docker-compose containers (shows names like "grafana", "prometheus", etc.)
-- **Research**: Explore if there's a way to get container names for ALL containers without requiring docker-compose labels
-- **Note**: Current setup uses `container_label_*` labels from docker-compose for name resolution
+### Logs
+- Docker container stdout/stderr (via loki.source.docker)
+- Systemd journal (via loki.source.journal)
 
-## Current Dashboard Configuration
+## Alloy Configuration Details
 
-### Container Metrics Queries
-The Grafana dashboard uses these Prometheus queries for container metrics:
+The Alloy container uses these components:
 
-```promql
-# Container CPU Usage
-sum by (name) (rate(container_cpu_usage_seconds_total{name!=""}[5m])) * 100
+```alloy
+// Container metrics (replaces cAdvisor)
+prometheus.exporter.cadvisor "containers" {
+  docker_host = "unix:///var/run/docker.sock"
+  storage_duration = "5m"
+}
 
-# Container Memory Usage  
-sum by (name) (container_memory_usage_bytes{name!=""}) / 1048576
+// Host metrics (replaces node-exporter)
+prometheus.exporter.unix "host" {
+  rootfs_path = "/"
+}
 
-# Container Network RX
-sum by (name) (rate(container_network_receive_bytes_total{name!=""}[5m]))
+// Scrape both and send to Prometheus
+prometheus.scrape "cadvisor" { ... }
+prometheus.scrape "node" { ... }
+prometheus.remote_write "default" { ... }
 
-# Container Network TX
-sum by (name) (rate(container_network_transmit_bytes_total{name!=""}[5m]))
+// Container logs
+loki.source.docker "containers" { ... }
+
+// Systemd journal logs
+loki.source.journal "systemd" { ... }
+
+loki.write "default" { ... }
 ```
 
-**Key Points:**
-- Filter `{name!=""}` ensures we only get containers with names (filters out root cgroup)
-- `sum by (name)` aggregates any duplicate metrics from multiple cAdvisor factories
-- The `name` label comes from Docker container labels (via cAdvisor Docker factory)
+## Previous Research Notes
+
+### Why Alloy as Container?
+1. **No host installation** - Everything in docker-compose
+2. **Unified config** - Single config file for all collectors
+3. **Easier updates** - Just update container image tag
+4. **Privileged mode required** - For full host access (same as running as host service)
+
+### Volume Mounts Required
+- `/var/run/docker.sock` - Docker API access
+- `/` (rootfs) - Host filesystem for node_exporter
+- `/sys` - System info (cgroups)
+- `/var/lib/docker/` - Docker metadata
+- `/var/log/journal` - Systemd logs
+- `/dev/disk/` - Disk I/O metrics

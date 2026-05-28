@@ -48,73 +48,11 @@ hermes chat -q "Deploy the monitoring stack from https://raw.githubusercontent.c
 Hermes will:
 1. Clone the AIAMSBS repo
 2. Create stack directory structure
-3. Generate all config files (Traefik, Prometheus, Loki)
+3. Generate all config files (Traefik, Prometheus, Loki, Alloy)
 4. Create docker-compose.yml
 5. Deploy all containers
 
-### 4. Install Alloy (Host Agent)
-
-After the stack is running, install Alloy for host-level metrics:
-
-```bash
-# Download and install Alloy
-curl -sSL https://github.com/grafana/alloy/releases/latest/download/alloy-linux-amd64.zip -o /tmp/alloy.zip
-unzip -o /tmp/alloy.zip -d /tmp/
-sudo mv /tmp/alloy-linux-amd64 /usr/local/bin/alloy
-sudo chmod +x /usr/local/bin/alloy
-
-# Create config
-sudo tee /etc/alloy/config.yml > /dev/null << 'EOF'
-prometheus.scrape "host" {
-  targets = [
-    {"__address__" = "localhost:9100"},
-    {"__address__" = "localhost:8081"},
-    {"__address__" = "localhost:9325"},
-  ]
-  forward_to = [prometheus.remote_write.default.receiver]
-}
-
-prometheus.remote_write "default" {
-  endpoint {
-    url = "http://prometheus:9090/api/v1/write"
-  }
-}
-
-loki.source.journal "systemd" {
-  path = "/var/log/journal"
-  forward_to = [loki.write.default.receiver]
-}
-
-loki.write "default" {
-  endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
-  }
-}
-EOF
-
-# Create systemd service
-sudo tee /etc/systemd/system/alloy.service > /dev/null << 'EOF'
-[Unit]
-Description=Alloy Observability Agent
-After=network.target docker.service
-
-[Service]
-Type=simple
-User=root
-ExecStart=/usr/local/bin/alloy run /etc/alloy/config.yml
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable alloy
-sudo systemctl start alloy
-```
-
-### 5. Install Hermes Web Dashboard (Optional)
+### 4. Install Hermes Web Dashboard (Optional)
 
 ```bash
 # Install Node.js 20
@@ -159,38 +97,43 @@ sudo systemctl start hermes-dashboard
 | Loki | http://localhost:3100 | None |
 | Traefik | http://localhost:8080 | None |
 | Portainer | https://localhost:9443 | admin / admin123 |
-| cAdvisor | http://localhost:8081 | None |
+| Alloy | http://localhost:12345 | None (debug UI) |
 | Hermes Dashboard | http://localhost:9119 | None |
 
-## Architecture
+## Architecture (v2.0 - Slimmed)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Host System                          │
 ├─────────────────────────────────────────────────────────┤
-│  Node Exporter  │  cAdvisor  │  Docker Daemon          │
-│  (:9100)        │  (:8081)   │  (:9325)                │
-│         │               │              │               │
-│         └───────────────┴──────────────┘               │
-│                         │                              │
-│                    ┌────┴────┐                         │
-│                    │  Alloy  │ (systemd service)       │
-│                    └────┬────┘                         │
-│                         │                              │
-│         ┌───────────────┴───────────────┐              │
-│         ▼                               ▼              │
-│  ┌─────────────┐               ┌─────────────┐        │
-│  │ Prometheus  │               │    Loki     │        │
-│  │  (:9090)    │               │   (:3100)   │        │
-│  └──────┬──────┘               └──────┬──────┘        │
-│         │                              │               │
-│         └──────────────┬───────────────┘              │
-│                        ▼                              │
-│                 ┌─────────────┐                        │
-│                 │  Grafana    │ (:3000)                │
-│                 └─────────────┘                        │
+│                                                         │
+│              ┌─────────────────────┐                    │
+│              │      Alloy          │ (Docker container) │
+│              │  (privileged mode)  │                    │
+│              └──────────┬──────────┘                    │
+│                         │                               │
+│    ┌────────────────────┼────────────────────┐         │
+│    ▼                    ▼                    ▼         │
+│ ┌──────────┐    ┌─────────────┐    ┌───────────┐       │
+│ │ cAdvisor │    │  Prometheus │    │   Loki    │       │
+│ │(embedded)│    │   (:9090)   │    │  (:3100)  │       │
+│ └──────────┘    └─────────────┘    └───────────┘       │
+│ ┌──────────┐         │                   │              │
+│ │node_exp  │         └─────────┬─────────┘              │
+│ │(embedded)│                   ▼                        │
+│ └──────────┘            ┌─────────────┐                 │
+│ ┌──────────┐            │  Grafana    │ (:3000)         │
+│ │docker    │            └─────────────┘                 │
+│ │logs      │                                         │
+│ └──────────┘                                         │
 └─────────────────────────────────────────────────────────┘
 ```
+
+**What's New in v2.0:**
+- **Alloy as container** - Replaces host-based Alloy (no systemd service needed)
+- **Embedded exporters** - cAdvisor and node_exporter run inside Alloy
+- **Fewer containers** - Removed standalone node-exporter and cAdvisor containers
+- **Unified config** - Single config.alloy file manages all collection
 
 ## Troubleshooting
 
@@ -209,9 +152,15 @@ docker compose logs -f
 docker compose restart <service-name>
 ```
 
-### Check Alloy status
+### Check Alloy logs
 ```bash
-systemctl status alloy
+docker logs alloy
+```
+
+### Access Alloy debug UI
+```bash
+# Port 12345 provides the Alloy UI for debugging
+curl http://localhost:12345
 ```
 
 ## Files
@@ -219,3 +168,4 @@ systemctl status alloy
 - `GOAL.md` - Deployment specification for Hermes
 - `bootstrap.sh` - Initial VM setup script
 - `docker-compose.mcp.yml` - MCP server configuration
+- `stack/alloy/config.alloy` - Alloy configuration (embedded exporters)
