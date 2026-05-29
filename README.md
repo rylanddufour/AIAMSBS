@@ -100,6 +100,38 @@ sudo systemctl start hermes-dashboard
 | Alloy | http://localhost:12345 | None (debug UI) |
 | Hermes Dashboard | http://localhost:9119 | None |
 
+> ⚠️ **Security Note:** The Hermes Dashboard (port 9119) has no built-in authentication. It is **highly recommended** to restrict access with a firewall.
+
+### Recommended Firewall Rules
+
+The Hermes Dashboard exposes API keys and configuration. Restrict access to trusted IPs only:
+
+```bash
+# Enable UFW if not already enabled
+sudo ufw enable
+
+# Allow your admin IP to access Hermes Dashboard (replace with your IP)
+sudo ufw allow from 203.0.113.10/32 to any port 9119
+
+# Allow your IP to access Grafana, Prometheus, Traefik UI
+sudo ufw allow from 203.0.113.10/32 to any port 3000,8080,9090
+
+# Deny direct access to Hermes Dashboard from the internet
+sudo ufw deny 9119
+
+# Check status
+sudo ufw status
+```
+
+**Alternative: Use Tailscale VPN**
+- If Tailscale is installed, connect via VPN instead of exposing ports
+- Zero exposed ports = maximum security
+
+**Dynamic IPs:** If your IP changes frequently, consider:
+- Using Tailscale for access
+- Using a VPN
+- Implementing basic auth via Traefik middleware
+
 ## Architecture (v2.0 - Slimmed)
 
 ```
