@@ -323,7 +323,8 @@ install_hermes() {
     log_info "Installing Hermes Agent..."
 
     mkdir -p "$HERMES_HOME"
-    curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+    # --skip-setup bypasses the interactive setup wizard
+    curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash -s -- --skip-setup
 
     export PATH="$HERMES_HOME/.local/bin:$PATH"
 
