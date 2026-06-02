@@ -1,0 +1,83 @@
+# Alloy Configuration for AIAMSBS Monitoring Stack
+# Collects metrics and logs, forwards to Prometheus and Loki
+
+// Enable debug endpoint
+prometheus.exporter.unix "self" {
+    disable_host = false
+}
+
+// Scrape Docker container metrics via cadvisor
+prometheus.exporter.cadvisor "docker" {
+    docker_endpoint = "unix:///var/run/docker.sock"
+    storage_duration = "1h0m0s"
+}
+
+// Collect Docker container logs via docker driver
+logging "docker" {
+    logset "docker"
+    positions {
+        filename = "/var/lib/alloy/positions/docker.json"
+    }
+    forward_to = [loki.receive.docker.receiver]
+}
+
+// Collect system journal logs
+logging "systemd" {
+    journal {
+        matches = [
+            "_SYSTEMD_UNIT=*.service",
+            "_SYSTEMD_UNIT=systemd-journald.service"
+        ]
+    }
+    forward_to = [loki.receive.systemd.receiver]
+}
+
+// Remote write to Prometheus
+prometheus.remote_write "prometheus" {
+    endpoint {
+        url = "http://prometheus:9090/api/v1/write"
+        queue_config {
+            max_samples_per_send = 10000
+            capacity = 20000
+        }
+    }
+}
+
+// Receive logs and forward to Loki
+loki.receive "docker" {
+    forward_to = [loki.write.docker.receiver]
+}
+
+loki.receive "systemd" {
+    forward_to = [loki.write.systemd.receiver]
+}
+
+// Write logs to Loki
+loki.write "docker" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+        tenant_id = "docker"
+    }
+}
+
+loki.write "systemd" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+        tenant_id = "systemd"
+    }
+}
+
+// Scrape configurations
+prometheus.scrape "unix" {
+    targets = prometheus.exporter.unix.self.targets
+    forward_to = [prometheus.remote_write.prometheus.receiver]
+    scrape_interval = "15s"
+    scrape_timeout = "10s"
+}
+
+prometheus.scrape "cadvisor" {
+    targets = prometheus.exporter.cadvisor.docker.targets
+    forward_to = [prometheus.remote_write.prometheus.receiver]
+    scrape_interval = "15s"
+    scrape_timeout = "10s"
+}

@@ -1,0 +1,109 @@
+# AIAMSBS Monitoring Stack
+# Deploy with: docker compose up -d
+
+services:
+  # Reverse Proxy with Automatic HTTPS
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/traefik.yml:/etc/traefik/traefik.yml:ro
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Time-series Metrics Database
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Log Aggregation
+  loki:
+    image: grafana/loki:3.2.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/loki.yml:/etc/loki/local-config.yml:ro
+      - loki-data:/loki
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Metrics + Log Collection Agent
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    ports:
+      - "12345:12345"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/alloy.yml:/etc/alloy/config.yml:ro
+      - alloy-data:/etc/alloy
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    command: run --server.http.address=:12345 --storage.path=/etc/alloy /etc/alloy/config.yml
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Dashboards and Visualization
+  grafana:
+    image: grafana/grafana:13.0.1
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Container Management
+  portainer:
+    image: portainer/portainer-ce:2.21.4
+    container_name: portainer
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  loki-data:
+  alloy-data:
+  grafana-data:
+  portainer-data:

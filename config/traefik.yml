@@ -1,0 +1,31 @@
+# Traefik Configuration for AIAMSBS Monitoring Stack
+# Static configuration (no file provider needed for basic setup)
+
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+  traefik:
+    address: ":8080"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: monitoring
+
+  file:
+    directory: "/etc/traefik/dynamic"
+    watch: true
+
+log:
+  level: INFO
+  filePath: "/var/log/traefik/traefik.log"
+
+accessLog:
+  filePath: "/var/log/traefik/access.log"

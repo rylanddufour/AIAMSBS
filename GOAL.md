@@ -1,7 +1,7 @@
-# AIAMSBS Monitoring Stack Deployment Goal
+# AIAMSBS Monitoring Stack Deployment
 
 ## Objective
-Deploy a complete monitoring and observability stack on a target VM using Docker Compose. The stack must collect host metrics, Docker container metrics, system logs, and provide visualization dashboards.
+Deploy a complete monitoring and observability stack on a target VM using Docker Compose and configuration files stored in this repository.
 
 ## Target Environment
 - **VM**: localhost (current machine)
@@ -13,7 +13,21 @@ Deploy a complete monitoring and observability stack on a target VM using Docker
 - Git available
 - User has sudo privileges and belongs to docker group
 
-## Components to Deploy
+## Configuration Files
+
+This deployment uses explicit configuration files to ensure consistent, reproducible deployments:
+
+| File | Purpose |
+|------|---------|
+| `docker-compose.yml` | Stack definition (services, ports, volumes) |
+| `config/alloy.yml` | Metrics and log collection configuration |
+| `config/prometheus.yml` | Prometheus scrape targets |
+| `config/loki.yml` | Log aggregation configuration |
+| `config/traefik.yml` | Reverse proxy configuration |
+| `config/grafana/provisioning/datasources/datasources.yml` | Grafana data sources |
+| `.env.example` | Environment variables template |
+
+## Components Deployed
 
 | Service | Image | Ports | Purpose |
 |---------|-------|-------|---------|
@@ -33,14 +47,20 @@ Prometheus + Loki -> Grafana (dashboards)
 
 ## Deployment Steps
 
-### 1. Deploy the Stack
+### 1. Copy Environment Template
+```bash
+cp .env.example .env
+# Edit .env with your desired passwords
+```
+
+### 2. Deploy the Stack
 ```bash
 git clone https://github.com/rylanddufour/AIAMSBS.git
 cd AIAMSBS
 docker compose up -d
 ```
 
-### 2. Verify Deployment
+### 3. Verify Deployment
 Confirm these services are running:
 ```bash
 docker compose ps
@@ -52,11 +72,11 @@ Expected containers: traefik, prometheus, grafana, loki, alloy, portainer
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| Grafana | http://localhost:3000 | admin / admin123 |
+| Grafana | http://localhost:3000 | admin / (from .env) |
 | Prometheus | http://localhost:9090 | (none) |
 | Loki | http://localhost:3100 | (none) |
 | Traefik | http://localhost:8080 | (none) |
-| Portainer | https://localhost:9443 | admin / admin123 |
+| Portainer | https://localhost:9443 | admin / (from .env) |
 | Alloy Debug UI | http://localhost:12345 | (none) |
 
 ## Success Criteria
@@ -73,8 +93,6 @@ In Grafana > Explore > Loki, query:
 
 If queries return data, the deployment is successful.
 
-## What Was Removed (v2.0)
-The following are now handled by Alloy inside its container:
-- ~~node-exporter~~ → replaced by `prometheus.exporter.unix`
-- ~~cAdvisor~~ → replaced by `prometheus.exporter.cadvisor`
-- ~~host-based Alloy (systemd)~~ → container version with full access
+## Version
+- Configuration files in this commit are deterministic
+- To pin a specific deployment, use the commit hash
