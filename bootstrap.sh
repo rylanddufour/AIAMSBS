@@ -420,7 +420,7 @@ auto_deploy_stack() {
     # Run Hermes with deployment goal
     log_info "Running Hermes to deploy stack from GOAL.md..."
     
-    if hermes chat -z "Deploy the monitoring stack from https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/GOAL.md"; then
+    if hermes -z "Deploy the monitoring stack from https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/GOAL.md"; then
         log_success "Stack deployed successfully!"
     else
         log_error "Stack deployment failed. You can retry manually with:"
