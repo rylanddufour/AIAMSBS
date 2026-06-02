@@ -1,0 +1,115 @@
+// Alloy Unified Configuration
+// Replaces: node-exporter, cAdvisor, and host-based Alloy
+
+// ============================================
+// Container Metrics (replaces cAdvisor)
+// ============================================
+prometheus.exporter.cadvisor "containers" {
+  docker_host = "unix:///var/run/docker.sock"
+  storage_duration = "5m"
+}
+
+prometheus.scrape "cadvisor" {
+  targets    = prometheus.exporter.cadvisor.containers.targets
+  forward_to = [prometheus.remote_write.default.receiver]
+  scrape_interval = "15s"
+  job_name   = "cadvisor"
+}
+
+// ============================================
+// Host Metrics (replaces node-exporter)
+// ============================================
+prometheus.exporter.unix "host" {
+  rootfs_path = "/host"
+  sysfs_path  = "/host/sys"
+  procfs_path = "/host/proc"
+}
+
+prometheus.scrape "node" {
+  targets    = prometheus.exporter.unix.host.targets
+  forward_to = [prometheus.remote_write.default.receiver]
+  scrape_interval = "15s"
+  job_name   = "node"
+}
+
+// ============================================
+// Remote Write to Prometheus
+// ============================================
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}
+
+// ============================================
+// Docker Container Logs
+// ============================================
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.docker.output
+  forward_to = [loki.write.default.receiver]
+}
+
+// ============================================
+// Systemd Journal Logs
+// ============================================
+loki.source.journal "systemd" {
+  path       = "/var/log/journal"
+  forward_to = [loki.write.default.receiver]
+  labels     = {
+    job = "systemd-journal",
+  }
+}
+
+// ============================================
+// Hermes Agent Logs
+// ============================================
+// Collects Hermes agent logs from the host filesystem.
+// The host filesystem is mounted at /host inside the Alloy container.
+loki.source.file "hermes_agent" {
+  targets = [
+    {
+      __path__ = "/host/home/ansible/.hermes/logs/agent.log"
+      job      = "hermes-agent"
+      source   = "agent"
+    },
+    {
+      __path__ = "/host/home/ansible/.hermes/logs/errors.log"
+      job      = "hermes-agent"
+      source   = "errors"
+    },
+    {
+      __path__ = "/host/home/ansible/.hermes/logs/gateway.log"
+      job      = "hermes-agent"
+      source   = "gateway"
+    },
+  ]
+  forward_to = [loki.write.default.receiver]
+}
+
+// ============================================
+// Write Logs to Loki
+// ============================================
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
