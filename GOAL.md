@@ -140,14 +140,18 @@ Hermes WebUI provides a full-featured web interface for Hermes Agent with:
 └─────────────────────┘         └─────────────────────┘
 ```
 
-### Installation (Single Container)
+### Installation (Docker Container)
 ```bash
 # Run WebUI container - connects to Hermes on host via ~/.hermes mount
+# - Binds to 0.0.0.0 for remote access
+# - Restarts automatically on host boot
+# - Mounts ~/.hermes for session persistence
 docker run -d \
   --name hermes-webui \
+  --restart unless-stopped \
   -v ~/.hermes:/home/hermeswebui/.hermes \
-  -v ~/workspace:/workspace \
-  -p 127.0.0.1:8787:8787 \
+  -p 0.0.0.0:8787:8787 \
+  -e HERMES_WEBUI_HOST=0.0.0.0 \
   ghcr.io/nesquena/hermes-webui:latest
 ```
 
@@ -212,6 +216,18 @@ git clone https://github.com/rylanddufour/AIAMSBS.git
 cd AIAMSBS
 docker compose up -d
 # All containers have restart: unless-stopped - auto-start on boot enabled
+```
+
+### 3. Install Hermes WebUI (Remote Access)
+```bash
+# Run WebUI container - remote access, restarts on boot, persists sessions
+docker run -d \
+  --name hermes-webui \
+  --restart unless-stopped \
+  -v ~/.hermes:/home/hermeswebui/.hermes \
+  -p 0.0.0.0:8787:8787 \
+  -e HERMES_WEBUI_HOST=0.0.0.0 \
+  ghcr.io/nesquena/hermes-webui:latest
 ```
 
 ### 3. Install Hermes Web Dashboard (Optional)
