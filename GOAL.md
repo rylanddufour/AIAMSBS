@@ -9,7 +9,7 @@ Deploy a complete monitoring and observability stack on a target VM using Docker
 - **User**: $USER (must have sudo and docker group membership)
 
 ## Prerequisites
-- Docker installed and running
+- Docker installed and running (handled by bootstrap)
 - Git available
 - User has sudo privileges and belongs to docker group
 
@@ -33,23 +33,14 @@ Prometheus + Loki -> Grafana (dashboards)
 
 ## Deployment Steps
 
-### 1. Docker Setup (if not already installed)
-```bash
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-echo '{"metrics-addr":"0.0.0.0:9325","experimental":true}' | sudo tee /etc/docker/daemon.json
-sudo systemctl restart docker
-# Log out and back in for docker group membership
-```
-
-### 2. Deploy the Stack
+### 1. Deploy the Stack
 ```bash
 git clone https://github.com/rylanddufour/AIAMSBS.git
 cd AIAMSBS
 docker compose up -d
 ```
 
-### 3. Verify Deployment
+### 2. Verify Deployment
 Confirm these services are running:
 ```bash
 docker compose ps
