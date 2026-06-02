@@ -117,10 +117,77 @@ sudo systemctl enable hermes-dashboard.service
 sudo systemctl start hermes-dashboard.service
 ```
 
-- **URL**: http://localhost:9119
-- **Note**: The --insecure flag allows binding to 0.0.0.0 (network access). Use with caution on untrusted networks.
+## Hermes WebUI (Web Interface for Hermes Agent)
 
-## Data Collection Flow
+### Overview
+Hermes WebUI provides a full-featured web interface for Hermes Agent with:
+- Chat interface with streaming responses
+- Session management (create, search, pin, archive, projects)
+- Workspace file browser with inline preview
+- Task/cron job management GUI
+- Skills management
+- Memory editor (MEMORY.md, USER.md)
+- Profile switching
+- Multiple themes (dark/light with various skins)
+
+### Architecture
+```
+┌─────────────────────┐         ┌─────────────────────┐
+│  hermes-webui       │         │   Host (192.168.x) │
+│  (Docker container) │ ◀──────▶│   Hermes Agent     │
+│  :8787             │         │   Gateway :8642    │
+└─────────────────────┘         └─────────────────────┘
+```
+
+### Installation (Single Container)
+```bash
+# Run WebUI container - connects to Hermes on host via ~/.hermes mount
+docker run -d \
+  --name hermes-webui \
+  -v ~/.hermes:/home/hermeswebui/.hermes \
+  -v ~/workspace:/workspace \
+  -p 127.0.0.1:8787:8787 \
+  ghcr.io/nesquena/hermes-webui:latest
+```
+
+### Configuration Options
+| Variable | Default | Description |
+|---|---|---|
+| `HERMES_WEBUI_PASSWORD` | (none) | Enable password auth |
+| `HERMES_WEBUI_HOST` | 127.0.0.1 | Bind address |
+| `HERMES_WEBUI_PORT` | 8787 | Port |
+| `HERMES_WEBUI_STATE_DIR` | ~/.hermes/webui | Session storage |
+
+### Access
+- **URL**: http://localhost:8787
+- **Localhost only**: Binds to 127.0.0.1 by default
+- **Remote access**: Set `HERMES_WEBUI_HOST=0.0.0.0` + `HERMES_WEBUI_PASSWORD`
+
+### Key Differences: WebUI vs Dashboard
+
+| Feature | Hermes Dashboard | Hermes WebUI |
+|---|---|---|
+| **Source** | Built-in (`hermes dashboard`) | External (nesquena/hermes-webui) |
+| **Port** | 9119 | 8787 |
+| **Features** | Basic metrics view | Full chat, sessions, files, cron, skills |
+| **Sessions** | No | Yes (persistent across reloads) |
+| **Authentication** | None (--insecure only) | Optional password + passkeys |
+| **Framework** | React (bundled) | Vanilla JS (no build step) |
+
+**Recommendation**: Use Hermes WebUI for full agent interaction, or Hermes Dashboard for quick metrics viewing.
+
+## Access Information
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| Grafana | http://localhost:3000 | admin/admin123 |
+| Prometheus | http://localhost:9090 | None |
+| Loki | http://localhost:3100 | None |
+| Traefik | http://localhost:8080 | None |
+| Portainer | https://localhost:9443 | admin/admin123 |
+| Alloy | http://localhost:12345 | None (debug UI) |
+| Hermes WebUI | http://localhost:8787 | Optional password |
+| Hermes Dashboard | http://localhost:9119 | None (API keys exposed) |
 
 ```
 Alloy Container (embedded cAdvisor + node_exporter) -> Prometheus
