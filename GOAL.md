@@ -46,11 +46,12 @@ Deploy a complete monitoring and observability stack on a target VM (Ubuntu) usi
 - **Purpose**: Unified metrics and log collection (replaces node-exporter, cAdvisor, and host-based Alloy)
 - **Running as**: Docker container (privileged mode)
 - **Config**: /stack/alloy/config.alloy
-- **Data Collection**:
+|- **Data Collection**:
   - **Embedded cAdvisor** - Container metrics (CPU, memory, disk, network)
   - **Embedded node_exporter** - Host system metrics (CPU, memory, disk, network, filesystems)
   - **loki.source.docker** - Docker container stdout/stderr logs
   - **loki.source.journal** - Systemd journal logs
+  - **loki.source.file** - Host file-based logs (Hermes agent logs)
 - **Outputs**:
   - Metrics -> Prometheus via remote_write (http://prometheus:9090)
   - Logs -> Loki (http://loki:3100)
