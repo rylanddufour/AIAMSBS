@@ -414,6 +414,9 @@ auto_deploy_stack() {
     cd "$HERMES_HOME/hermes-agent"
     source venv/bin/activate
     
+    # Add hermes command to PATH (installed to ~/.local/bin)
+    export PATH="$HERMES_HOME/.local/bin:$PATH"
+    
     # Run Hermes with deployment goal
     log_info "Running Hermes to deploy stack from GOAL.md..."
     
