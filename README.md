@@ -10,49 +10,41 @@ Self-hosting infrastructure platform using Hermes Agent.
 
 ## Deployment Process
 
-### 1. Bootstrap the VM
+### Quick Start (Recommended)
 
-Run this on the target VM as a user with sudo rights:
+The bootstrap script supports both CLI arguments and interactive mode. **CLI is recommended** because piped input (`curl | bash`) doesn't support interactive prompts.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh | bash
+# Replace YOUR_API_KEY with your actual API key
+curl -fsSL https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh | bash -s -- --api-key YOUR_API_KEY --provider openrouter
+```
+
+**Supported providers:** `openai`, `anthropic`, `openrouter`, `google`
+
+Example with model:
+```bash
+curl -fsSL https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh | bash -s -- --api-key sk-xxx --provider openrouter --model openai/chatgpt-4o-latest
+```
+
+### Interactive Mode (Advanced)
+
+If you prefer to be prompted for each option, clone the script first and run it interactively:
+
+```bash
+# Download script first
+curl -fsSL -o bootstrap.sh https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh
+
+# Make executable and run (stdin will be your terminal)
+chmod +x bootstrap.sh
+./bootstrap.sh
 ```
 
 **What bootstrap.sh does:**
 - Installs Docker + Docker Compose
 - Installs Hermes Agent dependencies (Python, Node.js, ffmpeg, ripgrep)
 - Clones Hermes Agent repo
-- Sets up Hermes configuration
-
-### 2. Configure API Key
-
-After bootstrap completes, add your LLM provider API key:
-
-```bash
-# Create .env file with your API key
-echo 'OPENROUTER_API_KEY=your-key-here' > ~/.hermes/.env
-```
-
-Or use any OpenAI-compatible provider (OpenAI, Anthropic, OpenRouter, etc.)
-
-### 3. Deploy the Monitoring Stack
-
-Start Hermes and give it the GOAL.md to deploy:
-
-```bash
-cd ~/.hermes/hermes-agent
-source .venv/bin/activate
-hermes chat -q "Deploy the monitoring stack from https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/GOAL.md"
-```
-
-Hermes will:
-1. Clone the AIAMSBS repo
-2. Create stack directory structure
-3. Generate all config files (Traefik, Prometheus, Loki, Alloy)
-4. Create docker-compose.yml
-5. Deploy all containers
-
-### 4. Install Hermes Web Dashboard (Optional)
+- Configures your API key
+- Auto-deploys the monitoring stack
 
 ```bash
 # Install Node.js 20
@@ -98,6 +90,7 @@ sudo systemctl start hermes-dashboard
 | Traefik | http://localhost:8080 | None |
 | Portainer | https://localhost:9443 | admin / admin123 |
 | Alloy | http://localhost:12345 | None (debug UI) |
+| Hermes WebUI | http://localhost:8787 | Optional password |
 | Hermes Dashboard | http://localhost:9119 | None |
 
 > ⚠️ **Security Note:** The Hermes Dashboard (port 9119) has no built-in authentication. It is **highly recommended** to restrict access with a firewall.

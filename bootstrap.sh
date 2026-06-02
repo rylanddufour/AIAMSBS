@@ -315,7 +315,7 @@ install_docker_compose() {
 install_hermes() {
     log_info "Checking for Hermes Agent..."
 
-    if [ -f "$HERMES_HOME/hermes-agent/.venv/bin/hermes" ]; then
+    if [ -f "$HERMES_HOME/hermes-agent/venv/bin/hermes" ]; then
         log_success "Hermes is already installed"
         return 0
     fi
@@ -323,7 +323,8 @@ install_hermes() {
     log_info "Installing Hermes Agent..."
 
     mkdir -p "$HERMES_HOME"
-    curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+    # --skip-setup bypasses the interactive setup wizard
+    curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash -s -- --skip-setup
 
     export PATH="$HERMES_HOME/.local/bin:$PATH"
 
@@ -384,9 +385,9 @@ EOF
     log_success "API key configured for $PROVIDER"
     
     # Update config.yaml using hermes model command (validates model)
-    if [ -f "$HERMES_HOME/hermes-agent/.venv/bin/hermes" ]; then
+    if [ -f "$HERMES_HOME/hermes-agent/venv/bin/hermes" ]; then
         cd "$HERMES_HOME/hermes-agent"
-        source .venv/bin/activate
+        source venv/bin/activate
         
         log_info "Setting Hermes model..."
         
@@ -411,12 +412,14 @@ auto_deploy_stack() {
     log_info "Starting auto-deploy of monitoring stack..."
     
     cd "$HERMES_HOME/hermes-agent"
-    source .venv/bin/activate
+    source venv/bin/activate
+    
+    # Add hermes command to PATH (installed to ~/.local/bin)
+    export PATH="$HERMES_HOME/.local/bin:$PATH"
     
     # Run Hermes with deployment goal
-    log_info "Running Hermes to deploy stack from GOAL.md..."
-    
-    if hermes chat -z "Deploy the monitoring stack from https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/GOAL.md"; then
+    log_info "Running Hermes to deploy stack from GOAL.md..."\n    
+    if hermes chat -q "Deploy the monitoring stack from https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/GOAL.md"; then
         log_success "Stack deployed successfully!"
     else
         log_error "Stack deployment failed. You can retry manually with:"
@@ -447,7 +450,7 @@ verify_installation() {
         errors=$((errors + 1))
     fi
 
-    if [ -f "$HERMES_HOME/hermes-agent/.venv/bin/hermes" ]; then
+    if [ -f "$HERMES_HOME/hermes-agent/venv/bin/hermes" ]; then
         log_success "Hermes: installed"
     else
         log_error "Hermes not found"
