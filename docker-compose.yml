@@ -99,6 +99,20 @@ services:
       - monitoring
     restart: unless-stopped
 
+  # Hermes WebUI (Web Interface for Agent)
+  hermes-webui:
+    image: ghcr.io/nesquena/hermes-webui:latest
+    container_name: hermes-webui
+    ports:
+      - "8787:8787"
+    volumes:
+      - ${HOME}/.hermes:/home/hermeswebui/.hermes
+    environment:
+      - HERMES_WEBUI_HOST=0.0.0.0
+    networks:
+      - monitoring
+    restart: unless-stopped
+
 networks:
   monitoring:
     driver: bridge

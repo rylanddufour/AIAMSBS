@@ -37,6 +37,7 @@ This deployment uses explicit configuration files to ensure consistent, reproduc
 | Loki | grafana/loki:3.2.0 | 3100 | Log aggregation |
 | Alloy | grafana/alloy:latest | 12345 | Metrics + log collection agent |
 | Portainer | portainer/portainer-ce:2.21.4 | 9000, 9443 | Container management |
+| Hermes WebUI | ghcr.io/nesquena/hermes-webui:latest | 8787 | Web interface for Hermes Agent |
 
 ## Data Flow
 ```
@@ -66,7 +67,7 @@ Confirm these services are running:
 docker compose ps
 ```
 
-Expected containers: traefik, prometheus, grafana, loki, alloy, portainer
+Expected containers: traefik, prometheus, grafana, loki, alloy, portainer, hermes-webui
 
 ## Access
 
@@ -77,6 +78,7 @@ Expected containers: traefik, prometheus, grafana, loki, alloy, portainer
 | Loki | http://localhost:3100 | (none) |
 | Traefik | http://localhost:8080 | (none) |
 | Portainer | https://localhost:9443 | admin / (from .env) |
+| Hermes WebUI | http://localhost:8787 | (none) |
 | Alloy Debug UI | http://localhost:12345 | (none) |
 
 ## Success Criteria

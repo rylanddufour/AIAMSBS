@@ -45,6 +45,12 @@ scrape_configs:
         labels:
           service: 'portainer'
 
+  - job_name: 'hermes-webui'
+    static_configs:
+      - targets: ['hermes-webui:8787']
+        labels:
+          service: 'hermes-webui'
+
 # Remote write configuration for Alloy
 remote_write:
   - url: 'http://prometheus:9090/api/v1/write'
