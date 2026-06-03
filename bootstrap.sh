@@ -193,7 +193,9 @@ resolve_provider_model() {
     # If CLI args provided, use them
     if [ -n "$CLI_API_KEY" ]; then
         PROVIDER="$CLI_PROVIDER"
+        
         MODEL="$CLI_MODEL"
+        
         API_KEY="$CLI_API_KEY"
         
         # Validate provider

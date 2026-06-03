@@ -17,6 +17,7 @@
 | 4 | Traefik landing page / routing | Nice URLs (grafana.yourdomain.com) instead of ports via Traefik | Medium |
 | 5 | Log retention config | Configure Loki retention to prevent disk exhaustion | Low |
 | 6 | Backup script | Export config files and dashboards for disaster recovery | Low |
+| 6a | Hermes WebUI scheduled jobs | Enable gateway in container so cron jobs work in WebUI | Medium |
 
 ### Low Priority
 
