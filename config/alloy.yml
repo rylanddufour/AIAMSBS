@@ -1,107 +1,75 @@
 # Alloy Configuration for AIAMSBS Monitoring Stack
-# Collects metrics and logs, forwards to Prometheus and Loki
+# Uses Alloy River syntax (v1.x)
 
-// Enable debug endpoint
+// Host metrics collection
 prometheus.exporter.unix "self" {
-    disable_host = false
+    rootfs = "/"
 }
 
-// Scrape Docker container metrics via cadvisor
-prometheus.exporter.cadvisor "docker" {
-    docker_endpoint = "unix:///var/run/docker.sock"
-    storage_duration = "1h0m0s"
+// Docker service discovery
+discovery.docker "hermes" {
+    host = "unix:///var/run/docker.sock"
 }
 
-// Collect Docker container logs via docker driver
-logging "docker" {
-    logset "docker"
-    positions {
-        filename = "/var/lib/alloy/positions/docker.json"
-    }
-    forward_to = [loki.receive.docker.receiver]
-}
-
-// Collect system journal logs
-logging "systemd" {
-    journal {
-        matches = [
-            "_SYSTEMD_UNIT=*.service",
-            "_SYSTEMD_UNIT=systemd-journald.service"
-        ]
-    }
-    forward_to = [loki.receive.systemd.receiver]
-}
-
-// Collect Hermes Agent logs
-logging "hermes" {
-    logset "hermes"
-    positions {
-        filename = "/var/lib/alloy/positions/hermes.json"
-    }
-    file {
-        path           = "/var/lib/hermes/logs/*.log"
-        include        = [ "*.log" ]
-    }
-    forward_to = [loki.receive.hermes.receiver]
+// Scrape host metrics
+prometheus.scrape "host" {
+    targets = prometheus.exporter.unix.self.targets
+    forward_to = [prometheus.remote_write.metrics.receiver]
+    scrape_interval = "15s"
+    scrape_timeout = "10s"
 }
 
 // Remote write to Prometheus
-prometheus.remote_write "prometheus" {
+prometheus.remote_write "metrics" {
     endpoint {
         url = "http://prometheus:9090/api/v1/write"
-        queue_config {
-            max_samples_per_send = 10000
-            capacity = 20000
-        }
     }
 }
 
-// Receive logs and forward to Loki
-loki.receive "docker" {
+// Collect Docker container logs
+loki.source.docker "containers" {
+    host = "unix:///var/run/docker.sock"
+    labels = {
+        job = "docker",
+    }
     forward_to = [loki.write.docker.receiver]
 }
 
-loki.receive "systemd" {
+// Collect systemd journal logs
+loki.source.journal "systemd" {
+    labels = {
+        job = "systemd",
+    }
     forward_to = [loki.write.systemd.receiver]
 }
 
-loki.receive "hermes" {
+// Collect Hermes Agent logs
+loki.source.file "hermes" {
+    path_directory = "/var/lib/hermes/logs"
+    glob         = "*.log"
+    labels = {
+        job = "hermes",
+    }
     forward_to = [loki.write.hermes.receiver]
 }
 
-// Write logs to Loki
+// Write Docker logs to Loki
 loki.write "docker" {
     endpoint {
         url = "http://loki:3100/loki/api/v1/push"
-        tenant_id = "docker"
     }
 }
 
+// Write systemd logs to Loki
 loki.write "systemd" {
     endpoint {
         url = "http://loki:3100/loki/api/v1/push"
-        tenant_id = "systemd"
     }
 }
 
+// Write Hermes logs to Loki
 loki.write "hermes" {
     endpoint {
         url = "http://loki:3100/loki/api/v1/push"
-        tenant_id = "hermes"
     }
-}
-
-// Scrape configurations
-prometheus.scrape "unix" {
-    targets = prometheus.exporter.unix.self.targets
-    forward_to = [prometheus.remote_write.prometheus.receiver]
-    scrape_interval = "15s"
-    scrape_timeout = "10s"
-}
-
-prometheus.scrape "cadvisor" {
-    targets = prometheus.exporter.cadvisor.docker.targets
-    forward_to = [prometheus.remote_write.prometheus.receiver]
-    scrape_interval = "15s"
-    scrape_timeout = "10s"
 }

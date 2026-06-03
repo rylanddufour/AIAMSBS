@@ -63,7 +63,7 @@ services:
       - ${HOME}/.hermes/logs:/var/lib/hermes/logs:ro
     environment:
       - DOCKER_HOST=unix:///var/run/docker.sock
-    command: run --server.http.address=:12345 --storage.path=/etc/alloy /etc/alloy/config.yml
+    command: run --server.http.listen-addr=:12345 --storage.path=/etc/alloy /etc/alloy/config.yml
     networks:
       - monitoring
     restart: unless-stopped
@@ -109,6 +109,7 @@ services:
       - ${HOME}/.hermes:/home/hermeswebui/.hermes
     environment:
       - HERMES_WEBUI_HOST=0.0.0.0
+      - HERMES_WEBUI_STATE_DIR=/home/hermeswebui/.hermes
     networks:
       - monitoring
     restart: unless-stopped
