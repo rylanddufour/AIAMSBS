@@ -429,7 +429,7 @@ auto_deploy_stack() {
 
 The stack includes: Traefik, Prometheus, Grafana, Loki, Alloy, Portainer, and Hermes WebUI."
 
-    if hermes chat -q "$deploy_prompt"; then
+    if hermes --yolo chat -q "$deploy_prompt"; then
         log_success "Stack deployed successfully!"
     else
         log_error "Stack deployment failed. You can retry manually with:"
