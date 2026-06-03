@@ -107,9 +107,11 @@ services:
       - "0.0.0.0:8787:8787"
     volumes:
       - ${HOME}/.hermes:/home/hermeswebui/.hermes
+      - ${HOME}/.hermes/hermes-agent:/home/hermeswebui/hermes-agent:ro
     environment:
       - HERMES_WEBUI_HOST=0.0.0.0
       - HERMES_WEBUI_STATE_DIR=/home/hermeswebui/.hermes
+      - HERMES_WEBUI_AGENT_DIR=/home/hermeswebui/hermes-agent
     networks:
       - monitoring
     restart: unless-stopped
