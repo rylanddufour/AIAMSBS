@@ -32,6 +32,19 @@ logging "systemd" {
     forward_to = [loki.receive.systemd.receiver]
 }
 
+// Collect Hermes Agent logs
+logging "hermes" {
+    logset "hermes"
+    positions {
+        filename = "/var/lib/alloy/positions/hermes.json"
+    }
+    file {
+        path           = "/var/lib/hermes/logs/*.log"
+        include        = [ "*.log" ]
+    }
+    forward_to = [loki.receive.hermes.receiver]
+}
+
 // Remote write to Prometheus
 prometheus.remote_write "prometheus" {
     endpoint {
@@ -52,6 +65,10 @@ loki.receive "systemd" {
     forward_to = [loki.write.systemd.receiver]
 }
 
+loki.receive "hermes" {
+    forward_to = [loki.write.hermes.receiver]
+}
+
 // Write logs to Loki
 loki.write "docker" {
     endpoint {
@@ -64,6 +81,13 @@ loki.write "systemd" {
     endpoint {
         url = "http://loki:3100/loki/api/v1/push"
         tenant_id = "systemd"
+    }
+}
+
+loki.write "hermes" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+        tenant_id = "hermes"
     }
 }
 

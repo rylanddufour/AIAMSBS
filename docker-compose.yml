@@ -59,6 +59,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./config/alloy.yml:/etc/alloy/config.yml:ro
       - alloy-data:/etc/alloy
+      # Mount Hermes logs for collection
+      - ${HOME}/.hermes/logs:/var/lib/hermes/logs:ro
     environment:
       - DOCKER_HOST=unix:///var/run/docker.sock
     command: run --server.http.address=:12345 --storage.path=/etc/alloy /etc/alloy/config.yml
