@@ -1,0 +1,96 @@
+{
+  "dashboard": {
+    "title": "Linux Host Overview",
+    "uid": "linux-host-overview", 
+    "tags": ["host", "linux", "aiamsbs"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+          "name": "hostname",
+          "type": "query",
+          "query": "label_names(node_cpu_seconds_total)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": false,
+          "hide": 0,
+          "label": "Docker Host",
+          "description": "Select Docker Host"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "CPU Usage",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "100 - (avg by (mode) (rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) * 100)",
+            "legendFormat": "{{mode}}"
+          }
+        ],
+        "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}]}}}
+      },
+      {
+        "id": 2,
+        "title": "Memory Usage", 
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {"expr": "node_memory_MemTotalBytes - node_memory_MemAvailableBytes", "legendFormat": "Used"},
+          {"expr": "node_memory_MemAvailableBytes", "legendFormat": "Available"}
+        ],
+        "fieldConfig": {"defaults": {"unit": "bytes", "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "yellow", "value": 80}, {"color": "red", "value": 90}]}}}
+      },
+      {
+        "id": 3,
+        "title": "Load Average",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 8, "w": 8, "h": 4},
+        "targets": [{"expr": "node_load1", "legendFormat": "1m"}]
+      },
+      {
+        "id": 4,
+        "title": "Uptime",
+        "type": "stat", 
+        "gridPos": {"x": 8, "y": 8, "w": 8, "h": 4},
+        "targets": [{"expr": "node_time_seconds - node_boot_time_seconds", "legendFormat": ""}],
+        "fieldConfig": {"defaults": {"unit": "s"}}
+      },
+      {
+        "id": 5,
+        "title": "Disk Usage (/)",
+        "type": "gauge",
+        "gridPos": {"x": 16, "y": 8, "w": 8, "h": 8},
+        "targets": [{"expr": "100 * (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})", "legendFormat": "Root"}],
+        "fieldConfig": {"defaults": {"max": 100, "min": 0, "unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"color": "red"}, {"color": "yellow", "value": 20}, {"color": "green", "value": 50}]}}}
+      },
+      {
+        "id": 6,
+        "title": "Network Traffic",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 12, "w": 24, "h": 8},
+        "targets": [
+          {"expr": "rate(node_network_receive_bytes_total[$__rate_interval])", "legendFormat": "{{instance}} RX"},
+          {"expr": "rate(node_network_transmit_bytes_total[$__rate_interval])", "legendFormat": "{{instance}} TX"}
+        ],
+        "fieldConfig": {"defaults": {"unit": "Bps"}}
+      },
+      {
+        "id": 7,
+        "title": "System Logs",
+        "type": "logs",
+        "gridPos": {"x": 0, "y": 20, "w": 24, "h": 10},
+        "targets": [{"refId": "A", "expr": "{job=\"systemd\"}", "legendFormat": ""}],
+        "options": {"showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "sortOrder": "Descending"}
+      }
+    ]
+  },
+  "overwrite": true
+}

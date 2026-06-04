@@ -1,15 +1,7 @@
-# Alloy Configuration for AIAMSBS Monitoring Stack
-# Uses Alloy River syntax (v1.x)
+// Alloy Configuration for AIAMSBS Monitoring Stack
 
 // Host metrics collection
-prometheus.exporter.unix "self" {
-    rootfs = "/"
-}
-
-// Docker service discovery
-discovery.docker "hermes" {
-    host = "unix:///var/run/docker.sock"
-}
+prometheus.exporter.unix "self" { }
 
 // Scrape host metrics
 prometheus.scrape "host" {
@@ -26,9 +18,15 @@ prometheus.remote_write "metrics" {
     }
 }
 
+// Docker service discovery
+discovery.docker "containers" {
+    host = "unix:///var/run/docker.sock"
+}
+
 // Collect Docker container logs
 loki.source.docker "containers" {
     host = "unix:///var/run/docker.sock"
+    targets = discovery.docker.containers.targets
     labels = {
         job = "docker",
     }
@@ -43,16 +41,6 @@ loki.source.journal "systemd" {
     forward_to = [loki.write.systemd.receiver]
 }
 
-// Collect Hermes Agent logs
-loki.source.file "hermes" {
-    path_directory = "/var/lib/hermes/logs"
-    glob         = "*.log"
-    labels = {
-        job = "hermes",
-    }
-    forward_to = [loki.write.hermes.receiver]
-}
-
 // Write Docker logs to Loki
 loki.write "docker" {
     endpoint {
@@ -62,13 +50,6 @@ loki.write "docker" {
 
 // Write systemd logs to Loki
 loki.write "systemd" {
-    endpoint {
-        url = "http://loki:3100/loki/api/v1/push"
-    }
-}
-
-// Write Hermes logs to Loki
-loki.write "hermes" {
     endpoint {
         url = "http://loki:3100/loki/api/v1/push"
     }

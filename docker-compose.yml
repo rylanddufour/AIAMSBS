@@ -29,6 +29,7 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-remote-write-receiver'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
@@ -57,13 +58,32 @@ services:
       - "0.0.0.0:12345:12345"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
       - ./config/alloy.yml:/etc/alloy/config.yml:ro
       - alloy-data:/etc/alloy
       # Mount Hermes logs for collection
       - ${HOME}/.hermes/logs:/var/lib/hermes/logs:ro
+    privileged: true
     environment:
       - DOCKER_HOST=unix:///var/run/docker.sock
     command: run --server.http.listen-addr=:12345 --storage.path=/etc/alloy /etc/alloy/config.yml
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # Syslog Receiver for Network Devices
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    ports:
+      - "0.0.0.0:514:1514/tcp"
+      - "0.0.0.0:514:1514/udp"
+    volumes:
+      - ./config/promtail.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
     networks:
       - monitoring
     restart: unless-stopped
@@ -115,6 +135,7 @@ services:
     networks:
       - monitoring
     restart: unless-stopped
+
 
 networks:
   monitoring:
