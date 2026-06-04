@@ -15,9 +15,24 @@
 | # | Item | Description | Complexity |
 |---|------|-------------|-------------|
 | 4 | Traefik landing page / routing | Nice URLs (grafana.yourdomain.com) instead of ports via Traefik | Medium |
+| 10 | Add hostname label to Alloy metrics | Add `hostname` label to all scraped metrics so host selector works across multi-host deployments | Medium |
+
+### Metrics Fix (Pre-req for dashboards)
+
+| # | Item | Description |
+|---|------|-------------|
+| A | Fix container metrics | Ensure `container_cpu_usage_seconds_total` and other container_* metrics flow to Prometheus |
+| B | Add hostname label | Add `hostname` label to all metrics for multi-host dropdown selector |
 | 5 | Log retention config | Configure Loki retention to prevent disk exhaustion | Low |
 | 6 | Backup script | Export config files and dashboards for disaster recovery | Low |
 | 6a | Hermes WebUI scheduled jobs | Enable gateway in container so cron jobs work in WebUI | Medium |
+
+### Testing
+
+| # | Item | Description | Complexity |
+|---|------|-------------|-------------|
+| 11 | Test syslog with real network device | Verify Promtail receives syslog on port 514 and Loki stores/logs appear in Grafana dashboard | Low |
+
 
 ### Low Priority
 
