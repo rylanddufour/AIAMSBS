@@ -1,0 +1,213 @@
+{
+  "meta": {
+    "type": "db",
+    "canSave": true,
+    "canEdit": true,
+    "canAdmin": true,
+    "canStar": true,
+    "canDelete": true,
+    "slug": "network-device-logs",
+    "url": "/d/network-syslog/network-device-logs",
+    "expires": "0001-01-01T00:00:00Z",
+    "created": "2026-06-04T19:22:56Z",
+    "updated": "2026-06-04T22:11:01Z",
+    "updatedBy": "admin",
+    "createdBy": "admin",
+    "version": 7,
+    "hasAcl": false,
+    "isFolder": false,
+    "apiVersion": "v0alpha1",
+    "folderId": 0,
+    "folderUid": "",
+    "folderTitle": "General",
+    "folderUrl": "",
+    "provisioned": false,
+    "provisionedExternalId": "",
+    "annotationsPermissions": {
+      "dashboard": {
+        "canAdd": true,
+        "canEdit": true,
+        "canDelete": true
+      }
+    }
+  },
+  "dashboard": {
+    "id": 4471078930157568,
+    "panels": [
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "showUnfilled": true
+        },
+        "targets": [
+          {
+            "expr": "sum by(detected_level)(count_over_time({job=\"syslog\", host=~\"$host\"}[24h]))",
+            "legendFormat": "{{detected_level}}",
+            "refId": "A"
+          }
+        ],
+        "title": "Logs by Level",
+        "type": "bargauge"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 0
+        },
+        "id": 2,
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "showUnfilled": true
+        },
+        "targets": [
+          {
+            "expr": "sum by(app)(count_over_time({job=\"syslog\", host=~\"$host\"}[24h]))",
+            "legendFormat": "{{app}}",
+            "refId": "A"
+          }
+        ],
+        "title": "Logs by App",
+        "type": "bargauge"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 16,
+          "y": 0
+        },
+        "id": 3,
+        "targets": [
+          {
+            "expr": "sum(count_over_time({job=\"syslog\", host=~\"$host\"}[24h]))",
+            "legendFormat": "Total",
+            "refId": "A"
+          }
+        ],
+        "title": "Total Logs",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        },
+        "id": 4,
+        "options": {
+          "enableLogDetails": true,
+          "showCommonLabels": false,
+          "showLabels": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": true
+        },
+        "targets": [
+          {
+            "expr": "{job=\"syslog\", host=~\"$host\"}",
+            "refId": "A"
+          }
+        ],
+        "title": "Recent Logs",
+        "type": "logs"
+      }
+    ],
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+          "allValue": ".*",
+          "current": {
+            "selected": true,
+            "text": "All",
+            "value": ".*"
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "includeAll": true,
+          "multi": false,
+          "name": "host",
+          "query": "label_values({job=\"syslog\"}, host)",
+          "refresh": 1,
+          "type": "query"
+        }
+      ]
+    },
+    "timepicker": {
+      "refresh_intervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "time_options": [
+        "5m",
+        "15m",
+        "1h",
+        "6h",
+        "12h",
+        "24h",
+        "2d",
+        "7d",
+        "30d"
+      ]
+    },
+    "timezone": "browser",
+    "title": "Network Device Logs",
+    "uid": "network-syslog",
+    "version": 7
+  }
+}
