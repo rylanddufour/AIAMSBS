@@ -95,6 +95,21 @@ In Grafana > Explore > Loki, query:
 
 If queries return data, the deployment is successful.
 
+## Pre-Provisioned Dashboards
+
+The following dashboards are automatically loaded when Grafana starts:
+
+| Dashboard | Purpose |
+|-----------|---------|
+| Network Device Logs | Syslog from firewalls, switches, routers (job=syslog) |
+| Docker Monitoring | Container CPU, memory, network, disk metrics |
+| Docker Logs | Container stdout/stderr logs |
+| Linux Host Overview | Host-level CPU, memory, disk, network |
+
+These are defined in:
+- `config/grafana/provisioning/dashboards/dashboards.yml` (provisioning config)
+- `dashboards/*.json` (dashboard definitions)
+
 ## Version
 - Configuration files in this commit are deterministic
 - To pin a specific deployment, use the commit hash

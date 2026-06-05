@@ -1,0 +1,99 @@
+{
+  "meta": {
+    "type": "db",
+    "canSave": true,
+    "canEdit": true,
+    "canAdmin": true,
+    "canStar": true,
+    "canDelete": true,
+    "slug": "docker-container-logs",
+    "url": "/d/docker-logs/docker-container-logs",
+    "expires": "0001-01-01T00:00:00Z",
+    "created": "2026-06-04T02:46:11Z",
+    "updated": "2026-06-04T02:49:39Z",
+    "updatedBy": "admin",
+    "createdBy": "admin",
+    "version": 2,
+    "hasAcl": false,
+    "isFolder": false,
+    "apiVersion": "v0alpha1",
+    "folderId": 0,
+    "folderUid": "",
+    "folderTitle": "General",
+    "folderUrl": "",
+    "provisioned": false,
+    "provisionedExternalId": "",
+    "annotationsPermissions": {
+      "dashboard": {
+        "canAdd": true,
+        "canEdit": true,
+        "canDelete": true
+      }
+    }
+  },
+  "dashboard": {
+    "id": 4220236453380096,
+    "panels": [
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "Loki"
+        },
+        "gridPos": {
+          "h": 20,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "options": {
+          "enableLogDetails": true,
+          "showCommonLabels": false,
+          "showLabels": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": true
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "Loki"
+            },
+            "expr": "{job=\"docker\", container=~\"$container\"}",
+            "refId": "A"
+          }
+        ],
+        "title": "Container Logs",
+        "type": "logs"
+      }
+    ],
+    "refresh": "10s",
+    "schemaVersion": 38,
+    "tags": [
+      "docker",
+      "containers",
+      "logs",
+      "aiamsbs"
+    ],
+    "templating": {
+      "list": [
+        {
+          "allValue": ".*",
+          "description": "Select container(s)",
+          "hide": 0,
+          "includeAll": true,
+          "label": "Container",
+          "multi": true,
+          "name": "container",
+          "query": "label_values(container)",
+          "refresh": 1,
+          "type": "query"
+        }
+      ]
+    },
+    "timezone": "browser",
+    "title": "Docker Container Logs",
+    "uid": "docker-logs",
+    "version": 2
+  }
+}
