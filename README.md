@@ -87,11 +87,8 @@ sudo systemctl start hermes-dashboard
 | Grafana | http://localhost:3000 | admin / admin123 |
 | Prometheus | http://localhost:9090 | None |
 | Loki | http://localhost:3100 | None |
-| Traefik | http://localhost:8080 | None |
-| Portainer | https://localhost:9443 | admin / admin123 |
 | Alloy | http://localhost:12345 | None (debug UI) |
-| Hermes WebUI | http://localhost:8787 | Optional password |
-| Hermes Dashboard | http://localhost:9119 | None |
+
 
 > ⚠️ **Security Note:** The Hermes Dashboard (port 9119) has no built-in authentication. It is **highly recommended** to restrict access with a firewall.
 
