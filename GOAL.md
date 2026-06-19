@@ -31,13 +31,10 @@ This deployment uses explicit configuration files to ensure consistent, reproduc
 
 | Service | Image | Ports | Purpose |
 |---------|-------|-------|---------|
-| Traefik | traefik:v3.1 | 80, 443, 8080 | Reverse proxy with automatic HTTPS |
 | Prometheus | prom/prometheus:v2.54.1 | 9090 | Time-series metrics database |
 | Grafana | grafana/grafana:13.0.1 | 3000 | Dashboards and visualization |
 | Loki | grafana/loki:3.2.0 | 3100 | Log aggregation |
 | Alloy | grafana/alloy:latest | 12345 | Metrics + log collection agent |
-| Portainer | portainer/portainer-ce:2.21.4 | 9000, 9443 | Container management |
-| Hermes WebUI | ghcr.io/nesquena/hermes-webui:latest | 8787 | Web interface for Hermes Agent |
 
 ## Data Flow
 ```
@@ -76,9 +73,6 @@ Expected containers: traefik, prometheus, grafana, loki, alloy, portainer, herme
 | Grafana | http://localhost:3000 | admin / (from .env) |
 | Prometheus | http://localhost:9090 | (none) |
 | Loki | http://localhost:3100 | (none) |
-| Traefik | http://localhost:8080 | (none) |
-| Portainer | https://localhost:9443 | admin / (from .env) |
-| Hermes WebUI | http://localhost:8787 | (none) |
 | Alloy Debug UI | http://localhost:12345 | (none) |
 
 ## Success Criteria
