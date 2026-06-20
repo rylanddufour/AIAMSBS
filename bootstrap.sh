@@ -248,15 +248,6 @@ check_prerequisites() {
         log_success "Node.js: $(node --version)"
     fi
 
-    # Build Hermes Dashboard web UI (Vite requires Node 20.19+)
-    if [ -d "$HERMES_HOME/hermes-agent/web" ]; then
-        log_info "Building Hermes Dashboard web UI..."
-        (cd "$HERMES_HOME/hermes-agent/web" && npm install --silent && npm run build)
-        log_success "Hermes Dashboard web UI built"
-    else
-        log_warn "Hermes Dashboard web UI directory not found, skipping build"
-    fi
-
     log_success "Prerequisites check complete"
 }
 
@@ -426,6 +417,27 @@ EOF
 }
 
 # ============================================
+# Build Hermes Dashboard Web UI
+# ============================================
+
+build_dashboard_ui() {
+    local web_dir="$HERMES_HOME/hermes-agent/web"
+
+    if [ ! -d "$web_dir" ]; then
+        log_warn "Hermes Dashboard web UI directory not found at $web_dir, skipping build"
+        return 0
+    fi
+
+    log_info "Building Hermes Dashboard web UI (Vite)..."
+    (cd "$web_dir" && npm install --silent && npm run build) || {
+        log_error "Web UI build failed; dashboard will not start"
+        return 1
+    }
+    log_success "Hermes Dashboard web UI built"
+    return 0
+}
+
+# ============================================
 # Start Hermes Dashboard
 # ============================================
 
@@ -565,6 +577,7 @@ main() {
     infra_dir=$(clone_infra_repo)
 
     configure_hermes_api
+    build_dashboard_ui
     start_hermes_dashboard
 
     if [ "$AUTO_DEPLOY" = true ]; then
