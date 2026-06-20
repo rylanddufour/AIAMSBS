@@ -238,6 +238,25 @@ check_prerequisites() {
         sudo apt install -y "${missing_cmds[@]}" jq
     fi
 
+    # Install Node.js 20+ (required for Hermes Dashboard web UI build)
+    if ! command -v node &> /dev/null; then
+        log_info "Installing Node.js (required for Hermes Dashboard web UI)..."
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt install -y nodejs
+        log_success "Node.js $(node --version) installed"
+    else
+        log_success "Node.js: $(node --version)"
+    fi
+
+    # Build Hermes Dashboard web UI (Vite requires Node 20.19+)
+    if [ -d "$HERMES_HOME/hermes-agent/web" ]; then
+        log_info "Building Hermes Dashboard web UI..."
+        (cd "$HERMES_HOME/hermes-agent/web" && npm install --silent && npm run build)
+        log_success "Hermes Dashboard web UI built"
+    else
+        log_warn "Hermes Dashboard web UI directory not found, skipping build"
+    fi
+
     log_success "Prerequisites check complete"
 }
 
@@ -407,6 +426,44 @@ EOF
 }
 
 # ============================================
+# Start Hermes Dashboard
+# ============================================
+
+start_hermes_dashboard() {
+    log_info "Starting Hermes Dashboard on port $HERMES_PORT..."
+
+    # Skip if already running
+    if curl -s "http://localhost:$HERMES_PORT" > /dev/null 2>&1; then
+        log_success "Hermes Dashboard is already running on port $HERMES_PORT"
+        return 0
+    fi
+
+    # Ensure logs directory exists with correct ownership
+    mkdir -p "$HERMES_HOME/logs"
+
+    # Launch dashboard in background
+    (cd "$HERMES_HOME/hermes-agent" && \
+        source venv/bin/activate && \
+        nohup hermes dashboard --port "$HERMES_PORT" --host 0.0.0.0 --insecure --skip-build \
+            > "$HERMES_HOME/logs/dashboard.log" 2>&1 &)
+
+    # Wait for it to respond
+    local retries=30
+    while [ $retries -gt 0 ]; do
+        if curl -s "http://localhost:$HERMES_PORT" > /dev/null 2>&1; then
+            log_success "Hermes Dashboard started on port $HERMES_PORT"
+            return 0
+        fi
+        sleep 1
+        retries=$((retries - 1))
+    done
+
+    log_error "Failed to start Hermes Dashboard"
+    log_info "Check logs at: $HERMES_HOME/logs/dashboard.log"
+    return 1
+}
+
+# ============================================
 # Auto-Deploy Stack
 # ============================================
 
@@ -503,12 +560,13 @@ main() {
     install_docker
     install_docker_compose
     install_hermes
-    
+
     local infra_dir
     infra_dir=$(clone_infra_repo)
-    
+
     configure_hermes_api
-    
+    start_hermes_dashboard
+
     if [ "$AUTO_DEPLOY" = true ]; then
         auto_deploy_stack
     else
@@ -523,17 +581,20 @@ main() {
     echo "============================================"
     echo ""
     echo "  Services:"
-    echo "    - Grafana:       http://localhost:3000 (admin/admin123)"
-    echo "    - Prometheus:    http://localhost:9090"
-    echo "    - Loki:          http://localhost:3100"
-    echo "    - Hermes WebUI:   http://localhost:8787"
-    echo "    - Portainer:     https://localhost:9443 (admin/admin123)"
-    echo "    - Traefik:       http://localhost:8080"
+    echo "    - Grafana:        http://localhost:3000 (admin/admin123)"
+    echo "    - Prometheus:     http://localhost:9090"
+    echo "    - Loki:           http://localhost:3100"
+    echo "    - Alloy:          http://localhost:12345"
+    echo "    - Hermes Gateway: http://localhost:$HERMES_PORT"
+    echo ""
+    echo "  🔒 To restrict port $HERMES_PORT to specific IPs:"
+    echo "      sudo ufw allow from <your-ip> to any port $HERMES_PORT"
+    echo "      sudo ufw enable"
     echo ""
     echo "  To message Hermes (configure platform manually):"
     echo "    hermes gateway setup <platform>"
     echo ""
-    
+
     verify_installation
 }
 
