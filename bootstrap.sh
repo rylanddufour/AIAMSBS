@@ -395,23 +395,23 @@ GATEWAY_ALLOW_ALL_USERS=true
 EOF
 
     log_success "API key configured for $PROVIDER"
-    
-    # Update config.yaml using hermes model command (validates model)
+
+    # Apply provider + model to the default profile's config.yaml
     if [ -f "$HERMES_HOME/hermes-agent/venv/bin/hermes" ]; then
-        cd "$HERMES_HOME/hermes-agent"
-        source venv/bin/activate
-        
-        log_info "Setting Hermes model..."
-        
-        # Try to set model via hermes command
+        local hermes_bin="$HERMES_HOME/hermes-agent/venv/bin/hermes"
+
+        log_info "Setting default profile: provider=$PROVIDER model=${MODEL:-(unchanged)}..."
+
+        # Set provider (always — even when --model omitted, --provider still applies)
+        "$hermes_bin" config set model.provider "$PROVIDER" 2>/dev/null && \
+            log_success "Provider set to $PROVIDER" || \
+            log_warn "Could not set provider; leaving upstream default"
+
+        # Set model only when explicitly passed
         if [ -n "$MODEL" ]; then
-            hermes model --set "$PROVIDER" "$MODEL" 2>/dev/null && \
+            "$hermes_bin" config set model.default "$MODEL" 2>/dev/null && \
                 log_success "Model set to $MODEL" || \
-                log_warn "Could not validate model, using defaults"
-        else
-            hermes model --set "$PROVIDER" 2>/dev/null && \
-                log_success "Provider configured" || \
-                log_warn "Could not configure provider"
+                log_warn "Could not set model; leaving upstream default"
         fi
     fi
 }
