@@ -33,10 +33,13 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+# log_* writes to stderr so it cannot contaminate $(...) command substitutions.
+# Functions that need to return a value via stdout (like clone_infra_repo)
+# must only emit the value to stdout — informational logging must go to stderr.
+log_info() { echo -e "${BLUE}[INFO]${NC} $1" >&2; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1" >&2; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
 # ============================================
 # CLI Argument Parsing
@@ -368,6 +371,8 @@ clone_infra_repo() {
     fi
 
     log_success "Infrastructure repository ready at $infra_dir"
+    # Return value: ONLY the path. log_* above goes to stderr, so stdout is clean
+    # for `$(clone_infra_repo)` capture. See log_* definitions for rationale.
     echo "$infra_dir"
 }
 
@@ -621,8 +626,8 @@ EOF
 # ============================================
 
 deploy_mcp_stack() {
-    local infra_dir
-    infra_dir=$(clone_infra_repo)
+    # INFRA_DIR is set once in main() upfront; this function should not re-clone.
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
     local mcp_compose="$infra_dir/docker-compose.mcp.yml"
 
     if [ ! -f "$mcp_compose" ]; then
@@ -664,7 +669,8 @@ deploy_mcp_stack() {
 auto_deploy_stack() {
     log_info "Starting auto-deploy of monitoring stack..."
 
-    local infra_dir="$INSTALL_BASE_DIR/AIAMSBS"
+    # INFRA_DIR is set once in main() upfront.
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
 
     # Config-as-code: deploy directly from docker-compose.yml.
     # No LLM in the deploy path — the compose file is the single source of truth.
@@ -764,8 +770,12 @@ main() {
     install_docker_compose
     install_hermes
 
-    local infra_dir
-    infra_dir=$(clone_infra_repo)
+    # Clone the infrastructure repo once, upfront, before anything else needs it.
+    # This guarantees $INFRA_DIR is set for every downstream function regardless
+    # of the order they're called in. Functions below should use $INFRA_DIR
+    # directly rather than re-calling clone_infra_repo().
+    INFRA_DIR="$(clone_infra_repo)"
+    export INFRA_DIR
 
     configure_hermes_api
     build_dashboard_ui
