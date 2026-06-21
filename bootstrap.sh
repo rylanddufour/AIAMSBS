@@ -632,7 +632,21 @@ deploy_mcp_stack() {
 
     log_info "Deploying MCP stack..."
 
-    if docker compose -f "$mcp_compose" up -d 2>&1 | tail -5; then
+    # Source the secrets file so GRAFANA_MCP_SERVICE_ACCOUNT_TOKEN is in env
+    if [ -f "$HERMES_HOME/secrets/grafana-mcp.env" ]; then
+        set -a
+        # shellcheck disable=SC1090
+        source "$HERMES_HOME/secrets/grafana-mcp.env"
+        set +a
+    fi
+
+    if [ -z "${GRAFANA_MCP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
+        log_warn "GRAFANA_MCP_SERVICE_ACCOUNT_TOKEN not set; cannot deploy MCP"
+        return 0
+    fi
+
+    # sudo -E preserves env vars (the token) into the root context
+    if sudo -E docker compose -f "$mcp_compose" up -d 2>&1 | tail -5; then
         log_success "MCP stack deployed (grafana-mcp on port 8000)"
     else
         log_warn "MCP stack deployment failed; continuing"
