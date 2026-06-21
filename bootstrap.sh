@@ -468,7 +468,10 @@ install_hermes_dashboard_service() {
     # Ensure log dir exists with correct ownership before writing the unit.
     mkdir -p "$HERMES_HOME/logs"
 
-    cat > "$unit_file" <<EOF
+    # /etc/systemd/system/ is root-owned. bootstrap.sh runs as the install user,
+    # so every privileged op needs sudo. cat <<EOF | sudo tee > /dev/null writes
+    # the unit and then truncates stdout so we don't contaminate $(...) captures.
+    sudo tee "$unit_file" > /dev/null <<EOF
 [Unit]
 Description=Hermes Agent Dashboard
 After=network-online.target
@@ -487,8 +490,8 @@ Environment=PYTHONUNBUFFERED=1
 WantedBy=multi-user.target
 EOF
 
-    systemctl daemon-reload
-    systemctl enable hermes-dashboard.service > /dev/null 2>&1 || true
+    sudo systemctl daemon-reload
+    sudo systemctl enable hermes-dashboard.service > /dev/null 2>&1 || true
     log_success "Installed systemd unit: hermes-dashboard.service"
 }
 
@@ -507,9 +510,9 @@ start_hermes_dashboard() {
 
     # Prefer systemd (auto-restarts on reboot/crash). Fall back to nohup
     # for non-systemd hosts (containers, minimal VMs).
-    if command -v systemctl > /dev/null 2>&1 && [ -f /etc/systemd/system/hermes-dashboard.service ]; then
+    if command -v systemctl > /dev/null 2>&1 && sudo test -f /etc/systemd/system/hermes-dashboard.service; then
         log_info "Starting via systemd: hermes-dashboard.service"
-        systemctl start hermes-dashboard.service
+        sudo systemctl start hermes-dashboard.service
     else
         log_info "Starting via nohup (systemd not available)"
         mkdir -p "$HERMES_HOME/logs"
