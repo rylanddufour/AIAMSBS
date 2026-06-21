@@ -443,6 +443,56 @@ build_dashboard_ui() {
 }
 
 # ============================================
+# Install Hermes Dashboard systemd service
+# ============================================
+# Writes a unit file so the dashboard survives reboots and is supervised by
+# systemd. Skipped silently on systems without systemd (e.g. containers).
+# The unit reuses the same nohup command as before so behaviour is identical.
+
+install_hermes_dashboard_service() {
+    # Detect systemd; bail out quietly on non-systemd systems.
+    if [ ! -d /run/systemd/system ] && [ ! -d /etc/systemd/system ]; then
+        log_info "systemd not detected; skipping dashboard service install"
+        return 0
+    fi
+    if ! command -v systemctl > /dev/null 2>&1; then
+        log_info "systemctl not available; skipping dashboard service install"
+        return 0
+    fi
+
+    local unit_file="/etc/systemd/system/hermes-dashboard.service"
+    local hermes_user="${HERMES_USER:-$USER}"
+    local hermes_bin="$HERMES_HOME/hermes-agent/venv/bin/hermes"
+    local dashboard_log="$HERMES_HOME/logs/dashboard.log"
+
+    # Ensure log dir exists with correct ownership before writing the unit.
+    mkdir -p "$HERMES_HOME/logs"
+
+    cat > "$unit_file" <<EOF
+[Unit]
+Description=Hermes Agent Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=$hermes_user
+WorkingDirectory=$HERMES_HOME/hermes-agent
+ExecStart=$hermes_bin dashboard --port $HERMES_PORT --host 0.0.0.0 --insecure --skip-build
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable hermes-dashboard.service > /dev/null 2>&1 || true
+    log_success "Installed systemd unit: hermes-dashboard.service"
+}
+
+# ============================================
 # Start Hermes Dashboard
 # ============================================
 
@@ -455,14 +505,19 @@ start_hermes_dashboard() {
         return 0
     fi
 
-    # Ensure logs directory exists with correct ownership
-    mkdir -p "$HERMES_HOME/logs"
-
-    # Launch dashboard in background
-    (cd "$HERMES_HOME/hermes-agent" && \
-        source venv/bin/activate && \
-        nohup hermes dashboard --port "$HERMES_PORT" --host 0.0.0.0 --insecure --skip-build \
-            > "$HERMES_HOME/logs/dashboard.log" 2>&1 &)
+    # Prefer systemd (auto-restarts on reboot/crash). Fall back to nohup
+    # for non-systemd hosts (containers, minimal VMs).
+    if command -v systemctl > /dev/null 2>&1 && [ -f /etc/systemd/system/hermes-dashboard.service ]; then
+        log_info "Starting via systemd: hermes-dashboard.service"
+        systemctl start hermes-dashboard.service
+    else
+        log_info "Starting via nohup (systemd not available)"
+        mkdir -p "$HERMES_HOME/logs"
+        (cd "$HERMES_HOME/hermes-agent" && \
+            source venv/bin/activate && \
+            nohup hermes dashboard --port "$HERMES_PORT" --host 0.0.0.0 --insecure --skip-build \
+                > "$HERMES_HOME/logs/dashboard.log" 2>&1 &)
+    fi
 
     # Wait for it to respond
     local retries=30
@@ -780,6 +835,7 @@ main() {
 
     configure_hermes_api
     build_dashboard_ui
+    install_hermes_dashboard_service
     start_hermes_dashboard
 
     if [ "$AUTO_DEPLOY" = true ]; then
