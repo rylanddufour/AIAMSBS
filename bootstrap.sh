@@ -660,30 +660,36 @@ deploy_mcp_stack() {
 
 auto_deploy_stack() {
     log_info "Starting auto-deploy of monitoring stack..."
-    
+
     local infra_dir="$INSTALL_BASE_DIR/AIAMSBS"
-    
-    cd "$HERMES_HOME/hermes-agent"
-    source venv/bin/activate
-    
-    # Add hermes command to PATH (installed to ~/.local/bin)
-    export PATH="$HERMES_HOME/.local/bin:$PATH"
-    
-    # Run Hermes with explicit config-based deployment
-    log_info "Running Hermes to deploy stack using config files in $infra_dir..."
-    
-    local deploy_prompt="Deploy the monitoring stack using the configuration files in $infra_dir. Specifically:
-1. Read docker-compose.yml for the stack definition
-2. Read config/*.yml for service configurations
-3. Run 'docker compose up -d' to deploy the stack
 
-The stack includes: Traefik, Prometheus, Grafana, Loki, Alloy, Portainer, and Hermes WebUI."
+    # Config-as-code: deploy directly from docker-compose.yml.
+    # No LLM in the deploy path — the compose file is the single source of truth.
+    # Running an agent here previously caused it to "fix" prose-vs-config drift
+    # by editing docker-compose.yml on the VM to match hallucinated service lists.
+    if [ ! -f "$infra_dir/docker-compose.yml" ]; then
+        log_error "docker-compose.yml not found at $infra_dir"
+        log_info "Run: cd $infra_dir && docker compose up -d"
+        return 1
+    fi
 
-    if hermes --yolo chat -q "$deploy_prompt"; then
-        log_success "Stack deployed successfully!"
+    cd "$infra_dir" || return 1
+
+    # Pull images first so a slow mirror doesn't time out the up
+    if docker compose pull 2>&1 | tee /tmp/aiamsbs_pull.log | tail -5; then
+        log_success "Images pulled"
     else
-        log_error "Stack deployment failed. You can retry manually with:"
+        log_warn "Some images failed to pull; continuing with local cache"
+    fi
+
+    if docker compose up -d 2>&1 | tee /tmp/aiamsbs_up.log; then
+        log_success "Stack deployed successfully!"
+        log_info "Containers:"
+        docker compose ps --format "  {{.Names}}\t{{.Status}}\t{{.Ports}}" || true
+    else
+        log_error "Stack deployment failed. Retry manually with:"
         log_info "  cd $infra_dir && docker compose up -d"
+        return 1
     fi
 }
 # ============================================
@@ -764,7 +770,7 @@ main() {
     else
         log_info "Skipping auto-deploy (--no-auto-deploy)"
         log_info "To deploy manually, run:"
-        log_info "  hermes chat -q 'Deploy the monitoring stack from https://.../GOAL.md'"
+        log_info "  cd ~/AIAMSBS && docker compose up -d"
     fi
 
     # Post-install steps: skills install, MCP service account, MCP deploy

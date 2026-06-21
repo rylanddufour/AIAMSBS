@@ -103,4 +103,3 @@ volumes:
   loki-data:
   alloy-data:
   grafana-data:
-  portainer-data:

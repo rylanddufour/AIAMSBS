@@ -23,7 +23,7 @@ This deployment uses explicit configuration files to ensure consistent, reproduc
 | `config/alloy.yml` | Metrics and log collection configuration |
 | `config/prometheus.yml` | Prometheus scrape targets |
 | `config/loki.yml` | Log aggregation configuration |
-| `config/traefik.yml` | Reverse proxy configuration |
+| `config/promtail.yml` | Syslog receiver for network devices |
 | `config/grafana/provisioning/datasources/datasources.yml` | Grafana data sources |
 | `.env.example` | Environment variables template |
 
@@ -35,6 +35,7 @@ This deployment uses explicit configuration files to ensure consistent, reproduc
 | Grafana | grafana/grafana:13.0.1 | 3000 | Dashboards and visualization |
 | Loki | grafana/loki:3.2.0 | 3100 | Log aggregation |
 | Alloy | grafana/alloy:latest | 12345 | Metrics + log collection agent |
+| Promtail | grafana/promtail:latest | 514/1514 | Syslog receiver for network devices |
 | Grafana MCP | grafana/mcp-grafana:latest | 8000 | MCP server for AI agent access to Grafana |
 
 The MCP stack is deployed via `docker-compose.mcp.yml` after the main stack
@@ -79,7 +80,11 @@ Confirm these services are running:
 docker compose ps
 ```
 
-Expected containers: traefik, prometheus, grafana, loki, alloy, portainer, hermes-webui
+Expected containers: prometheus, loki, alloy, promtail, grafana, grafana-mcp
+
+The main stack is defined in `docker-compose.yml` and the MCP server is
+defined in `docker-compose.mcp.yml`. Both are deployed directly by
+`bootstrap.sh` (no LLM in the deploy path — config-as-code).
 
 ## Access
 
