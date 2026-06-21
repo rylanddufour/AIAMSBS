@@ -645,8 +645,11 @@ deploy_mcp_stack() {
         return 0
     fi
 
-    # sudo -E preserves env vars (the token) into the root context
-    if sudo -E docker compose -f "$mcp_compose" up -d 2>&1 | tail -5; then
+    # sudo -E preserves env vars (the token) into the root context.
+    # sg docker -c sidesteps the docker-group-not-applied-yet issue that
+    # hits the first docker command run in a fresh SSH session after
+    # install_docker (usermod -aG docker only takes effect on next login).
+    if sudo -E sg docker -c "docker compose -f '$mcp_compose' up -d" 2>&1 | tail -5; then
         log_success "MCP stack deployed (grafana-mcp on port 8000)"
     else
         log_warn "MCP stack deployment failed; continuing"
@@ -675,17 +678,20 @@ auto_deploy_stack() {
 
     cd "$infra_dir" || return 1
 
-    # Pull images first so a slow mirror doesn't time out the up
-    if docker compose pull 2>&1 | tee /tmp/aiamsbs_pull.log | tail -5; then
+    # Pull images first so a slow mirror doesn't time out the up.
+    # sg docker -c sidesteps the docker-group-not-applied-yet issue that
+    # hits the first docker command run in a fresh SSH session after
+    # install_docker (usermod -aG docker only takes effect on next login).
+    if sg docker -c "docker compose pull" 2>&1 | tee /tmp/aiamsbs_pull.log | tail -5; then
         log_success "Images pulled"
     else
         log_warn "Some images failed to pull; continuing with local cache"
     fi
 
-    if docker compose up -d 2>&1 | tee /tmp/aiamsbs_up.log; then
+    if sg docker -c "docker compose up -d" 2>&1 | tee /tmp/aiamsbs_up.log; then
         log_success "Stack deployed successfully!"
         log_info "Containers:"
-        docker compose ps --format "  {{.Names}}\t{{.Status}}\t{{.Ports}}" || true
+        sg docker -c "docker compose ps --format '  {{.Names}}\\t{{.Status}}\\t{{.Ports}}'" || true
     else
         log_error "Stack deployment failed. Retry manually with:"
         log_info "  cd $infra_dir && docker compose up -d"
