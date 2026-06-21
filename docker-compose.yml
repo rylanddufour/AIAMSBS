@@ -95,6 +95,7 @@ services:
 
 networks:
   monitoring:
+    name: monitoring        # fixed name so docker-compose.mcp.yml can join as external
     driver: bridge
 
 volumes:

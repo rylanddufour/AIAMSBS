@@ -35,6 +35,21 @@ This deployment uses explicit configuration files to ensure consistent, reproduc
 | Grafana | grafana/grafana:13.0.1 | 3000 | Dashboards and visualization |
 | Loki | grafana/loki:3.2.0 | 3100 | Log aggregation |
 | Alloy | grafana/alloy:latest | 12345 | Metrics + log collection agent |
+| Grafana MCP | grafana/mcp-grafana:latest | 8000 | MCP server for AI agent access to Grafana |
+
+The MCP stack is deployed via `docker-compose.mcp.yml` after the main stack
+is healthy. bootstrap.sh auto-creates a Grafana service account (`aiamsbs-mcp`)
+and writes the token to `~/.hermes/secrets/grafana-mcp.env`.
+
+## Hermes Skills
+
+bootstrap.sh installs Grafana skills into `~/.hermes/skills/grafana/` (one
+directory per sub-skill). Pulled from https://github.com/grafana/skills:
+
+| Plugin | Sub-skills installed |
+|--------|---------------------|
+| `grafana-core` | grafana-oss, dashboarding, promql, alerting-irm, alloy, beyla, opentelemetry |
+| `grafana-lgtm` | loki, mimir, prometheus, pyroscope, tempo |
 
 ## Data Flow
 ```
