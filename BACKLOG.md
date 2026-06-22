@@ -17,6 +17,12 @@
 | 4 | Traefik landing page / routing | Nice URLs (grafana.yourdomain.com) instead of ports via Traefik | Medium |
 | 10 | Add hostname label to Alloy metrics | Add `hostname` label to all scraped metrics so host selector works across multi-host deployments | Medium |
 
+### Multi-OEM Skills (New Capability Track)
+
+| # | Item | Description | Complexity |
+|---|------|-------------|-------------|
+| 12 | Multi-OEM skill library | Research, find, and build AIAMSBS skills for managing each OEM + configure Grafana stack integration (dashboards + alerts). OEMs in scope: <br><br>• **Windows Server** <br>• **Linux** <br>• **Cisco Catalyst** switches (CatOS + IOS) <br>• **Ubiquiti UniFi** wireless <br>• **Aruba Networks** (switches + access points) <br>• **VMware vSphere** <br><br>Each OEM integration includes: (1) Hermes skill for managing the platform, (2) Grafana dashboard for visibility, (3) alert rules | High |
+
 ### Metrics Fix (Pre-req for dashboards)
 
 | # | Item | Description |
