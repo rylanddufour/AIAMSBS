@@ -722,6 +722,32 @@ EOF
 }
 
 # ============================================
+# Deploy Inventory Stack (inventory-mcp + nmap-discovery)
+# ============================================
+
+deploy_inventory_stack() {
+    # INFRA_DIR is set once in main() upfront.
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
+    local inv_dir="$infra_dir/inventory-stack"
+    local inv_compose="$inv_dir/docker-compose.yml"
+
+    if [ ! -f "$inv_compose" ]; then
+        log_warn "inventory-stack/docker-compose.yml not found at $inv_compose; skipping"
+        return 0
+    fi
+
+    log_info "Deploying inventory stack..."
+
+    # sg docker -c sidesteps the docker-group-not-applied-yet issue.
+    if sg docker -c "docker compose -f '$inv_compose' up -d" 2>&1 | tail -10; then
+        log_success "Inventory stack deployed (inventory-mcp on port 8001, nmap-discovery on port 8002)"
+    else
+        log_warn "Inventory stack deployment failed; continuing"
+        return 0
+    fi
+}
+
+# ============================================
 # Auto-Deploy Stack
 # ============================================
 
@@ -853,6 +879,7 @@ main() {
     install_grafana_skills
     create_grafana_mcp_service_account
     deploy_mcp_stack
+    deploy_inventory_stack
 
     echo ""
     echo "============================================"
@@ -865,6 +892,7 @@ main() {
     echo "    - Loki:           http://localhost:3100"
     echo "    - Alloy:          http://localhost:12345"
     echo "    - Hermes Gateway: http://localhost:$HERMES_PORT"
+    echo "    - Inventory MCP:  http://localhost:8001/mcp"
     echo ""
     echo "  🔒 To restrict port $HERMES_PORT to specific IPs:"
     echo "      sudo ufw allow from <your-ip> to any port $HERMES_PORT"
