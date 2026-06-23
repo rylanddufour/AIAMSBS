@@ -1,0 +1,53 @@
+services:
+  inventory-mcp:
+    image: aiamsbs_inventory-mcp
+    container_name: inventory-mcp
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    volumes:
+      - type: bind
+        source: ./mcp
+        target: /app
+    ports:
+      - "127.0.0.1:8001:8001"
+    environment:
+      - SQLALCHEMY_DATABASE_URL=sqlite:///app/data/inventory.db
+    networks:
+      - monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/mcp"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  nmap-discovery:
+    image: aiamsbs_nmap-discovery
+    container_name: nmap-discovery
+    build:
+      context: ./nmap-discovery
+      dockerfile: Dockerfile
+    volumes:
+      - type: bind
+        source: ./nmap-discovery
+        target: /app
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    network_mode: host
+    expose:
+      - 8002
+    profiles:
+      - discovery
+
+volumes:
+  inventory_db:
+    driver_opts:
+      type: "none"
+      device: /dev/null
+      o: bind
+
+networks:
+  monitoring:
+    external: true
