@@ -1,6 +1,6 @@
 PRAGMA journal_mode=WAL;
 
-CREATE TABLE devices (
+CREATE TABLE IF NOT EXISTS devices (
     device_id TEXT PRIMARY KEY,
     hostname TEXT,
     ip_address TEXT,
@@ -20,10 +20,10 @@ CREATE TABLE devices (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_devices_ip ON devices(ip_address);
-CREATE INDEX idx_devices_type ON devices(device_type);
+CREATE INDEX IF NOT EXISTS idx_devices_ip ON devices(ip_address);
+CREATE INDEX IF NOT EXISTS idx_devices_type ON devices(device_type);
 
-CREATE TABLE device_relationships (
+CREATE TABLE IF NOT EXISTS device_relationships (
     source_device_id TEXT,
     target_device_id TEXT,
     relationship_type TEXT,
