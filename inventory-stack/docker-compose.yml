@@ -18,7 +18,7 @@ services:
       - monitoring
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/mcp').read()"]
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1', 8001)); s.close()"]
       interval: 10s
       timeout: 5s
       retries: 3
