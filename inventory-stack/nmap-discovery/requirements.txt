@@ -1,7 +1,2 @@
-# Nmap Requirements
-# This file defines the required Python packages for nmap-discovery container
-
-fastmcp-slim==3.4.2 # from fastmcp-slim==3.4.2-py3-none-any.whl
-#9a393a49f7d8d97155240679713799345231f326ab1948132a44823d
 fastapi
 uvicorn

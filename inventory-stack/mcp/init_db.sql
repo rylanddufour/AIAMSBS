@@ -1,26 +1,31 @@
 PRAGMA journal_mode=WAL;
 
-CREATE TABLE IF NOT EXISTS devices (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE devices (
+    device_id TEXT PRIMARY KEY,
     hostname TEXT,
-    ip_address TEXT NOT NULL UNIQUE,
+    ip_address TEXT,
     mac_address TEXT,
     device_type TEXT,
-    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    credential_ref TEXT
+    vendor TEXT,
+    model TEXT,
+    management_endpoint TEXT,
+    credential_ref TEXT,
+    site TEXT,
+    role TEXT,
+    tags TEXT,
+    description TEXT,
+    source TEXT,
+    last_seen TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS device_relationships (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    device_id INTEGER NOT NULL,
-    relationship_type TEXT NOT NULL,
-    related_device_id INTEGER,
-    related_ip TEXT,
-    related_hostname TEXT,
-    FOREIGN KEY (device_id) REFERENCES devices(id),
-    FOREIGN KEY (related_device_id) REFERENCES devices(id)
-);
+CREATE INDEX idx_devices_ip ON devices(ip_address);
+CREATE INDEX idx_devices_type ON devices(device_type);
 
-CREATE INDEX IF NOT EXISTS idx_ip_address ON devices(ip_address);
-CREATE INDEX IF NOT EXISTS idx_hostname ON devices(hostname);
-CREATE INDEX IF NOT EXISTS idx_device_type ON devices(device_type);
+CREATE TABLE device_relationships (
+    source_device_id TEXT,
+    target_device_id TEXT,
+    relationship_type TEXT,
+    PRIMARY KEY (source_device_id, target_device_id, relationship_type)
+);

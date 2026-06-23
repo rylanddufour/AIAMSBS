@@ -9,15 +9,16 @@ services:
       - type: bind
         source: ./mcp
         target: /app
+      - inventory-data:/data
     ports:
       - "127.0.0.1:8001:8001"
     environment:
-      - SQLALCHEMY_DATABASE_URL=sqlite:///app/data/inventory.db
+      - INVENTORY_DB_PATH=/data/inventory.db
     networks:
       - monitoring
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/mcp"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/mcp').read()"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -36,17 +37,11 @@ services:
       - NET_RAW
       - NET_ADMIN
     network_mode: host
-    expose:
-      - 8002
     profiles:
       - discovery
 
 volumes:
-  inventory_db:
-    driver_opts:
-      type: "none"
-      device: /dev/null
-      o: bind
+  inventory-data:
 
 networks:
   monitoring:

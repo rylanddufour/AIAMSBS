@@ -1,103 +1,195 @@
-from fastmcp.mcp import initialize_mcp, tool, McpServer
-import sqlite3
+import argparse
 import os
+import sqlite3
 
-DB_PATH = "./inventory.db"
+from mcp.server.fastmcp import FastMCP
 
-# SQLite schema functions
-create_tables_sql = """
-CREATE TABLE IF NOT EXISTS devices (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ip TEXT NOT NULL,
-    hostname TEXT,
-    device_type TEXT NOT NULL,
-    mac TEXT,
-    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+DB_PATH = os.environ.get("INVENTORY_DB_PATH", "/data/inventory.db")
+SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "init_db.sql")
 
-CREATE TABLE IF NOT EXISTS device_relationships (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    from_device_id INTEGER,
-    to_device_id INTEGER,
-    relationship_type TEXT NOT NULL,
-    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (from_device_id) REFERENCES devices(id),
-    FOREIGN KEY (to_device_id) REFERENCES devices(id)
-);
-"""
+VALID_DEVICE_FIELDS = [
+    "hostname",
+    "ip_address",
+    "mac_address",
+    "device_type",
+    "vendor",
+    "model",
+    "management_endpoint",
+    "credential_ref",
+    "site",
+    "role",
+    "tags",
+    "description",
+    "source",
+    "last_seen",
+]
+
+mcp = FastMCP("inventory")
+
+
+def _connect():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.executescript(create_tables_sql)
+    """Load schema from init_db.sql and apply it to the database."""
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+    with open(SCHEMA_PATH, "r") as f:
+        schema_sql = f.read()
+    conn = _connect()
+    conn.executescript(schema_sql)
     conn.commit()
+    conn.close()
 
-def get_device(ip: str):
-    conn = sqlite3.connect(DB_PATH)
+
+@mcp.tool()
+def get_device(device_id: str) -> dict:
+    """Look up a single device by its device_id."""
+    conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM devices WHERE ip=?", (ip,))
-    return dict(zip([d[0] for d in cur.description], cur.fetchone())) if cur.fetchone() else None
+    cur.execute("SELECT * FROM devices WHERE device_id=?", (device_id,))
+    row = cur.fetchone()
+    conn.close()
+    if row is None:
+        return {"error": "not found", "device_id": device_id}
+    return dict(row)
 
-def lookup_by_ip(ip: str):
-    cur = sqlite3.connect(DB_PATH).cursor()
-    cur.execute("SELECT * FROM devices WHERE ip=?", (ip,))
-    return dict(zip([d[0] for d in cur.description], cur.fetchone())) if cur.fetchone() else None
 
-def lookup_by_hostname(hostname: str):
-    conn = sqlite3.connect(DB_PATH)
+@mcp.tool()
+def lookup_by_ip(ip: str) -> dict:
+    """Look up a device by its IP address."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM devices WHERE ip_address=?", (ip,))
+    row = cur.fetchone()
+    conn.close()
+    if row is None:
+        return {"error": "not found", "ip": ip}
+    return dict(row)
+
+
+@mcp.tool()
+def lookup_by_hostname(hostname: str) -> dict:
+    """Look up a device by its hostname."""
+    conn = _connect()
     cur = conn.cursor()
     cur.execute("SELECT * FROM devices WHERE hostname=?", (hostname,))
-    return dict(zip([d[0] for d in cur.description], cur.fetchone())) if cur.fetchone() else None
+    row = cur.fetchone()
+    conn.close()
+    if row is None:
+        return {"error": "not found", "hostname": hostname}
+    return dict(row)
 
-def search_devices(query: str):
-    cur = sqlite3.connect(DB_PATH).cursor()
-    cur.execute("SELECT * FROM devices WHERE ip LIKE ? OR hostname LIKE ?", (f"%{query}%", f"%{query}%"))
+
+@mcp.tool()
+def search_devices(query: str, device_type: str = "", tag: str = "", limit: int = 20) -> list:
+    """Search devices by free-text query with optional filters.
+
+    Args:
+        query: substring matched against device_id, hostname, ip_address,
+               vendor, description, and tags.
+        device_type: if non-empty, restrict to this exact device_type.
+        tag: if non-empty, restrict to devices whose tags column contains it.
+        limit: maximum number of rows to return.
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    sql = (
+        "SELECT * FROM devices WHERE ("
+        "device_id LIKE ? OR hostname LIKE ? OR ip_address LIKE ? "
+        "OR vendor LIKE ? OR description LIKE ? OR tags LIKE ?"
+        ")"
+    )
+    like = f"%{query}%"
+    params: list = [like, like, like, like, like, like]
+    if device_type:
+        sql += " AND device_type = ?"
+        params.append(device_type)
+    if tag:
+        sql += " AND tags LIKE ?"
+        params.append(f"%{tag}%")
+    sql += " LIMIT ?"
+    params.append(limit)
+    cur.execute(sql, params)
     rows = cur.fetchall()
-    return [dict(zip([d[0] for d in cur.description], row)) for row in rows]
+    conn.close()
+    return [dict(row) for row in rows]
 
-def create_device(ip: str, hostname: str = None, device_type: str = "unknown", mac: str = None):
-    conn = sqlite3.connect(DB_PATH)
+
+@mcp.tool()
+def create_device(device: dict) -> dict:
+    """Create a new device record. `device_id` is required."""
+    device_id = device.get("device_id")
+    if not device_id:
+        return {"error": "device_id is required"}
+    fields = ["device_id"]
+    values = [device_id]
+    for f in VALID_DEVICE_FIELDS:
+        if f in device and device[f] is not None:
+            fields.append(f)
+            values.append(device[f])
+    placeholders = ",".join(["?"] * len(values))
+    sql = f"INSERT INTO devices ({','.join(fields)}) VALUES ({placeholders})"
+    conn = _connect()
     cur = conn.cursor()
-    cur.execute("INSERT INTO devices (ip, hostname, device_type, mac) VALUES (?, ?, ?, ?)", (ip, hostname, device_type, mac))
+    cur.execute(sql, values)
     conn.commit()
-    return {"id": cur.lastrowid, "ip": ip, "hostname": hostname, "device_type": device_type, "mac": mac}
+    conn.close()
+    return {"status": "created", "device_id": device_id}
 
-def update_device(ip: str, **kwargs):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    updates = {key: value for key, value in kwargs.items() if key in ['hostname', 'device_type', 'mac']}
+
+@mcp.tool()
+def update_device(device_id: str, fields: dict) -> dict:
+    """Update fields on an existing device. updated_at is set automatically."""
+    updates = {k: v for k, v in fields.items() if k in VALID_DEVICE_FIELDS}
     if not updates:
-        return {"error": "No valid fields to update"}
-    
-    set_clause = ", ".join([f"{key}=?" for key in updates.keys()])
-    cur.execute(f"UPDATE devices SET {set_clause} WHERE ip= ?", (*updates.values(), ip))
+        return {"error": "no valid fields to update"}
+    updates["updated_at"] = "CURRENT_TIMESTAMP"
+    set_clause = ", ".join(f"{k}=?" for k in updates.keys())
+    values = list(updates.values()) + [device_id]
+    sql = f"UPDATE devices SET {set_clause} WHERE device_id=?"
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(sql, values)
     conn.commit()
-    return {"status": "success"}
+    rows_affected = cur.rowcount
+    conn.close()
+    return {"status": "updated", "rows": rows_affected, "device_id": device_id}
 
-def get_device_relationships(device_id: int):
-    cur = sqlite3.connect(DB_PTR).cursor()
-    cur.execute("SELECT * FROM device_relationships WHERE from_device_id=?", (device_id,))
+
+@mcp.tool()
+def get_device_relationships(device_id: str) -> list:
+    """Return all relationships involving this device (as source or target)."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM device_relationships "
+        "WHERE source_device_id=? OR target_device_id=?",
+        (device_id, device_id),
+    )
     rows = cur.fetchall()
-    return [dict(zip([d[0] for d in cur.description], row)) for row in rows]
+    conn.close()
+    return [dict(row) for row in rows]
 
-# Initialize database
-if not os.path.exists(DB_PATH):
+
+def main():
+    parser = argparse.ArgumentParser(description="AIAMSBS inventory MCP server")
+    parser.add_argument("--host", default="0.0.0.0", help="bind host (default 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=8001, help="bind port (default 8001)")
+    args = parser.parse_args()
+
     init_db()
 
-app = McpServer(
-    name='inventory-mcp',
-    description='AIAMSBS Device Inventory Service',
-    version='1.0.0',
-    tools=[
-        tool(get_device),
-        tool(lookup_by_ip),
-        tool(lookup_by_hostname),
-        tool(search_devices),
-        tool(create_device),
-        tool(update_device),
-        tool(get_device_relationships)
-    ]
-)
+    # FastMCP.run() does not accept host/port kwargs in this version — set via
+    # the settings object (host/port are top-level Settings fields).
+    mcp.settings.host = args.host
+    mcp.settings.port = args.port
+    mcp.run(transport="streamable-http")
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8001)
+    main()

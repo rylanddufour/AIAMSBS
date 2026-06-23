@@ -1,2 +1,1 @@
-pysqlite3-binary
-fastmcp>=0.8.0
+mcp>=1.0.0
