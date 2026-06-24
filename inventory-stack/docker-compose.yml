@@ -1,0 +1,48 @@
+services:
+  inventory-mcp:
+    image: aiamsbs_inventory-mcp
+    container_name: inventory-mcp
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    volumes:
+      - type: bind
+        source: ./mcp
+        target: /app
+      - inventory-data:/data
+    ports:
+      - "127.0.0.1:8001:8001"
+    environment:
+      - INVENTORY_DB_PATH=/data/inventory.db
+    networks:
+      - monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1', 8001)); s.close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  nmap-discovery:
+    image: aiamsbs_nmap-discovery
+    container_name: nmap-discovery
+    build:
+      context: ./nmap-discovery
+      dockerfile: Dockerfile
+    volumes:
+      - type: bind
+        source: ./nmap-discovery
+        target: /app
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    network_mode: host
+    profiles:
+      - discovery
+
+volumes:
+  inventory-data:
+
+networks:
+  monitoring:
+    external: true
