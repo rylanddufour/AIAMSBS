@@ -37,22 +37,64 @@ def http_get_json(url: str, timeout: float = 10.0) -> dict:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def http_post_jsonrpc(url: str, method: str, params: dict,
-                      timeout: float = 10.0) -> dict:
-    """POST a JSON-RPC 2.0 request and return the parsed response body."""
-    body = json.dumps({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": method,
-        "params": params,
-    }).encode("utf-8")
-    req = urllib.request.Request(url, data=body, headers={
-        "Content-Type": "application/json",
-        "Accept": "application/json, text/event-stream",
-    })
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read().decode("utf-8")
-    # SSE-wrapped response: strip the `event:message\ndata:` prefix.
+# MCPClient — minimal streamable-http JSON-RPC 2.0 client that handles the
+# initialize → notifications/initialized → tools/call handshake the spec
+# requires. Without the session-id header on subsequent calls, the server
+# rejects tool calls with HTTP 400 "Missing session ID".
+class MCPClient:
+    def __init__(self, base_url: str, timeout: float = 10.0):
+        self.base_url = base_url
+        self.timeout = timeout
+        self.session_id: Optional[str] = None
+
+    def _post(self, body: dict, *, expect_response: bool = True) -> Optional[dict]:
+        data = json.dumps(body).encode("utf-8")
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        if self.session_id:
+            headers["mcp-session-id"] = self.session_id
+        req = urllib.request.Request(self.base_url, data=data, headers=headers)
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            sid = resp.headers.get("mcp-session-id")
+            if sid and not self.session_id:
+                self.session_id = sid
+            raw = resp.read().decode("utf-8")
+        if not expect_response:
+            return None
+        return _parse_sse_response(raw)
+
+    def initialize(self) -> dict:
+        """Send initialize + notifications/initialized. Captures session id."""
+        init = self._post({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "aiamsbs-discover", "version": "1.0.0"},
+            },
+        })
+        # notifications/initialized has no response body per the spec
+        self._post({
+            "jsonrpc": "2.0",
+            "method": "notifications/initialized",
+        }, expect_response=False)
+        return init or {}
+
+    def call_tool(self, name: str, arguments: dict) -> dict:
+        return self._post({
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {"name": name, "arguments": arguments},
+        }) or {}
+
+
+def _parse_sse_response(raw: str) -> dict:
+    """Strip SSE `event:message\\ndata:` prefix and return the parsed JSON body."""
     if raw.startswith("event:"):
         for line in raw.splitlines():
             if line.startswith("data:"):
@@ -134,17 +176,25 @@ def device_payload(host: dict) -> dict:
     }
 
 
+# Module-level MCP client (lazily initialized; one session per script run)
+_mcp_client: Optional[MCPClient] = None
+
+
+def _get_mcp() -> MCPClient:
+    global _mcp_client
+    if _mcp_client is None:
+        _mcp_client = MCPClient(INVENTORY_URL, timeout=10.0)
+        _mcp_client.initialize()
+    return _mcp_client
+
+
 def insert_device(payload: dict, dry_run: bool = False) -> tuple[bool, str]:
     """Call inventory-mcp's create_device. Returns (inserted, reason)."""
     if dry_run:
         return True, "dry-run"
     try:
-        resp = http_post_jsonrpc(
-            INVENTORY_URL,
-            method="tools/call",
-            params={"name": "create_device", "arguments": payload},
-            timeout=10.0,
-        )
+        client = _get_mcp()
+        resp = client.call_tool("create_device", payload)
     except (urllib.error.URLError, ConnectionError, TimeoutError) as exc:
         return False, f"inventory-mcp unreachable: {exc}"
     except json.JSONDecodeError as exc:
