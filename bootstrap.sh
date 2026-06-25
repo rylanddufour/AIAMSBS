@@ -875,6 +875,35 @@ EOF
     log_success "inventory-mcp registered in profile '$profile' (config at $config_path)"
 }
 
+# install_inventory_discovery_skill
+# Copies the inventory-discovery skill (shipped in inventory-stack/) into
+# ~/.hermes/skills/inventory-discovery so Hermes can route "inventory X"
+# prompts through the discover.py workflow. Idempotent — overwrites on each
+# bootstrap run so skill updates ship automatically.
+install_inventory_discovery_skill() {
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
+    local src="$infra_dir/inventory-stack/inventory-discovery"
+    local dst="$HOME/.hermes/skills/inventory-discovery"
+
+    if [ ! -d "$src" ]; then
+        log_warn "inventory-discovery skill source not found at $src; skipping"
+        return 0
+    fi
+
+    log_info "Installing inventory-discovery skill to $dst..."
+    mkdir -p "$dst/scripts"
+
+    # Copy SKILL.md + scripts (overwrite so updates ship automatically)
+    cp "$src/SKILL.md" "$dst/SKILL.md"
+    cp "$src/scripts/discover.py" "$dst/scripts/discover.py"
+    chmod +x "$dst/scripts/discover.py"
+
+    # Lock down perms (skill files shouldn't be world-readable)
+    chmod -R u+rwX,go-rwx "$dst"
+
+    log_success "inventory-discovery skill installed (trigger: 'inventory the subnet ...')"
+}
+
 # start_nmap_discovery
 # Starts the nmap-discovery container in the 'discovery' compose profile.
 # Idempotent — skips if already running. Requires NET_RAW + NET_ADMIN caps,
@@ -1210,6 +1239,7 @@ main() {
     # so a customer can immediately ask Hermes to discover/inventory their
     # network without re-running register_inventory_mcp.sh by hand.
     register_inventory_mcp "default"
+    install_inventory_discovery_skill
     start_nmap_discovery
 
     # Print customer-facing access summary (URLs, credentials, ports, hints)
