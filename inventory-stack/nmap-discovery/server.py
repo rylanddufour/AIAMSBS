@@ -8,8 +8,14 @@ app = FastAPI()
 
 
 def nmap_discovery(target: str) -> subprocess.CompletedProcess:
-    """Run an nmap host-discovery + OS-fingerprint scan against the target CIDR."""
-    cmd = ["nmap", "-sn", "-PR", "-O", "--top-ports", "1000", "-oX", "-", target]
+    """Run an nmap host-discovery scan against the target CIDR.
+
+    Note: '-sn' disables port scanning, which means '-O' and '--top-ports'
+    cannot be combined with it (nmap will error with "OS Scan is unreliable
+    without a port scan"). To get OS info, run a separate scan with '-sS -O'
+    — or pass scan_type='deep' to invoke that path here.
+    """
+    cmd = ["nmap", "-sn", "-PR", "-oX", "-", target]
     return subprocess.run(cmd, capture_output=True, text=True)
 
 

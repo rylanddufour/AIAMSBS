@@ -1,129 +1,62 @@
-# AIAMSBS Monitoring Stack Deployment
+# AIAMSBS Deployment
 
-## Objective
-Deploy a complete monitoring and observability stack on a target VM using Docker Compose and configuration files stored in this repository.
+**This document is historical.** It used to be a "deployment plan" that an
+LLM agent would follow when prompted via `hermes chat -q "$(cat GOAL.md)"`.
+That approach has been retired.
 
-## Target Environment
-- **VM**: localhost (current machine)
-- **OS**: Ubuntu Server
-- **User**: $USER (must have sudo and docker group membership)
+## Current deployment path
 
-## Prerequisites
-- Docker installed and running (handled by bootstrap)
-- Git available
-- User has sudo privileges and belongs to docker group
+`bootstrap.sh` is the **single source of truth** for installing AIAMSBS.
+It does everything this document used to describe — and more — deterministically
+(no LLM in the deploy path):
 
-## Configuration Files
-
-This deployment uses explicit configuration files to ensure consistent, reproducible deployments:
-
-| File | Purpose |
-|------|---------|
-| `docker-compose.yml` | Stack definition (services, ports, volumes) |
-| `config/alloy.yml` | Metrics and log collection configuration |
-| `config/prometheus.yml` | Prometheus scrape targets |
-| `config/loki.yml` | Log aggregation configuration |
-| `config/promtail.yml` | Syslog receiver for network devices |
-| `config/grafana/provisioning/datasources/datasources.yml` | Grafana data sources |
-| `.env.example` | Environment variables template |
-
-## Components Deployed
-
-| Service | Image | Ports | Purpose |
-|---------|-------|-------|---------|
-| Prometheus | prom/prometheus:v2.54.1 | 9090 | Time-series metrics database |
-| Grafana | grafana/grafana:13.0.1 | 3000 | Dashboards and visualization |
-| Loki | grafana/loki:3.2.0 | 3100 | Log aggregation |
-| Alloy | grafana/alloy:latest | 12345 | Metrics + log collection agent |
-| Promtail | grafana/promtail:latest | 514/1514 | Syslog receiver for network devices |
-| Grafana MCP | grafana/mcp-grafana:latest | 8000 | MCP server for AI agent access to Grafana |
-
-The MCP stack is deployed via `docker-compose.mcp.yml` after the main stack
-is healthy. bootstrap.sh auto-creates a Grafana service account (`aiamsbs-mcp`)
-and writes the token to `~/.hermes/secrets/grafana-mcp.env`.
-
-## Hermes Skills
-
-bootstrap.sh installs Grafana skills into `~/.hermes/skills/grafana/` (one
-directory per sub-skill). Pulled from https://github.com/grafana/skills:
-
-| Plugin | Sub-skills installed |
-|--------|---------------------|
-| `grafana-core` | grafana-oss, dashboarding, promql, alerting-irm, alloy, beyla, opentelemetry |
-| `grafana-lgtm` | loki, mimir, prometheus, pyroscope, tempo |
-
-## Data Flow
-```
-Alloy (container metrics + host metrics) -> Prometheus
-Alloy (container logs + journal logs) -> Loki
-Prometheus + Loki -> Grafana (dashboards)
-```
-
-## Deployment Steps
-
-### 1. Copy Environment Template
 ```bash
-cp .env.example .env
-# Edit .env with your desired passwords
+curl -fsSL https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh | \
+  bash -s -- --api-key YOUR_KEY --provider openrouter --model minimax/minimax-m2.5
 ```
 
-### 2. Deploy the Stack
-```bash
-git clone https://github.com/rylanddufour/AIAMSBS.git
-cd AIAMSBS
-docker compose up -d
-```
+After bootstrap finishes, it prints a customer-facing summary at the end with
+URLs, default credentials, listening ports, and a "verify the LLM is working"
+hint pointing at `hermes chat -q "hello!"`. That single command is the
+end-to-end smoke test that confirms the entire stack is healthy.
 
-### 3. Verify Deployment
-Confirm these services are running:
-```bash
-docker compose ps
-```
+## What bootstrap.sh handles (no prompt needed)
 
-Expected containers: prometheus, loki, alloy, promtail, grafana, grafana-mcp
+| Step | Function in `bootstrap.sh` |
+|---|---|
+| Install Docker + Compose | `install_docker`, `install_docker_compose` |
+| Install Hermes Agent | `install_hermes` |
+| Configure API key + model | `configure_hermes_api` |
+| Build Dashboard UI | `build_dashboard_ui` |
+| Generate Dashboard credentials (basic auth) | `generate_dashboard_credentials` |
+| Install + start Dashboard (systemd) | `install_hermes_dashboard_service`, `start_hermes_dashboard` |
+| Deploy main observability stack (Prometheus, Loki, Alloy, Promtail, Grafana) | `auto_deploy_stack` |
+| Install Grafana skills | `install_grafana_skills` |
+| Create Grafana service account for MCP | `create_grafana_mcp_service_account` |
+| Deploy Grafana MCP server | `deploy_mcp_stack` |
+| Deploy Inventory MCP stack | `deploy_inventory_stack` |
+| Verify everything is healthy | `verify_installation` |
 
-The main stack is defined in `docker-compose.yml` and the MCP server is
-defined in `docker-compose.mcp.yml`. Both are deployed directly by
-`bootstrap.sh` (no LLM in the deploy path — config-as-code).
+## Adding new deployment logic
 
-## Access
+If you need to change how AIAMSBS is deployed:
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Grafana | http://localhost:3000 | admin / (from .env) |
-| Prometheus | http://localhost:9090 | (none) |
-| Loki | http://localhost:3100 | (none) |
-| Alloy Debug UI | http://localhost:12345 | (none) |
+1. **Edit `bootstrap.sh`** — add or modify a function, wire it into `main()`.
+2. **Re-run bootstrap on a clean VM** (via Proxmox snapshot rollback) to verify.
+3. **Commit + push** to the feature branch. The customer-facing summary at the
+   end of bootstrap is the visible signal that the change works end-to-end.
 
-## Success Criteria
+## Related docs
 
-### Metrics Flowing to Prometheus
-Run this query in Prometheus (http://localhost:9090):
-- `container_cpu_usage_seconds_total` (container metrics)
-- `node_cpu_seconds_total` (host metrics)
-
-### Logs Flowing to Loki
-In Grafana > Explore > Loki, query:
-- `{job="docker"}` (container logs)
-- `{job="systemd"}` (journal logs)
-
-If queries return data, the deployment is successful.
-
-## Pre-Provisioned Dashboards
-
-The following dashboards are automatically loaded when Grafana starts:
-
-| Dashboard | Purpose |
-|-----------|---------|
-| Network Device Logs | Syslog from firewalls, switches, routers (job=syslog) |
-| Docker Monitoring | Container CPU, memory, network, disk metrics |
-| Docker Logs | Container stdout/stderr logs |
-| Linux Host Overview | Host-level CPU, memory, disk, network |
-
-These are defined in:
-- `config/grafana/provisioning/dashboards/dashboards.yml` (provisioning config)
-- `dashboards/*.json` (dashboard definitions)
+- `README.md` — quick start
+- `BACKLOG.md` — feature backlog
+- `SECURITY.md` — vulnerability reporting
+- AIAMSBS_Docs_Diagrams (OneDrive) — full docs project including operational
+  walkthroughs and troubleshooting
 
 ## Version
-- Configuration files in this commit are deterministic
-- To pin a specific deployment, use the commit hash
+
+- Original: deployment plan consumed by an LLM prompt
+- Current: stub pointing at `bootstrap.sh` as source of truth
+- Retired: 2026-06-25 (commit `0dcfcc6` on branch
+  `feature/bootstrap-customer-experience-20260625`)
