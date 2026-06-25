@@ -877,11 +877,140 @@ auto_deploy_stack() {
 # Verify Installation
 # ============================================
 
+# verify_service_health <name> <url> <expected_status>
+# Returns 0 if the URL responds with one of the expected HTTP statuses, else 1.
+# Treats 302 as success for the Hermes Dashboard (auth gate redirects).
+# <expected_status> may be a single code ("200") or pipe-separated list ("200|406").
+# Normalizes curl's behavior on SSE/timeout responses (which can produce a
+# code that's not exactly 3 digits) to "000".
+verify_service_health() {
+    local name="$1"
+    local url="$2"
+    local expected="${3:-200}"
+    local code matched c
+
+    code=$(curl -s -o /dev/null --max-time 5 --connect-timeout 3 -w '%{http_code}' "$url" 2>/dev/null)
+    # Normalize non-3-digit responses (SSE streams can produce "200" + later
+    # timeout-concatenated codes) to "000" so the comparison is meaningful.
+    if ! [[ "$code" =~ ^[0-9]{3}$ ]]; then
+        code="000"
+    fi
+
+    matched=false
+    IFS='|' read -ra expected_codes <<< "$expected"
+    for c in "${expected_codes[@]}"; do
+        if [ "$code" = "$c" ]; then
+            matched=true
+            break
+        fi
+    done
+
+    if $matched; then
+        if [ "$code" = "302" ] && [ "$name" = "Hermes Dashboard" ]; then
+            log_success "  ✓ $name: HTTP $code (auth gate active)"
+        else
+            log_success "  ✓ $name: HTTP $code"
+        fi
+        return 0
+    else
+        log_error "  ✗ $name: HTTP $code (expected $expected)"
+        return 1
+    fi
+}
+
+# list_listening_ports
+# Prints the bind address + scope for every known AIAMSBS port that's
+# currently listening. Reads ss(8) output — does not require docker access.
+list_listening_ports() {
+    local line addr port scope
+    while read -r line; do
+        # Skip empty lines and headers
+        [ -z "$line" ] && continue
+        addr=$(echo "$line" | awk '{print $4}')
+        [ -z "$addr" ] && continue
+        # Extract port (last colon-separated field, strip trailing ] for IPv6)
+        port="${addr##*:}"
+        port="${port%]}"
+        # Filter to known AIAMSBS ports
+        case "$port" in
+            514|1514|3000|3100|8000|8001|8002|9090|9119|12345) ;;
+            *) continue ;;
+        esac
+        # Determine scope (public vs localhost-only)
+        case "$addr" in
+            0.0.0.0:*|"[::]":*) scope="public" ;;
+            127.0.0.1:*|"[::1]":*) scope="localhost-only" ;;
+            *) scope="other" ;;
+        esac
+        printf "    %-5s  %-30s  %s\n" "$port" "$addr" "$scope"
+    done < <(ss -tlnH 2>/dev/null) | sort -u
+}
+
+# print_access_summary
+# Prints the customer-facing "Bootstrap Complete!" banner with URLs,
+# credentials, listening ports, and a verification hint.
+# Reads dashboard creds from /var/log/hermes-bootstrap-credentials.log
+# and Grafana creds from $INFRA_DIR/.env (falls back to defaults).
+print_access_summary() {
+    local host_ip dash_user dash_pass grafana_user grafana_pass gp
+    host_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    [ -z "$host_ip" ] && host_ip="localhost"
+
+    dash_user=""
+    dash_pass=""
+    if [ -f /var/log/hermes-bootstrap-credentials.log ]; then
+        dash_user=$(grep '^Username:' /var/log/hermes-bootstrap-credentials.log 2>/dev/null | awk '{print $2}')
+        dash_pass=$(grep '^Password:' /var/log/hermes-bootstrap-credentials.log 2>/dev/null | awk '{print $2}')
+    fi
+
+    grafana_user="admin"
+    grafana_pass="admin123"  # docker-compose default fallback
+    if [ -n "$INFRA_DIR" ] && [ -f "$INFRA_DIR/.env" ]; then
+        gp=$(grep '^GRAFANA_PASSWORD=' "$INFRA_DIR/.env" 2>/dev/null | cut -d= -f2-)
+        [ -n "$gp" ] && grafana_pass="$gp"
+    fi
+
+    echo ""
+    echo "============================================"
+    echo "  Bootstrap Complete!"
+    echo "============================================"
+    echo ""
+    echo "  Access your AIAMSBS host (http://$host_ip):"
+    echo ""
+    echo "  📊 Grafana (visualization)"
+    echo "     URL:      http://$host_ip:3000"
+    echo "     Username: $grafana_user"
+    echo "     Password: $grafana_pass"
+    echo ""
+    echo "  🔒 Hermes Dashboard (chat UI + Agent)"
+    echo "     URL:      http://$host_ip:$HERMES_PORT"
+    echo "     Username: ${dash_user:-admin}"
+    echo "     Password: ${dash_pass:-<not generated yet>}"
+    echo ""
+    echo "  📈 Monitoring (no auth required)"
+    echo "     Prometheus:    http://$host_ip:9090"
+    echo "     Loki:          http://$host_ip:3100"
+    echo "     Alloy UI:      http://$host_ip:12345"
+    echo ""
+    echo "  🔧 MCP servers (localhost-only by default)"
+    echo "     Inventory MCP: http://localhost:8001/mcp"
+    echo "     Grafana MCP:   http://localhost:8000/mcp"
+    echo ""
+    echo "  📝 Verify the LLM is working:"
+    echo "     hermes chat -q \"hello!\""
+    echo ""
+    echo "  🔒 To restrict port $HERMES_PORT to specific IPs:"
+    echo "     sudo ufw allow from <your-ip> to any port $HERMES_PORT"
+    echo "     sudo ufw enable"
+    echo "============================================"
+    echo ""
+}
+
 verify_installation() {
     log_info "Verifying installation..."
-
     local errors=0
 
+    # Tool checks
     if ! command -v docker &> /dev/null; then
         log_error "Docker not found"
         errors=$((errors + 1))
@@ -889,7 +1018,7 @@ verify_installation() {
         log_success "Docker: $(docker --version)"
     fi
 
-    if docker compose version &> /dev/null || command -v docker-compose &> /dev/null; then
+    if docker compose version &> /dev/null 2>&1 || command -v docker-compose &> /dev/null; then
         log_success "Docker Compose: available"
     else
         log_error "Docker Compose not found"
@@ -909,11 +1038,48 @@ verify_installation() {
         log_warn "API key: not configured"
     fi
 
-    if [ $errors -eq 0 ]; then
-        log_success "Installation verification complete!"
-    else
-        log_warn "Installation complete with $errors error(s)"
+    # LLM plumbing smoke test — confirms the API key + provider + model all
+    # work end-to-end. A passing "hello!" means Hermes can talk to the LLM.
+    if command -v hermes &>/dev/null || [ -x "$HERMES_HOME/hermes-agent/venv/bin/hermes" ]; then
+        log_info "LLM smoke test (hermes chat -q \"hello!\")..."
+        local hermes_bin="$HERMES_HOME/hermes-agent/venv/bin/hermes"
+        [ ! -x "$hermes_bin" ] && hermes_bin="$(command -v hermes)"
+        local hello_response
+        hello_response=$(timeout 30 "$hermes_bin" chat -q "hello!" 2>&1 | head -c 200 || true)
+        if [ -n "$hello_response" ] && ! echo "$hello_response" | grep -qiE 'error|exception|401|unauthorized|api key'; then
+            log_success "  ✓ LLM responds to \"hello!\""
+        else
+            log_warn "  ! LLM smoke test inconclusive (response: ${hello_response:0:80})"
+        fi
     fi
+
+    # Service health checks — only if docker compose is actually running
+    if command -v docker &> /dev/null && sg docker -c 'docker ps --format "{{.Names}}"' &>/dev/null; then
+        log_info "Checking service health..."
+        verify_service_health "Prometheus"      "http://localhost:9090/-/ready"            "200"    || errors=$((errors+1))
+        verify_service_health "Loki"            "http://localhost:3100/ready"              "200"    || errors=$((errors+1))
+        verify_service_health "Grafana"         "http://localhost:3000/api/health"         "200"    || errors=$((errors+1))
+        verify_service_health "Alloy"           "http://localhost:12345/-/ready"           "200"    || errors=$((errors+1))
+        # MCP servers return 406 (Not Acceptable) to a bare GET because they
+        # expect Accept: text/event-stream + a POST with initialize. 200 means
+        # the SSE stream opened; 406 means the endpoint exists. Either is OK.
+        verify_service_health "Inventory MCP"   "http://localhost:8001/mcp"                "200|406" || errors=$((errors+1))
+        verify_service_health "Grafana MCP"     "http://localhost:8000/mcp"                "200|406" || errors=$((errors+1))
+        verify_service_health "Hermes Dashboard" "http://localhost:$HERMES_PORT/"          "302"    || errors=$((errors+1))
+
+        log_info "Listening ports (AIAMSBS services):"
+        list_listening_ports || true
+    else
+        log_warn "Docker not running; skipping service health checks"
+    fi
+
+    if [ $errors -eq 0 ]; then
+        log_success "All checks passed!"
+    else
+        log_warn "$errors check(s) failed"
+    fi
+
+    return $errors
 }
 
 # ============================================
@@ -966,28 +1132,8 @@ main() {
     deploy_mcp_stack
     deploy_inventory_stack
 
-    echo ""
-    echo "============================================"
-    echo "  Bootstrap Complete!"
-    echo "============================================"
-    echo ""
-    echo "  Services:"
-    echo "    - Grafana:        http://localhost:3000 (admin/admin123)"
-    echo "    - Prometheus:     http://localhost:9090"
-    echo "    - Loki:           http://localhost:3100"
-    echo "    - Alloy:          http://localhost:12345"
-    echo "    - Hermes Gateway: http://localhost:$HERMES_PORT"
-    echo "    - Inventory MCP:  http://localhost:8001/mcp"
-    echo ""
-    echo "  🔒 Hermes Dashboard credentials: see /var/log/hermes-bootstrap-credentials.log"
-    echo ""
-    echo "  🔒 To restrict port $HERMES_PORT to specific IPs:"
-    echo "      sudo ufw allow from <your-ip> to any port $HERMES_PORT"
-    echo "      sudo ufw enable"
-    echo ""
-    echo "  To message Hermes (configure platform manually):"
-    echo "    hermes gateway setup <platform>"
-    echo ""
+    # Print customer-facing access summary (URLs, credentials, ports, hints)
+    print_access_summary
 
     verify_installation
 }
