@@ -823,11 +823,85 @@ deploy_inventory_stack() {
     log_info "Deploying inventory stack..."
 
     # sg docker -c sidesteps the docker-group-not-applied-yet issue.
+    # Note: only inventory-mcp starts here. nmap-discovery is in the
+    # 'discovery' profile and is started separately by start_nmap_discovery()
+    # below — see that function for why.
     if sg docker -c "docker compose -f '$inv_compose' up -d" 2>&1 | tail -10; then
-        log_success "Inventory stack deployed (inventory-mcp on port 8001, nmap-discovery on port 8002)"
+        log_success "Inventory stack deployed (inventory-mcp on port 8001)"
     else
         log_warn "Inventory stack deployment failed; continuing"
         return 0
+    fi
+}
+
+# register_inventory_mcp [profile_name]
+# Registers the inventory-mcp MCP server in a Hermes profile's config.yaml.
+# Default: 'default' profile (the interim coordinator for AIAMSBS).
+# Idempotent — skips if already registered.
+register_inventory_mcp() {
+    local profile="${1:-default}"
+    local config_path="$HOME/.hermes/profiles/${profile}/config.yaml"
+
+    log_info "Registering inventory-mcp in profile '$profile'..."
+
+    if [ ! -d "$(dirname "$config_path")" ]; then
+        log_warn "Profile dir not found at $(dirname "$config_path") — creating"
+        mkdir -p "$(dirname "$config_path")"
+    fi
+
+    if [ ! -f "$config_path" ]; then
+        log_warn "Profile config not found at $config_path — creating empty config"
+        touch "$config_path"
+        chmod 600 "$config_path"
+    fi
+
+    # Idempotent: skip if already registered
+    if grep -q 'name: inventory-mcp' "$config_path" 2>/dev/null; then
+        log_success "inventory-mcp already registered in profile '$profile'"
+        return 0
+    fi
+
+    # Backup + append
+    cp "$config_path" "${config_path}.bak"
+    cat >> "$config_path" << 'EOF'
+
+mcp_servers:
+  - name: inventory-mcp
+    url: http://localhost:8001/mcp
+    transport: streamable-http
+EOF
+
+    chmod 600 "$config_path"
+    log_success "inventory-mcp registered in profile '$profile' (config at $config_path)"
+}
+
+# start_nmap_discovery
+# Starts the nmap-discovery container in the 'discovery' compose profile.
+# Idempotent — skips if already running. Requires NET_RAW + NET_ADMIN caps,
+# which is why it's opt-in via a separate profile rather than started by
+# deploy_inventory_stack() by default.
+start_nmap_discovery() {
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
+    local inv_dir="$infra_dir/inventory-stack"
+    local inv_compose="$inv_dir/docker-compose.yml"
+
+    if [ ! -f "$inv_compose" ]; then
+        log_warn "inventory-stack/docker-compose.yml not found; skipping nmap-discovery"
+        return 0
+    fi
+
+    # Idempotent: skip if already running
+    if command -v docker &> /dev/null && sg docker -c "docker ps --format '{{.Names}}'" 2>/dev/null | grep -q '^nmap-discovery$'; then
+        log_success "nmap-discovery already running"
+        return 0
+    fi
+
+    log_info "Starting nmap-discovery (compose profile 'discovery', requires NET_RAW + NET_ADMIN)..."
+    if sg docker -c "docker compose -f '$inv_compose' --profile discovery up -d nmap-discovery" 2>&1 | tail -10; then
+        log_success "nmap-discovery started on port 8002 (host-network mode)"
+    else
+        log_warn "nmap-discovery failed to start; continuing (inventory-mcp still works for CRUD)"
+        return 0  # don't fail bootstrap on this
     fi
 }
 
@@ -1131,6 +1205,12 @@ main() {
     create_grafana_mcp_service_account
     deploy_mcp_stack
     deploy_inventory_stack
+
+    # Wire inventory-mcp into the default Hermes profile + start nmap-discovery
+    # so a customer can immediately ask Hermes to discover/inventory their
+    # network without re-running register_inventory_mcp.sh by hand.
+    register_inventory_mcp "default"
+    start_nmap_discovery
 
     # Print customer-facing access summary (URLs, credentials, ports, hints)
     print_access_summary
