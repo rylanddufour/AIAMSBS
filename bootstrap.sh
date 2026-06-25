@@ -837,12 +837,32 @@ deploy_inventory_stack() {
 # register_inventory_mcp [profile_name]
 # Registers the inventory-mcp MCP server in a Hermes profile's config.yaml.
 # Default: 'default' profile (the interim coordinator for AIAMSBS).
+#
+# Hermes config layout auto-detection:
+#   - Multi-profile (workstation dev): ~/.hermes/profiles/<name>/config.yaml
+#   - Single-profile (AIAMSBS customer VM): ~/.hermes/config.yaml
+# This function writes to whichever location exists, preferring multi-profile
+# when the profiles/ dir is present (the dev path) and falling back to
+# ~/.hermes/config.yaml for the single-profile customer deploy.
+#
 # Idempotent — skips if already registered.
 register_inventory_mcp() {
     local profile="${1:-default}"
-    local config_path="$HOME/.hermes/profiles/${profile}/config.yaml"
+    local config_path
 
-    log_info "Registering inventory-mcp in profile '$profile'..."
+    # Multi-profile layout: ~/.hermes/profiles/<name>/config.yaml
+    if [ -d "$HOME/.hermes/profiles" ]; then
+        config_path="$HOME/.hermes/profiles/${profile}/config.yaml"
+    # Single-profile layout (AIAMSBS customer VM): ~/.hermes/config.yaml
+    elif [ -f "$HOME/.hermes/config.yaml" ] || [ -d "$HOME/.hermes" ]; then
+        config_path="$HOME/.hermes/config.yaml"
+        profile="default"  # ignore profile arg in single-profile mode
+    else
+        log_error "No Hermes config found at ~/.hermes/ — run bootstrap.sh first?"
+        return 1
+    fi
+
+    log_info "Registering inventory-mcp in profile '$profile' (config: $config_path)..."
 
     if [ ! -d "$(dirname "$config_path")" ]; then
         log_warn "Profile dir not found at $(dirname "$config_path") — creating"
@@ -872,7 +892,7 @@ mcp_servers:
 EOF
 
     chmod 600 "$config_path"
-    log_success "inventory-mcp registered in profile '$profile' (config at $config_path)"
+    log_success "inventory-mcp registered in profile '$profile'"
 }
 
 # install_inventory_discovery_skill
