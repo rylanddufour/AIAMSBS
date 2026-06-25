@@ -189,24 +189,43 @@ def _get_mcp() -> MCPClient:
 
 
 def insert_device(payload: dict, dry_run: bool = False) -> tuple[bool, str]:
-    """Call inventory-mcp's create_device. Returns (inserted, reason)."""
+    """Call inventory-mcp's create_device. Returns (inserted, reason).
+
+    The MCP tool signature is `create_device(device: dict)` — FastMCP wraps
+    the dict under a `device` key in the wire schema. Must wrap here.
+
+    Tool-level errors live at result.isError + result.content[0].text (not at
+    the JSON-RPC top-level `error` field, which is reserved for protocol
+    errors). Read both to classify the failure.
+    """
     if dry_run:
         return True, "dry-run"
     try:
         client = _get_mcp()
-        resp = client.call_tool("create_device", payload)
+        # Wrap the dict under "device" — the tool signature is `device: dict`
+        resp = client.call_tool("create_device", {"device": payload})
     except (urllib.error.URLError, ConnectionError, TimeoutError) as exc:
         return False, f"inventory-mcp unreachable: {exc}"
     except json.JSONDecodeError as exc:
         return False, f"inventory-mcp returned non-JSON: {exc}"
 
+    # Protocol-level error (JSON-RPC error envelope)
     if "error" in resp:
         err = resp["error"]
         msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+        return False, f"protocol error: {msg[:200]}"
+
+    # Tool-level error (FastMCP returns isError=true with text content)
+    result = resp.get("result", {})
+    if result.get("isError"):
+        content = result.get("content", [])
+        msg = content[0].get("text", "") if content else "<no content>"
         # PRIMARY KEY collisions on device_id are normal (re-scans).
-        if "UNIQUE" in msg or "PRIMARY KEY" in msg or "duplicate" in msg.lower():
+        lower = msg.lower()
+        if "unique" in lower or "primary key" in lower or "duplicate" in lower:
             return False, "duplicate"
-        return False, f"error: {msg[:200]}"
+        return False, f"tool error: {msg[:200]}"
+
     return True, "ok"
 
 
