@@ -543,6 +543,45 @@ install_linux_admin_profile_soul() {
     if [ "$copied" -gt 0 ]; then
         log_success "linux_admin profile installed ($copied file(s))"
     fi
+
+    # Inherit provider/model/base_url from default profile so linux_admin
+    # uses the same LLM as default. Read default config.yaml, extract the
+    # model.* block, write to linux_admin config.yaml. Skip silently if
+    # default config.yaml is missing or malformed.
+    local default_config="$HERMES_HOME/config.yaml"
+    local linux_admin_config="$target_dir/config.yaml"
+    local default_model default_provider default_base_url
+
+    if [ ! -f "$default_config" ]; then
+        log_warn "Default profile config.yaml not found at $default_config; linux_admin will use runtime defaults"
+        return 0
+    fi
+
+    # Extract model.default, model.provider, model.base_url via awk (handles
+    # YAML's nested structure). Falls back to empty string if missing.
+    default_model=$(awk '/^model:/{flag=1; next} flag && /^  default:/{print $2; exit}' "$default_config")
+    default_provider=$(awk '/^model:/{flag=1; next} flag && /^  provider:/{print $2; exit}' "$default_config")
+    default_base_url=$(awk '/^model:/{flag=1; next} flag && /^  base_url:/{print $2; exit}' "$default_config")
+
+    if [ -z "$default_model" ] && [ -z "$default_provider" ]; then
+        log_warn "Could not extract model.* from default config.yaml; linux_admin will use runtime defaults"
+        return 0
+    fi
+
+    # Write linux_admin config.yaml. Only include the fields we extracted —
+    # leave the rest of the config (terminal, browser, etc.) to runtime
+    # defaults so the profile stays minimal.
+    cat > "$linux_admin_config" <<EOF
+# linux_admin profile config
+# Inherited from default profile (model.default, model.provider, model.base_url)
+# on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+model:
+  default: ${default_model}
+  provider: ${default_provider}
+  base_url: ${default_base_url}
+EOF
+
+    log_success "linux_admin config.yaml written with provider=$default_provider model=$default_model"
 }
 
 # ============================================
