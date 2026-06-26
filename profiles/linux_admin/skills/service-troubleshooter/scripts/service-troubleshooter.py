@@ -109,28 +109,30 @@ def _main_logic(service, target):
     if listening["ok"]:
         steps.append(listening)
     # synthesize hypothesis
-    errs = [s for s in steps if s["step"] == "journal_errors"]
-    hypothesis = "Unknown"
-    if not steps[0].get("ok", False):
+    status_ok = steps[0].get("ok", False)
+    journal_step = next((s for s in steps if s["step"] == "journal_errors"), None)
+    journal_has_errors = (journal_step and journal_step["ok"]
+                         and journal_step["evidence"].strip()
+                         and "-- No entries --" not in journal_step["evidence"])
+    if status_ok and not journal_has_errors:
+        hypothesis = "Service is active; no recent errors in journal. No failure signal found."
+        suggested_fix = f"No action needed. To verify, run: systemctl status {service} --no-pager"
+        verification_step = f"systemctl is-active {service}  # expect: active"
+    elif not status_ok:
         hypothesis = f"Service is not active (systemctl status exit={active_rc})"
-    elif execstart and not Path(execstart).exists():
-        hypothesis = f"ExecStart binary missing: {execstart}"
-    elif errs and errs[0]["ok"] and errs[0]["evidence"].strip():
-        first_err = errs[0]["evidence"].splitlines()[0][:200]
-        hypothesis = f"Recent error in journal: {first_err}"
-    else:
-        hypothesis = "No clear failure signal in status/journal/unit file"
-    # suggested fix
-    if "not active" in hypothesis:
         suggested_fix = f"Run: sudo systemctl start {service}"
         verification_step = f"systemctl is-active {service}  # expect: active"
-    elif "missing" in hypothesis.lower():
+    elif execstart and not Path(execstart).exists():
+        hypothesis = f"ExecStart binary missing: {execstart}"
         suggested_fix = f"Reinstall the package that provides {execstart}"
         verification_step = f"ls -la {execstart}  # expect: file exists"
-    elif "error in journal" in hypothesis:
+    elif journal_has_errors:
+        first_err = journal_step["evidence"].splitlines()[0][:200]
+        hypothesis = f"Recent error in journal: {first_err}"
         suggested_fix = f"Inspect full journal: journalctl -u {service} -p err -n 200"
         verification_step = f"systemctl status {service} --no-pager  # no new errors"
     else:
+        hypothesis = "No clear failure signal in status/journal/unit file"
         suggested_fix = f"Inspect: journalctl -u {service} --no-pager"
         verification_step = f"systemctl status {service} --no-pager"
     return {

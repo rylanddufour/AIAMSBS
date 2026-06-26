@@ -167,12 +167,28 @@ def _filter(events, since_days, limit):
     out = []
     for ev in events:
         if cutoff is not None:
-            try:
-                dt = datetime.fromisoformat(ev["timestamp"].replace("Z", "+00:00"))
-            except (ValueError, KeyError):
-                dt = None
-            if dt is not None and dt < cutoff:
-                continue
+            ts_str = ev.get("timestamp", "")
+            dt = None
+            if ts_str:
+                # Parse and normalize to UTC-aware datetime. apt/dpkg logs
+                # produce naive datetimes ("YYYY-MM-DD HH:MM:SS"); RHEL output
+                # produces strings like "2026-06-25 16:08". journalctl-style
+                # ISO strings are already tz-aware. Handle both.
+                try:
+                    if "T" in ts_str:
+                        # ISO 8601
+                        dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                    else:
+                        dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+                        dt = dt.replace(tzinfo=timezone.utc)
+                except (ValueError, TypeError):
+                    dt = None
+            if dt is not None:
+                # Both sides must be tz-aware for comparison
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                if dt < cutoff:
+                    continue
         out.append(ev)
     out.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
     return out[:limit] if limit and limit > 0 else out
