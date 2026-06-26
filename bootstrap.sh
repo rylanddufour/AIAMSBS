@@ -88,6 +88,7 @@ while [[ $# -gt 0 ]]; do
                     ;;
                 network_admin|windows_admin|vsphere_admin)
                     echo "Profile '$2' is not yet shipped (see BACKLOG #17/#18/#19). Ignoring."
+                    exit 0
                     ;;
                 *)
                     echo "Unknown profile: $2"
