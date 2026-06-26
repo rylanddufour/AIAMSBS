@@ -50,6 +50,7 @@ CLI_PROVIDER="openrouter"
 CLI_MODEL=""
 AUTO_DEPLOY=true
 DASHBOARD_USER="admin"
+INSTALL_LINUX_ADMIN=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -77,6 +78,25 @@ while [[ $# -gt 0 ]]; do
             DASHBOARD_USER="$2"
             shift 2
             ;;
+        --profile)
+            case "$2" in
+                linux_admin)
+                    INSTALL_LINUX_ADMIN=true
+                    ;;
+                all)
+                    INSTALL_LINUX_ADMIN=true
+                    ;;
+                network_admin|windows_admin|vsphere_admin)
+                    echo "Profile '$2' is not yet shipped (see BACKLOG #17/#18/#19). Ignoring."
+                    exit 0
+                    ;;
+                *)
+                    echo "Unknown profile: $2"
+                    exit 1
+                    ;;
+            esac
+            shift 2
+            ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
@@ -87,6 +107,9 @@ while [[ $# -gt 0 ]]; do
             echo "  --auto-deploy       Automatically deploy stack after setup (default)"
             echo "  --no-auto-deploy    Skip auto-deploy"
             echo "  --dashboard-user USER   Username for the Hermes dashboard (default: admin)"
+            echo "  --profile NAME     Install specialist profile(s). NAME = linux_admin,"
+            echo "                     network_admin, windows_admin, vsphere_admin, or all."
+            echo "                     Multiple --profile flags OK. Default: default profile only."
             echo ""
             echo "Examples:"
             echo "  $0 --api-key sk-xxx --provider openrouter"
@@ -425,6 +448,141 @@ EOF
                 log_warn "Could not set model; leaving upstream default"
         fi
     fi
+}
+
+# ============================================
+# Install default Profile SOUL.md
+# ============================================
+# The default Profile's persona lives at $INFRA_DIR/profiles/default/SOUL.md
+# (shipped in this repo). Copy it into $HERMES_HOME so the runtime picks it
+# up — either alongside the top-level config.yaml (single-profile mode) or
+# under profiles/default/ (multi-profile mode). Auto-detect which layout
+# the Customer is using by checking for an existing profiles/ directory.
+# Falls back to writing to both locations so the install is robust against
+# either layout the runtime ends up using.
+
+install_default_profile_soul() {
+    local source="$INFRA_DIR/profiles/default/SOUL.md"
+    local multi_target_dir multi_target single_target
+
+    if [ ! -f "$source" ]; then
+        log_warn "Default profile SOUL.md not found at $source; skipping"
+        return 0
+    fi
+
+    multi_target_dir="$HERMES_HOME/profiles/default"
+    multi_target="$multi_target_dir/SOUL.md"
+    single_target="$HERMES_HOME/SOUL.md"
+
+    if [ -d "$HERMES_HOME/profiles" ]; then
+        # Multi-profile layout — write to profiles/default/SOUL.md only
+        mkdir -p "$multi_target_dir"
+        if cp "$source" "$multi_target" 2>/dev/null; then
+            log_success "Default profile SOUL.md installed at $multi_target"
+        else
+            log_warn "Could not install default profile SOUL.md to $multi_target"
+        fi
+    else
+        # Single-profile layout — write to top-level SOUL.md only
+        if cp "$source" "$single_target" 2>/dev/null; then
+            log_success "Default profile SOUL.md installed at $single_target"
+        else
+            log_warn "Could not install default profile SOUL.md to $single_target"
+        fi
+    fi
+}
+
+# ============================================
+# Install linux_admin specialist Profile
+# ============================================
+# The linux_admin profile lives at $INFRA_DIR/profiles/linux_admin/ and
+# copies SOUL.md + SKILL.md (+ INSTALL.md for reference) into
+# $HERMES_HOME/profiles/linux_admin/. linux_admin requires multi-profile
+# layout — auto-create $HERMES_HOME/profiles/ if absent. Backed by BACKLOG
+# #16 (design) + #15 (forward-compat ansible container). Sister to
+# install_default_profile_soul().
+
+install_linux_admin_profile_soul() {
+    local source_dir="$INFRA_DIR/profiles/linux_admin"
+    local target_dir="$HERMES_HOME/profiles/linux_admin"
+    local copied=0
+
+    if [ ! -d "$source_dir" ]; then
+        log_warn "linux_admin profile source dir not found at $source_dir; skipping"
+        return 0
+    fi
+
+    # linux_admin requires multi-profile layout; create profiles/ if absent
+    if [ ! -d "$HERMES_HOME/profiles" ]; then
+        log_info "Multi-profile layout not detected; creating $HERMES_HOME/profiles/"
+        if ! mkdir -p "$HERMES_HOME/profiles" 2>/dev/null; then
+            log_warn "Could not create $HERMES_HOME/profiles/; linux_admin install skipped"
+            return 0
+        fi
+    fi
+
+    if ! mkdir -p "$target_dir" 2>/dev/null; then
+        log_warn "Could not create $target_dir; linux_admin install skipped"
+        return 0
+    fi
+
+    # Copy SOUL.md, SKILL.md, INSTALL.md (skip files that don't exist)
+    local f
+    for f in SOUL.md SKILL.md INSTALL.md; do
+        if [ -f "$source_dir/$f" ]; then
+            if cp "$source_dir/$f" "$target_dir/$f" 2>/dev/null; then
+                log_success "linux_admin $f installed at $target_dir/$f"
+                copied=$((copied + 1))
+            else
+                log_warn "Could not install $target_dir/$f"
+            fi
+        else
+            log_warn "linux_admin $f not found at $source_dir/$f; skipping"
+        fi
+    done
+
+    if [ "$copied" -gt 0 ]; then
+        log_success "linux_admin profile installed ($copied file(s))"
+    fi
+
+    # Inherit provider/model/base_url from default profile so linux_admin
+    # uses the same LLM as default. Read default config.yaml, extract the
+    # model.* block, write to linux_admin config.yaml. Skip silently if
+    # default config.yaml is missing or malformed.
+    local default_config="$HERMES_HOME/config.yaml"
+    local linux_admin_config="$target_dir/config.yaml"
+    local default_model default_provider default_base_url
+
+    if [ ! -f "$default_config" ]; then
+        log_warn "Default profile config.yaml not found at $default_config; linux_admin will use runtime defaults"
+        return 0
+    fi
+
+    # Extract model.default, model.provider, model.base_url via awk (handles
+    # YAML's nested structure). Falls back to empty string if missing.
+    default_model=$(awk '/^model:/{flag=1; next} flag && /^  default:/{print $2; exit}' "$default_config")
+    default_provider=$(awk '/^model:/{flag=1; next} flag && /^  provider:/{print $2; exit}' "$default_config")
+    default_base_url=$(awk '/^model:/{flag=1; next} flag && /^  base_url:/{print $2; exit}' "$default_config")
+
+    if [ -z "$default_model" ] && [ -z "$default_provider" ]; then
+        log_warn "Could not extract model.* from default config.yaml; linux_admin will use runtime defaults"
+        return 0
+    fi
+
+    # Write linux_admin config.yaml. Only include the fields we extracted —
+    # leave the rest of the config (terminal, browser, etc.) to runtime
+    # defaults so the profile stays minimal.
+    cat > "$linux_admin_config" <<EOF
+# linux_admin profile config
+# Inherited from default profile (model.default, model.provider, model.base_url)
+# on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+model:
+  default: ${default_model}
+  provider: ${default_provider}
+  base_url: ${default_base_url}
+EOF
+
+    log_success "linux_admin config.yaml written with provider=$default_provider model=$default_model"
 }
 
 # ============================================
@@ -1236,6 +1394,10 @@ main() {
     export INFRA_DIR
 
     configure_hermes_api
+    install_default_profile_soul
+    if [ "$INSTALL_LINUX_ADMIN" = true ]; then
+        install_linux_admin_profile_soul
+    fi
     build_dashboard_ui
     generate_dashboard_credentials
     install_hermes_dashboard_service

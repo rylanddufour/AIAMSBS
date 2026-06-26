@@ -52,9 +52,14 @@
 ## Inventory & Multi-Agent (New Capability Track)
 
 | # | Item | Description | Complexity |
-|---|------|-------------|-------------|
-| 13 | Coordinator profile (deferred) | Build dedicated coordinator profile that routes alerts via inventory MCP to specialist profiles. **Default profile is the interim coordinator** until this exists. Depends on inventory MCP (#14) + specialist profiles (future). | High |
-| 14 | Inventory MCP stack | SQLite-backed device inventory exposed via FastMCP server. nmap-based discovery skill for seeding. Registered in the customer's default profile + future specialist profiles (linux_admin, windows_admin, network_admin — names TBD). Lives in `inventory-stack/` subdir with own compose file. See `research/multi-oem-skill-research-2026-06-22.md` for design context. | Medium |
+|---|------|-------------|------------|
+| 13 | Coordinator profile (deferred) | Build dedicated coordinator profile that routes alerts via inventory MCP to specialist profiles. **Default profile is NOT a coordinator** (per 2026-06-25) — it stays generic + Customer-initiated routing. Coordinator is separate, owns automated/alert-driven routing. Depends on inventory MCP (#14) + specialist profiles (16-19). | High |
+| 14 | Inventory MCP stack | SQLite-backed device inventory exposed via FastMCP server. nmap-based discovery skill for seeding. Registered in the customer's default profile + future specialist profiles (linux_admin, windows_admin, network_admin, vsphere_admin). Lives in `inventory-stack/` subdir with own compose file. See `research/multi-oem-skill-research-2026-06-22.md` for design context. | Medium |
+| 15 | Ansible container for linux_admin | Add an ansible container to the AIAMSBS stack so the `linux_admin` specialist Profile can run playbooks against managed Linux devices. Includes SSH host inventory + playbook runner. Used by `linux_admin` (BACKLOG #16) when it ships. | Medium |
+| 16 | linux_admin Profile | Sr. Linux admin persona (10+ years experience), owns **managed** Linux devices only (NOT the local AIAMSBS host — that's `default`'s job). Lives at `profiles/linux_admin/`. Sibling to `default` — installs alongside. `default` delegates to `linux_admin` when Customer asks about Linux managed devices. Skills: apt-history-analyzer, systemd-journal-search, service-troubleshooter. Uses ansible container (#15). | Medium |
+| 17 | network_admin Profile | Network device specialist (Cisco Catalyst, UniFi, Aruba). Sibling to `default` + `linux_admin`. | TBD |
+| 18 | windows_admin Profile | Windows server specialist. Sibling to `default` + `linux_admin` + `network_admin`. | TBD |
+| 19 | vsphere_admin Profile | VMware vSphere specialist (most small IT departments have this). Sibling to `default` + others. | TBD |
 
 ---
 
