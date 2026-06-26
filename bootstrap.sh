@@ -428,6 +428,48 @@ EOF
 }
 
 # ============================================
+# Install default Profile SOUL.md
+# ============================================
+# The default Profile's persona lives at $INFRA_DIR/profiles/default/SOUL.md
+# (shipped in this repo). Copy it into $HERMES_HOME so the runtime picks it
+# up — either alongside the top-level config.yaml (single-profile mode) or
+# under profiles/default/ (multi-profile mode). Auto-detect which layout
+# the Customer is using by checking for an existing profiles/ directory.
+# Falls back to writing to both locations so the install is robust against
+# either layout the runtime ends up using.
+
+install_default_profile_soul() {
+    local source="$INFRA_DIR/profiles/default/SOUL.md"
+    local multi_target_dir multi_target single_target
+
+    if [ ! -f "$source" ]; then
+        log_warn "Default profile SOUL.md not found at $source; skipping"
+        return 0
+    fi
+
+    multi_target_dir="$HERMES_HOME/profiles/default"
+    multi_target="$multi_target_dir/SOUL.md"
+    single_target="$HERMES_HOME/SOUL.md"
+
+    if [ -d "$HERMES_HOME/profiles" ]; then
+        # Multi-profile layout — write to profiles/default/SOUL.md only
+        mkdir -p "$multi_target_dir"
+        if cp "$source" "$multi_target" 2>/dev/null; then
+            log_success "Default profile SOUL.md installed at $multi_target"
+        else
+            log_warn "Could not install default profile SOUL.md to $multi_target"
+        fi
+    else
+        # Single-profile layout — write to top-level SOUL.md only
+        if cp "$source" "$single_target" 2>/dev/null; then
+            log_success "Default profile SOUL.md installed at $single_target"
+        else
+            log_warn "Could not install default profile SOUL.md to $single_target"
+        fi
+    fi
+}
+
+# ============================================
 # Build Hermes Dashboard Web UI
 # ============================================
 
@@ -1236,6 +1278,7 @@ main() {
     export INFRA_DIR
 
     configure_hermes_api
+    install_default_profile_soul
     build_dashboard_ui
     generate_dashboard_credentials
     install_hermes_dashboard_service
