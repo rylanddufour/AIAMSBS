@@ -53,13 +53,20 @@
 
 | # | Item | Description | Complexity |
 |---|------|-------------|------------|
-| 13 | Coordinator profile (deferred) | Build dedicated coordinator profile that routes alerts via inventory MCP to specialist profiles. **Default profile is NOT a coordinator** (per 2026-06-25) — it stays generic + Customer-initiated routing. Coordinator is separate, owns automated/alert-driven routing. Depends on inventory MCP (#14) + specialist profiles (16-19). | High |
-| 14 | Inventory MCP stack | SQLite-backed device inventory exposed via FastMCP server. nmap-based discovery skill for seeding. Registered in the customer's default profile + future specialist profiles (linux_admin, windows_admin, network_admin, vsphere_admin). Lives in `inventory-stack/` subdir with own compose file. See `research/multi-oem-skill-research-2026-06-22.md` for design context. | Medium |
-| 15 | Ansible container for linux_admin | Add an ansible container to the AIAMSBS stack so the `linux_admin` specialist Profile can run playbooks against managed Linux devices. Includes SSH host inventory + playbook runner. Used by `linux_admin` (BACKLOG #16) when it ships. | Medium |
-| 16 | linux_admin Profile | Sr. Linux admin persona (10+ years experience), owns **managed** Linux devices only (NOT the local AIAMSBS host — that's `default`'s job). Lives at `profiles/linux_admin/`. Sibling to `default` — installs alongside. `default` delegates to `linux_admin` when Customer asks about Linux managed devices. Skills: apt-history-analyzer, systemd-journal-search, service-troubleshooter. Uses ansible container (#15). | Medium |
-| 17 | network_admin Profile | Network device specialist (Cisco Catalyst, UniFi, Aruba). Sibling to `default` + `linux_admin`. | TBD |
-| 18 | windows_admin Profile | Windows server specialist. Sibling to `default` + `linux_admin` + `network_admin`. | TBD |
-| 19 | vsphere_admin Profile | VMware vSphere specialist (most small IT departments have this). Sibling to `default` + others. | TBD |
+| 13 | Coordinator profile (deferred) | Build dedicated coordinator profile that routes alerts via inventory MCP to specialist profiles. **May become the default profile** (under review 2026-06-26 — see decision D1). Depends on inventory MCP (#14). | High |
+| 14 | Inventory MCP stack | SQLite-backed device inventory exposed via FastMCP server. nmap-based discovery skill for seeding. Registered in the customer's default profile + IT_ADMIN (#20). Lives in `inventory-stack/` subdir with own compose file. | Medium |
+| 15 | Ansible container (scope TBD) | Ansible container for bulk operations against managed devices. Scope TBD 2026-06-26 — may be needed by IT_ADMIN (#20) for fleet-wide changes; depends on whether IT_ADMIN ships with automation tools or relies on bash-tool-only. | Medium |
+| ~~16~~ | ~~linux_admin Profile~~ | **RETIRED 2026-06-26.** Superseded by IT_ADMIN (#20). The 3 skills shipped in PR #1 were reverted in PR #2. | — |
+| ~~17~~ | ~~network_admin Profile~~ | **RETIRED 2026-06-26.** Absorbed into IT_ADMIN (#20) as `skills/network-oem-*` modular skills. | — |
+| ~~18~~ | ~~windows_admin Profile~~ | **RETIRED 2026-06-26.** Absorbed into IT_ADMIN (#20) as `skills/windows-server.md` + `skills/active-directory.md`. | — |
+| ~~19~~ | ~~vsphere_admin Profile~~ | **RETIRED 2026-06-26.** Absorbed into IT_ADMIN (#20) as `skills/vsphere-admin.md`. | — |
+| 20 | IT_ADMIN Profile | Single generalist datacenter IT admin agent. Replaces the planned 4 specialist profiles (16-19). SOUL.md + 19 skill files from OneDrive source: `obsidian_vaults/agent vault/AIAMSBS_Potential_Agent_Soul_skills/it-admin-agent-soul-skills/it-admin-agent/`. Sibling to `default`. Profile name = `IT_ADMIN` (open to rename when product name is decided). | Medium |
+
+## Pending Decisions
+
+| # | Item | Description |
+|---|------|-------------|
+| D1 | Decide default agent purpose | Is `default` a coordinator (per #13), generic, customer-initiated routing, or something else? Blocks #13 + #14 sequencing and IT_ADMIN's routing logic. |
 
 ---
 
