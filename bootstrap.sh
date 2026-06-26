@@ -50,6 +50,7 @@ CLI_PROVIDER="openrouter"
 CLI_MODEL=""
 AUTO_DEPLOY=true
 DASHBOARD_USER="admin"
+INSTALL_LINUX_ADMIN=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -77,6 +78,24 @@ while [[ $# -gt 0 ]]; do
             DASHBOARD_USER="$2"
             shift 2
             ;;
+        --profile)
+            case "$2" in
+                linux_admin)
+                    INSTALL_LINUX_ADMIN=true
+                    ;;
+                all)
+                    INSTALL_LINUX_ADMIN=true
+                    ;;
+                network_admin|windows_admin|vsphere_admin)
+                    echo "Profile '$2' is not yet shipped (see BACKLOG #17/#18/#19). Ignoring."
+                    ;;
+                *)
+                    echo "Unknown profile: $2"
+                    exit 1
+                    ;;
+            esac
+            shift 2
+            ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
@@ -87,6 +106,9 @@ while [[ $# -gt 0 ]]; do
             echo "  --auto-deploy       Automatically deploy stack after setup (default)"
             echo "  --no-auto-deploy    Skip auto-deploy"
             echo "  --dashboard-user USER   Username for the Hermes dashboard (default: admin)"
+            echo "  --profile NAME     Install specialist profile(s). NAME = linux_admin,"
+            echo "                     network_admin, windows_admin, vsphere_admin, or all."
+            echo "                     Multiple --profile flags OK. Default: default profile only."
             echo ""
             echo "Examples:"
             echo "  $0 --api-key sk-xxx --provider openrouter"
@@ -466,6 +488,60 @@ install_default_profile_soul() {
         else
             log_warn "Could not install default profile SOUL.md to $single_target"
         fi
+    fi
+}
+
+# ============================================
+# Install linux_admin specialist Profile
+# ============================================
+# The linux_admin profile lives at $INFRA_DIR/profiles/linux_admin/ and
+# copies SOUL.md + SKILL.md (+ INSTALL.md for reference) into
+# $HERMES_HOME/profiles/linux_admin/. linux_admin requires multi-profile
+# layout — auto-create $HERMES_HOME/profiles/ if absent. Backed by BACKLOG
+# #16 (design) + #15 (forward-compat ansible container). Sister to
+# install_default_profile_soul().
+
+install_linux_admin_profile_soul() {
+    local source_dir="$INFRA_DIR/profiles/linux_admin"
+    local target_dir="$HERMES_HOME/profiles/linux_admin"
+    local copied=0
+
+    if [ ! -d "$source_dir" ]; then
+        log_warn "linux_admin profile source dir not found at $source_dir; skipping"
+        return 0
+    fi
+
+    # linux_admin requires multi-profile layout; create profiles/ if absent
+    if [ ! -d "$HERMES_HOME/profiles" ]; then
+        log_info "Multi-profile layout not detected; creating $HERMES_HOME/profiles/"
+        if ! mkdir -p "$HERMES_HOME/profiles" 2>/dev/null; then
+            log_warn "Could not create $HERMES_HOME/profiles/; linux_admin install skipped"
+            return 0
+        fi
+    fi
+
+    if ! mkdir -p "$target_dir" 2>/dev/null; then
+        log_warn "Could not create $target_dir; linux_admin install skipped"
+        return 0
+    fi
+
+    # Copy SOUL.md, SKILL.md, INSTALL.md (skip files that don't exist)
+    local f
+    for f in SOUL.md SKILL.md INSTALL.md; do
+        if [ -f "$source_dir/$f" ]; then
+            if cp "$source_dir/$f" "$target_dir/$f" 2>/dev/null; then
+                log_success "linux_admin $f installed at $target_dir/$f"
+                copied=$((copied + 1))
+            else
+                log_warn "Could not install $target_dir/$f"
+            fi
+        else
+            log_warn "linux_admin $f not found at $source_dir/$f; skipping"
+        fi
+    done
+
+    if [ "$copied" -gt 0 ]; then
+        log_success "linux_admin profile installed ($copied file(s))"
     fi
 }
 
@@ -1279,6 +1355,9 @@ main() {
 
     configure_hermes_api
     install_default_profile_soul
+    if [ "$INSTALL_LINUX_ADMIN" = true ]; then
+        install_linux_admin_profile_soul
+    fi
     build_dashboard_ui
     generate_dashboard_credentials
     install_hermes_dashboard_service
