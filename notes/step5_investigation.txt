@@ -1,0 +1,48 @@
+STEP 5: Hypothesis B — investigate Hermes profile loader
+
+Key discovery: `hermes profile show <name>` reveals profile paths:
+  - default  → Path: /home/ansible/.hermes       (the HOME dir itself, NOT profiles/default/)
+  - it_admin → Path: /home/ansible/.hermes/profiles/it_admin
+
+This means the "default" profile literally uses the GLOBAL config (~/.hermes/config.yaml)
+as its profile config. The subdirectory ~/.hermes/profiles/default/ exists but is
+a DEAD LOCATION that Hermes does NOT read.
+
+Hypothesis B1 (complete config for default): N/A — the issue isn't config format, it's path.
+
+Hypothesis B2 (manually write full profile config to ~/.hermes/profiles/default/config.yaml):
+  Tested by Step 3 (added model: + mcp_servers:) — DID NOT FIX. Confirms
+  ~/.hermes/profiles/default/config.yaml is ignored.
+
+Hypothesis B3 (add mcp_servers to global ~/.hermes/config.yaml):
+  TESTED — FIXES THE BUG. After appending mcp_servers block to ~/.hermes/config.yaml,
+  `hermes tools list` (default profile) now shows:
+    MCP servers:
+      inventory-mcp  all tools enabled
+  And `hermes chat` with default profile successfully calls search_devices and returns 3
+  devices from the inventory DB (Step 4 output preserved below).
+
+ROOT CAUSE:
+  - `register_inventory_mcp` auto-detects multi-profile layout via existence of
+    `~/.hermes/profiles/` dir and writes to `~/.hermes/profiles/${profile}/config.yaml`.
+  - For named profiles (it_admin) this works correctly.
+  - For the special "default" profile, this writes to a path Hermes IGNORES. The
+    actual default profile config IS the global config.
+  - Same bug class as BACKLOG #21 (mcp_servers config format), which only fixed
+    it_admin in PR #7.
+
+FIX (Step 6): update register_inventory_mcp to special-case "default" → write to
+~/.hermes/config.yaml instead of ~/.hermes/profiles/default/config.yaml. Also migrate
+any stale mcp_servers already in ~/.hermes/profiles/default/config.yaml on re-run.
+
+=== STEP 4 OUTPUT (default profile drives inventory via natural language) ===
+$ hermes profile use default
+$ hermes chat -q "Use the search_devices MCP tool with query=\"\" and limit=3. Show what you get back."
+session_id: 20260627_233828_739028
+Got 3 devices from the inventory:
+
+| device_id | hostname | ip_address | device_type | vendor | model | site | role |
+|-----------|----------|------------|-------------|--------|-------|------|------|
+| dev-linux-01 | linux-host-01 | 192.168.10.10 | linux_host | Dell | PowerEdge R740 | lab | compute |
+| dev-switch-01 | core-switch-01 | 192.168.10.1 | switch | Cisco | Catalyst 9300 | lab | core |
+| dev-ap-01 | ap-floor1-01 | 192.168.10.50 | ap | Ubiquiti | U7 Pro | lab | access |

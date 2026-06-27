@@ -1,0 +1,11 @@
+
+session_id: 20260627_234348_f6a242
+Here are 3 devices from the inventory:
+
+| Hostname | IP Address | Vendor |
+|----------|------------|--------|
+| linux-host-01 | 192.168.10.10 | Dell |
+| core-switch-01 | 192.168.10.1 | Cisco |
+| ap-floor1-01 | 192.168.10.50 | Ubiquiti |
+
+These represent a Dell PowerEdge server, Cisco Catalyst switch, and Ubiquiti access point — all in the `lab` site with the `smoke-test` tag.
