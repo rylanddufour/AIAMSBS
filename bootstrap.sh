@@ -1014,7 +1014,9 @@ deploy_inventory_stack() {
 
 # register_inventory_mcp [profile_name]
 # Registers the inventory-mcp MCP server in a Hermes profile's config.yaml.
-# Default: 'default' profile (the interim coordinator for AIAMSBS).
+# Profiles: 'default' (the customer's default Hermes profile) and 'it_admin'
+# (the AIAMSBS specialist IT admin profile). Both profiles get wired in so the
+# customer can ask either one about inventory.
 #
 # Hermes config layout auto-detection:
 #   - Multi-profile (workstation dev): ~/.hermes/profiles/<name>/config.yaml
@@ -1053,18 +1055,23 @@ register_inventory_mcp() {
         chmod 600 "$config_path"
     fi
 
-    # Idempotent: skip if already registered
-    if grep -q 'name: inventory-mcp' "$config_path" 2>/dev/null; then
+    # Idempotent: skip if already registered (DICT format marker)
+    if grep -q '^  inventory-mcp:' "$config_path" 2>/dev/null; then
         log_success "inventory-mcp already registered in profile '$profile'"
         return 0
     fi
 
-    # Backup + append
+    # Backup + append in DICT format (Hermes CLI's tools_config.py:1365 expects
+    # a dict, not a list — see BACKLOG #21). DICT format example:
+    #   mcp_servers:
+    #     inventory-mcp:
+    #       url: http://localhost:8001/mcp
+    #       transport: streamable-http
     cp "$config_path" "${config_path}.bak"
     cat >> "$config_path" << 'EOF'
 
 mcp_servers:
-  - name: inventory-mcp
+  inventory-mcp:
     url: http://localhost:8001/mcp
     transport: streamable-http
 EOF
@@ -1437,10 +1444,14 @@ main() {
     deploy_mcp_stack
     deploy_inventory_stack
 
-    # Wire inventory-mcp into the default Hermes profile + start nmap-discovery
-    # so a customer can immediately ask Hermes to discover/inventory their
-    # network without re-running register_inventory_mcp.sh by hand.
+    # Wire inventory-mcp into both the customer's default Hermes profile and
+    # the AIAMSBS it_admin specialist profile, then start nmap-discovery so a
+    # customer can immediately ask Hermes to discover/inventory their network
+    # without re-running register_inventory_mcp.sh by hand.
     register_inventory_mcp "default"
+    if [ "$INSTALL_IT_ADMIN" = true ]; then
+        register_inventory_mcp "it_admin"
+    fi
     install_inventory_discovery_skill
     start_nmap_discovery
 

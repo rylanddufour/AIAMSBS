@@ -15,12 +15,12 @@ cp "$CONFIG_PATH" "${CONFIG_PATH}.bak"
 cat >> "$CONFIG_PATH" << 'EOF'
 
 mcp_servers:
-  - name: inventory-mcp
+  inventory-mcp:
     url: http://localhost:8001/mcp
     transport: streamable-http
     auth:
       headers:
-        Authorization: Bearer hermes-local-dev
+        Authorization: Bearer ***
 
 EOF
 
