@@ -84,13 +84,22 @@ sudo systemctl start hermes-dashboard
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| Grafana | http://localhost:3000 | admin / admin123 |
-| Prometheus | http://localhost:9090 | None |
-| Loki | http://localhost:3100 | None |
-| Alloy | http://localhost:12345 | None (debug UI) |
+| **Hermes Dashboard** | `http://<host-ip>:9119` | Random basic_auth (see below) |
+| Grafana | `http://<host-ip>:3000` | `admin` / random — auto-set on first boot, change immediately |
+| Prometheus | `http://<host-ip>:9090` | None |
+| Loki | `http://<host-ip>:3100` | None |
+| Alloy | `http://<host-ip>:12345` | None (debug UI) |
+| **Inventory MCP** | `http://<host-ip>:8001/mcp` | None (streamable-http, registered to `default` + `it_admin` profiles) |
 
+### Retrieving Hermes Dashboard credentials
 
-> ⚠️ **Security Note:** The Hermes Dashboard (port 9119) has no built-in authentication. It is **highly recommended** to restrict access with a firewall.
+The dashboard password is **auto-generated** by `bootstrap.sh generate_dashboard_credentials()` (lines 678–751) and saved to `/var/log/hermes-bootstrap-credentials.log` (mode 0600). It is **not** shown in bootstrap stdout.
+
+```bash
+sudo cat /var/log/hermes-bootstrap-credentials.log
+```
+
+> **Security note:** The dashboard uses `dashboard.basic_auth.*` (basic_auth gate, not `--insecure`). The credentials are written to the log file separately so the customer can retrieve them. **Restrict access to trusted IPs only** with a firewall — see below.
 
 ### Recommended Firewall Rules
 
@@ -121,40 +130,66 @@ sudo ufw status
 - Using Tailscale for access
 - Using a VPN
 
-## Architecture (v2.0 - Slimmed)
+## Architecture (v2.1 — current)
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Host System                          │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│              ┌─────────────────────┐                    │
-│              │      Alloy          │ (Docker container) │
-│              │  (privileged mode)  │                    │
-│              └──────────┬──────────┘                    │
-│                         │                               │
-│    ┌────────────────────┼────────────────────┐         │
-│    ▼                    ▼                    ▼         │
-│ ┌──────────┐    ┌─────────────┐    ┌───────────┐       │
-│ │ cAdvisor │    │  Prometheus │    │   Loki    │       │
-│ │(embedded)│    │   (:9090)   │    │  (:3100)  │       │
-│ └──────────┘    └─────────────┘    └───────────┘       │
-│ ┌──────────┐         │                   │              │
-│ │node_exp  │         └─────────┬─────────┘              │
-│ │(embedded)│                   ▼                        │
-│ └──────────┘            ┌─────────────┐                 │
-│ ┌──────────┐            │  Grafana    │ (:3000)         │
-│ │docker    │            └─────────────┘                 │
-│ │logs      │                                         │
-│ └──────────┘                                         │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    Host System (Ubuntu 24.04)                │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────────┐                                        │
+│  │   Hermes Agent   │  (Python venv at ~/.hermes/hermes-agent)│
+│  │  ──────────────  │  • default profile (customer-facing)    │
+│  │  • SOUL.md       │  • it_admin profile (19 skills, BACKLOG │
+│  │  • 19 skills     │    #20 — Cisco, UniFi, Aruba, AD,      │
+│  │  • mcp_servers   │    DNS/DHCP, vSphere, Windows Server)   │
+│  │    (DICT format, │  • skills.write_approval: true         │
+│  │     PR #7)       │  • skills.guard_agent_created: true     │
+│  │  • skill safety  │    (PR #8, BACKLOG #22)                 │
+│  │    gates         │                                        │
+│  └────────┬─────────┘                                        │
+│           │                                                  │
+│           │ systemd: hermes-dashboard.service (basic_auth)  │
+│           ▼                                                  │
+│  ┌──────────────────┐                                        │
+│  │ Hermes Dashboard │  :9119, basic_auth (random password)   │
+│  │   (web UI)       │  creds in /var/log/hermes-bootstrap-    │
+│  │                  │  credentials.log                        │
+│  └──────────────────┘                                        │
+│                                                             │
+│  ┌──────────── Docker Compose stacks ──────────────────────┐ │
+│  │                                                        │ │
+│  │  Observability:        MCP:           Inventory:        │ │
+│  │  ┌──────────────┐      ┌────────┐     ┌──────────────┐  │ │
+│  │  │  Alloy       │      │grafana │     │ inventory-   │  │ │
+│  │  │ (privileged) │      │  -mcp  │     │     mcp      │  │ │
+│  │  │  cadvisor +  │      └────────┘     │  :8001/mcp   │  │ │
+│  │  │  node_exp    │                      └──────────────┘  │ │
+│  │  └──────┬───────┘                      ┌──────────────┐  │ │
+│  │         ▼                              │     nmap-    │  │ │
+│  │  ┌──────────────┐     ┌────────┐       │  discovery   │  │ │
+│  │  │  Prometheus  │ ──▶ │Grafana │       │  (NET_RAW +  │  │ │
+│  │  │    :9090     │     │ :3000  │       │   NET_ADMIN) │  │ │
+│  │  └──────────────┘     └────────┘       └──────────────┘  │ │
+│  │  ┌──────────────┐                                       │ │
+│  │  │    Loki      │  (systemd journal + container logs)   │ │
+│  │  │    :3100     │                                       │ │
+│  │  └──────────────┘                                       │ │
+│  │  ┌──────────────┐                                       │ │
+│  │  │  Promtail    │  (syslog receiver :514/:1514)         │ │
+│  │  └──────────────┘                                       │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**What's New in v2.0:**
-- **Alloy as container** - Replaces host-based Alloy (no systemd service needed)
-- **Embedded exporters** - cAdvisor and node_exporter run inside Alloy
-- **Fewer containers** - Removed standalone node-exporter and cAdvisor containers
-- **Unified config** - Single config.alloy file manages all collection
+**Key changes since v2.0 (see [BACKLOG.md](BACKLOG.md)):**
+
+- **Inventory stack** (BACKLOG #14) — `inventory-mcp` exposes 7 device-management tools via MCP, plus optional `nmap-discovery` for network scanning
+- **Grafana MCP** — agent can query Grafana (dashboards, datasources, alerts) via the `grafana-mcp` container
+- **IT_ADMIN profile** (BACKLOG #20) — single generalist datacenter IT admin profile replacing 4 planned specialists (16-19)
+- **Hermes basic_auth** (PR #6) — dashboard now uses `dashboard.basic_auth.*` in `~/.hermes/config.yaml` (random password per install)
+- **MCP server config DICT format** (PR #7, BACKLOG #21) — `mcp_servers` in profile config now matches Hermes CLI's expected dict shape
+- **Skill safety gates** (PR #8, BACKLOG #22) — `skills.write_approval: true` (writes staged for review) + `skills.guard_agent_created: true` (scans for malicious patterns)
 
 ## Troubleshooting
 
