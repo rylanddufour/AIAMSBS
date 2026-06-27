@@ -68,6 +68,12 @@
 |---|------|-------------|
 | D1 | Decide default agent purpose | Is `default` a coordinator (per #13), generic, customer-initiated routing, or something else? Blocks #13 + #14 sequencing and IT_ADMIN's routing logic. |
 
+## Known Bugs
+
+| # | Item | Description | Complexity |
+|---|------|-------------|-----------|
+| 21 | `mcp_servers` config format (Hermes bug) | `~/.hermes/config.yaml` uses **list format** for `mcp_servers` (e.g. `- name: inventory-mcp`) but Hermes CLI's `hermes_cli/tools_config.py:1365` unconditionally calls `.items()` on the value — expects **dict format** (`inventory-mcp: {url: ...}`). Agent invocation crashes with raw `AttributeError: 'list' object has no attribute 'items'` instead of a helpful "wrong format" message. Affects all profiles (default + IT_ADMIN + any future). Discovered 2026-06-26 during IT_ADMIN end-to-end test on VM 103. Discovered via `hermes --profile it_admin chat -q ...`. Two fix options: **(a)** change config to dict format on our side (1-line), or **(b)** patch Hermes to handle both formats + emit clear error (3-line source change, helps every Hermes user). | Low |
+
 ---
 
 ## Completed
