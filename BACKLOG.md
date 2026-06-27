@@ -77,7 +77,7 @@
 ---
 
 ## Completed
-- [x] BACKLOG #22 — Skill safety gates (agent self-modification hardening), 2026-06-27. `bootstrap.sh` `configure_skill_safety()` sets `skills.write_approval: true` (skill writes staged to `/skills pending` for review) and `skills.guard_agent_created: true` (agent-created skills scanned for exfiltration/persistence/destructive patterns). Closes the gap that `~/.hermes/profiles/*/skills/*.md` is not in `file_tools._SENSITIVE_PATH_PREFIXES` — out of the box the agent could edit its own skills.
+- [x] BACKLOG #22 — Skill safety gates (agent self-modification hardening) [RESOLVED — PR #8](https://github.com/rylanddufour/AIAMSBS/pull/8), 2026-06-27. `bootstrap.sh` `configure_skill_safety()` sets `skills.write_approval: true` (skill writes staged to `/skills pending` for review) and `skills.guard_agent_created: true` (agent-created skills scanned for exfiltration/persistence/destructive patterns). Closes the gap that `~/.hermes/profiles/*/skills/*.md` is not in `file_tools._SENSITIVE_PATH_PREFIXES` — out of the box the agent could edit its own skills.
 - [x] BACKLOG #21 — `mcp_servers` config format (Hermes bug) [RESOLVED — PR #7](https://github.com/rylanddufour/AIAMSBS/pull/7), 2026-06-27
 - [x] Config-as-code deployment (v2.1)
 - [x] Docker Compose stack definition
