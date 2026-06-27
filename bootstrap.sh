@@ -452,6 +452,45 @@ EOF
 }
 
 # ============================================
+# Configure skill safety gates
+# ============================================
+# Hardens AIAMSBS against agent self-modification of skill files. The
+# ~/.hermes/profiles/*/skills/*.md paths are NOT in file_tools' sensitive
+# path list (only /etc/, /boot/, /usr/lib/systemd/ are protected), so the
+# agent can edit its own skills out of the box. Two gates close this gap:
+#
+#   skills.write_approval:        Stage agent skill writes to /skills pending
+#                                 for human review instead of auto-applying.
+#   skills.guard_agent_created:   Security-scan agent-created skills for
+#                                 exfiltration, persistence, and destructive
+#                                 patterns (tools/skills_guard.py scanner).
+#
+# Both flags are off by default in upstream Hermes. AIAMSBS turns them on as
+# a baseline so a misbehaving subagent or a prompt-injected agent cannot
+# silently rewrite its own instructions. Surfaced 2026-06-27 by review of
+# tools/file_tools.py + tools/skills_guard.py.
+
+configure_skill_safety() {
+    local hermes_bin
+    hermes_bin="$HERMES_HOME/hermes-agent/venv/bin/hermes"
+
+    if [ ! -x "$hermes_bin" ]; then
+        log_warn "hermes binary not found at $hermes_bin; skipping skill safety config"
+        return 0
+    fi
+
+    log_info "Hardening agent skill self-modification gates..."
+
+    "$hermes_bin" config set skills.write_approval true > /dev/null 2>&1 && \
+        log_success "skills.write_approval=true (skill writes staged for review)" || \
+        log_warn "Could not set skills.write_approval"
+
+    "$hermes_bin" config set skills.guard_agent_created true > /dev/null 2>&1 && \
+        log_success "skills.guard_agent_created=true (agent-created skills scanned)" || \
+        log_warn "Could not set skills.guard_agent_created"
+}
+
+# ============================================
 # Install default Profile SOUL.md
 # ============================================
 # The default Profile's persona lives at $INFRA_DIR/profiles/default/SOUL.md
@@ -1421,6 +1460,7 @@ main() {
     export INFRA_DIR
 
     configure_hermes_api
+    configure_skill_safety
     install_default_profile_soul
     if [ "$INSTALL_IT_ADMIN" = true ]; then
         install_it_admin_profile_soul
