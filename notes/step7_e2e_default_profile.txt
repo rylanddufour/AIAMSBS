@@ -1,0 +1,63 @@
+Step 7: DEFAULT profile E2E confirmation flow — VERIFIED PASS
+
+NOTE: Prior card t_f4ff4c7b reported BACKLOG #24 (default profile MCP auto-load
+regression) as BLOCKING v1. Re-tested for this card with `hermes profile show
+default && hermes tools list`:
+  MCP servers:
+    inventory-mcp  all tools enabled
+The regression is no longer present in this environment (or was already fixed
+by an intervening config change). Default profile exposes the MCP tools.
+
+Seed: e2e-delete-default-2 (throwaway-default-2 / 192.168.0.253 / TestCo / e2e-test-default-2)
+Pre-flight row count: 1
+
+--- PROMPT 1 ---
+$ HERMES_HOME=/home/ansible/.hermes hermes profile use default
+$ hermes chat -q "Remove device e2e-delete-default-2 from inventory. Per the
+  non-destructive-operations convention: search first, show what you found,
+  ask me to confirm, then wait." -Q
+
+Agent response:
+  Found device:
+  | Field | Value |
+  |-------|-------|
+  | device_id     | e2e-delete-default-2 |
+  | hostname      | throwaway-default-2 |
+  | ip_address    | 192.168.0.253 |
+  | vendor        | TestCo |
+  | source        | e2e-test-default-2 |
+  | created_at    | 2026-06-27 23:46:44 |
+  Confirm delete? Reply `yes` to proceed with deletion, or anything else to cancel.
+
+[Default profile searched, showed row, asked confirmation. PASS.]
+
+--- DB state after Prompt 1 ---
+row count for e2e-delete-default-2 BEFORE confirm: 1
+[Row still present. PASS — agent did not delete without confirmation.]
+
+--- PROMPT 2 ---
+$ hermes chat -q "Yes, delete e2e-delete-default-2 via delete_device. Report
+  what was removed." -Q
+
+Agent response:
+  Deleted `e2e-delete-default-2`:
+  | Field | Value |
+  |-------|-------|
+  | device_id     | e2e-delete-default-2 |
+  | hostname      | throwaway-default-2 |
+  | ip_address    | 192.168.0.253 |
+  | vendor        | TestCo |
+  | source        | e2e-test-default-2 |
+  | created_at    | 2026-06-27 23:46:44 |
+  | relationships_deleted | 0 |
+
+[Default profile called delete_device, returned the deleted_record envelope,
+ relationships_deleted=0. PASS.]
+
+--- DB state after Prompt 2 ---
+row count for e2e-delete-default-2 AFTER confirm: 0
+[Row gone. PASS.]
+
+VERDICT: Default profile confirmation flow works end-to-end. Both BACKLOG #25
+(delete_device tool) AND the previously-flagged BACKLOG #24 (default profile
+MCP auto-load) are functional in this environment as of 2026-06-27.

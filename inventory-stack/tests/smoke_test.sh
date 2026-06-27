@@ -252,10 +252,10 @@ fi
 pass "initialize (session=$SID)"
 
 # ---------------------------------------------------------------------------
-# Test each of the 7 tools
+# Test each of the 8 tools
 # ---------------------------------------------------------------------------
 
-section "MCP tools (7)"
+section "MCP tools (8)"
 
 # 1. get_device — Linux host
 PAYLOAD=$(mcp_call "$SID" "get_device" "{\"device_id\":\"$LINUX_ID\"}")
@@ -314,6 +314,22 @@ mcp_call "$SID" "update_device" \
 PAYLOAD=$(mcp_call "$SID" "get_device_relationships" "{\"device_id\":\"$SWITCH_ID\"}")
 assert_json "get_device_relationships($SWITCH_ID) returns 2 entries" "$PAYLOAD" \
     "(isinstance(d, list)) and len(d)==2 and all({'source_device_id','target_device_id','relationship_type'}.issubset(set(x.keys())) for x in d)"
+
+# 8. delete_device — seed a throwaway device, then delete it. Verify the
+# returned envelope and confirm the row is actually gone afterwards.
+DELETE_ID="smoke-delete-$$"
+DELETE_HOST="smoke-delete-host-$$"
+mcp_call "$SID" "create_device" \
+    "{\"device\":{\"device_id\":\"$DELETE_ID\",\"hostname\":\"$DELETE_HOST\",\"ip_address\":\"192.168.99.$$\",\"device_type\":\"linux_host\",\"vendor\":\"SmokeTestCo\",\"description\":\"smoke-test throwaway\"}}" >/dev/null
+
+PAYLOAD=$(mcp_call "$SID" "delete_device" "{\"device_id\":\"$DELETE_ID\"}")
+assert_json "delete_device returns success envelope with deleted_record" "$PAYLOAD" \
+    "d.get('status')=='deleted' and d.get('device_id')=='$DELETE_ID' and int(d.get('rows', 0))==1 and isinstance(d.get('deleted_record'), dict) and d['deleted_record'].get('device_id')=='$DELETE_ID' and d['deleted_record'].get('hostname')=='$DELETE_HOST'"
+
+# Confirm the row is really gone by re-reading via get_device (should error).
+PAYLOAD=$(mcp_call "$SID" "get_device" "{\"device_id\":\"$DELETE_ID\"}")
+assert_json "get_device after delete_device returns not found" "$PAYLOAD" \
+    "d.get('error')=='not found' and d.get('device_id')=='$DELETE_ID'"
 
 # ---------------------------------------------------------------------------
 # nmap-discovery wrapper

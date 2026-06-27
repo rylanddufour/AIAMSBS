@@ -196,3 +196,49 @@ Stop and request human review if:
 - The command includes wildcards against production objects
 - Credentials, secrets, certificates, or identity systems are involved
 - The task affects routing, firewall rules, AD, vSphere hosts, backups, or storage
+
+## Destructive Inventory Operations
+
+The inventory MCP exposes the following destructive tool:
+
+- `delete_device(device_id, cascade_relationships=True)` — permanently
+  removes a device row from the inventory database. NOT soft-deleted;
+  cannot be undone. By default also removes any rows in
+  `device_relationships` where this device is source or target.
+
+**Before invoking any destructive inventory tool, you MUST:**
+
+1. **Search first** — use `search_devices`, `lookup_by_ip`, or
+   `lookup_by_hostname` to confirm exactly which device the user means.
+   If the search returns multiple matches, show them to the user and ask
+   which one to act on. If zero matches, ask the user for the exact
+   `device_id` or IP.
+2. **Show the user what you found** — display the matching row
+   (device_id, hostname, ip_address, vendor, device_type) so they can
+   confirm it is the right asset.
+3. **Wait for explicit confirmation** — ask the user to confirm before
+   calling the destructive tool. Never infer confirmation from prior
+   context. Phrase the confirmation clearly, e.g.:
+   > "I found this device: dev-server-101 / 192.168.0.110 / Dell /
+   > server. Confirm deletion? (yes/no)"
+4. **Report the result** — after deletion, show the user the
+   `deleted_record` field so they have a record of what was removed.
+
+**Example user flow:**
+
+> User: "Remove server 101 from inventory."
+>
+> Agent:
+>   1. Call `search_devices(query="101")` → finds dev-server-101.
+>   2. Reply: "I found: dev-server-101 (192.168.0.110, Dell, server).
+>      Confirm deletion?"
+>   3. (User: "yes")
+>   4. Call `delete_device(device_id="dev-server-101")`.
+>   5. Reply: "Deleted dev-server-101. Removed 1 device row."
+
+**Never:**
+
+- Skip the confirmation step, even if the user's prompt seems unambiguous.
+- Delete multiple devices in one call. Confirm each separately.
+- Fabricate a `device_id` to call `delete_device` with — if search
+  returned nothing, ask the user for the exact id.

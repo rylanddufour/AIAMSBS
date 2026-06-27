@@ -1,0 +1,27 @@
+
+=== preflight ===
+  [PASS] seed (DB reseeded via seed.py)
+  [PASS] container inventory-mcp is up
+
+=== MCP session ===
+  [PASS] initialize (session=368feb40db8e4cbf93385310c9833590)
+
+=== MCP tools (8) ===
+  [PASS] get_device(dev-linux-01) returns seeded linux host
+  [PASS] lookup_by_ip(192.168.10.1) returns seeded switch
+  [PASS] lookup_by_hostname(ap-floor1-01) returns seeded AP
+  [PASS] search_devices(query='linux') returns linux host only
+  [PASS] create_device echoes device_id
+  [PASS] update_device returns success envelope
+  [PASS] get_device confirms update_device wrote new hostname
+  [PASS] get_device_relationships(dev-switch-01) returns 2 entries
+  [PASS] delete_device returns success envelope with deleted_record
+  [PASS] get_device after delete_device returns not found
+
+=== nmap-discovery wrapper (port 8002) ===
+  [PASS] nmap-discovery TCP connect to 127.0.0.1:8002 (no healthcheck endpoint exposed)
+
+=== summary ===
+  passed: 14
+  failed: 0
+OK: all smoke checks passed

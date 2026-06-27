@@ -1,0 +1,41 @@
+=== Step 3: tools/list verification ===
+Timestamp: 2026-06-27T23:36:28+00:00
+
+--- initialize ---
+HTTP/1.1 200 OK
+date: Sat, 27 Jun 2026 23:36:27 GMT
+server: uvicorn
+cache-control: no-cache, no-transform
+connection: keep-alive
+content-type: text/event-stream
+mcp-session-id: aa85bd49505d40dd866ecdb6fd659097
+x-accel-buffering: no
+Transfer-Encoding: chunked
+
+
+Session: aa85bd49505d40dd866ecdb6fd659097
+
+--- notifications/initialized ---
+HTTP/1.1 202 Accepted
+date: Sat, 27 Jun 2026 23:36:27 GMT
+server: uvicorn
+content-type: application/json
+mcp-session-id: aa85bd49505d40dd866ecdb6fd659097
+
+--- tools/list (raw SSE response) ---
+event: message
+data: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"get_device","description":"Look up a single device by its device_id.","inputSchema":{"properties":{"device_id":{"title":"Device Id","type":"string"}},"required":["device_id"],"title":"get_deviceArguments","type":"object"}},{"name":"lookup_by_ip","description":"Look up a device by its IP address.","inputSchema":{"properties":{"ip":{"title":"Ip","type":"string"}},"required":["ip"],"title":"lookup_by_ipArguments","type":"object"}},{"name":"lookup_by_hostname","description":"Look up a device by its hostname.","inputSchema":{"properties":{"hostname":{"title":"Hostname","type":"string"}},"required":["hostname"],"title":"lookup_by_hostnameArguments","type":"object"}},{"name":"search_devices","description":"Search devices by free-text query with optional filters.\n\n    Args:\n        query: substring matched against device_id, hostname, ip_address,\n               vendor, description, and tags.\n        device_type: if non-empty, restrict to this exact device_type.\n        tag: if non-empty, restrict to devices whose tags column contains it.\n        limit: maximum number of rows to return.\n    ","inputSchema":{"properties":{"query":{"title":"Query","type":"string"},"device_type":{"default":"","title":"Device Type","type":"string"},"tag":{"default":"","title":"Tag","type":"string"},"limit":{"default":20,"title":"Limit","type":"integer"}},"required":["query"],"title":"search_devicesArguments","type":"object"}},{"name":"create_device","description":"Create a new device record. `device_id` is required.","inputSchema":{"properties":{"device":{"additionalProperties":true,"title":"Device","type":"object"}},"required":["device"],"title":"create_deviceArguments","type":"object"}},{"name":"update_device","description":"Update fields on an existing device. updated_at is set automatically.","inputSchema":{"properties":{"device_id":{"title":"Device Id","type":"string"},"fields":{"additionalProperties":true,"title":"Fields","type":"object"}},"required":["device_id","fields"],"title":"update_deviceArguments","type":"object"}},{"name":"delete_device","description":"Delete a device record from the inventory by device_id.\n\n    DESTRUCTIVE — the row is permanently removed (not soft-deleted).\n    Callers should always confirm with the user before invoking this.\n\n    Args:\n        device_id: required. The device_id of the row to delete.\n        cascade_relationships: if True (default), also delete any rows in\n            device_relationships where this device is source or target.\n\n    Returns the deleted row contents plus a status envelope so callers\n    can show the user exactly what was removed.\n    ","inputSchema":{"properties":{"device_id":{"title":"Device Id","type":"string"},"cascade_relationships":{"default":true,"title":"Cascade Relationships","type":"boolean"}},"required":["device_id"],"title":"delete_deviceArguments","type":"object"}},{"name":"get_device_relationships","description":"Return all relationships involving this device (as source or target).","inputSchema":{"properties":{"device_id":{"title":"Device Id","type":"string"}},"required":["device_id"],"title":"get_device_relationshipsArguments","type":"object"}}]}}
+
+
+--- summary ---
+Total tools: 8
+  - get_device: Look up a single device by its device_id.
+  - lookup_by_ip: Look up a device by its IP address.
+  - lookup_by_hostname: Look up a device by its hostname.
+  - search_devices: Search devices by free-text query with optional filters.
+  - create_device: Create a new device record. `device_id` is required.
+  - update_device: Update fields on an existing device. updated_at is set automatically.
+  - delete_device: Delete a device record from the inventory by device_id.
+  - get_device_relationships: Return all relationships involving this device (as source or target).
+
+delete_device present: True

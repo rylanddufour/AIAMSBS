@@ -162,6 +162,50 @@ def update_device(device_id: str, fields: dict) -> dict:
 
 
 @mcp.tool()
+def delete_device(device_id: str, cascade_relationships: bool = True) -> dict:
+    """Delete a device record from the inventory by device_id.
+
+    DESTRUCTIVE — the row is permanently removed (not soft-deleted).
+    Callers should always confirm with the user before invoking this.
+
+    Args:
+        device_id: required. The device_id of the row to delete.
+        cascade_relationships: if True (default), also delete any rows in
+            device_relationships where this device is source or target.
+
+    Returns the deleted row contents plus a status envelope so callers
+    can show the user exactly what was removed.
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM devices WHERE device_id=?", (device_id,))
+    row = cur.fetchone()
+    if row is None:
+        conn.close()
+        return {"error": "not found", "device_id": device_id}
+    deleted = dict(row)
+    rels_deleted = 0
+    if cascade_relationships:
+        cur.execute(
+            "DELETE FROM device_relationships "
+            "WHERE source_device_id=? OR target_device_id=?",
+            (device_id, device_id),
+        )
+        rels_deleted = cur.rowcount
+    cur.execute("DELETE FROM devices WHERE device_id=?", (device_id,))
+    conn.commit()
+    rows_affected = cur.rowcount
+    conn.close()
+    return {
+        "status": "deleted",
+        "device_id": device_id,
+        "rows": rows_affected,
+        "relationships_deleted": rels_deleted,
+        "deleted_record": deleted,
+    }
+
+
+@mcp.tool()
 def get_device_relationships(device_id: str) -> list:
     """Return all relationships involving this device (as source or target)."""
     conn = _connect()
