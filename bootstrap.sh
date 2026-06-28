@@ -1234,6 +1234,104 @@ PYEOF
     fi
 }
 
+# register_grafana_mcp [profile_name]
+# Registers the grafana-mcp MCP server in a Hermes profile's config.yaml.
+# Grafana MCP exposes 64 tools (dashboard CRUD, datasource queries, alerting,
+# user/team/org admin) over streamable-http at http://localhost:8000/mcp.
+# Registered for both default and it_admin profiles by main() so a customer
+# can ask either profile about Grafana state.
+#
+# Same Hermes profile path rules as register_inventory_mcp:
+#   - default  → ~/.hermes/config.yaml
+#   - it_admin → ~/.hermes/profiles/it_admin/config.yaml
+# Idempotent — skips if already registered. Does NOT migrate stale entries
+# (no known prior bug for grafana-mcp like BACKLOG #24's default-profile issue).
+register_grafana_mcp() {
+    local profile="${1:-default}"
+    local config_path
+
+    if [ "$profile" = "default" ]; then
+        config_path="$HOME/.hermes/config.yaml"
+    elif [ -d "$HOME/.hermes/profiles" ]; then
+        config_path="$HOME/.hermes/profiles/${profile}/config.yaml"
+    elif [ -f "$HOME/.hermes/config.yaml" ] || [ -d "$HOME/.hermes" ]; then
+        config_path="$HOME/.hermes/config.yaml"
+        profile="default"
+    else
+        log_error "No Hermes config found at ~/.hermes/ — run bootstrap.sh first?"
+        return 1
+    fi
+
+    log_info "Registering grafana-mcp in profile '$profile' (config: $config_path)..."
+
+    if [ ! -d "$(dirname "$config_path")" ]; then
+        log_warn "Profile dir not found at $(dirname "$config_path") — creating"
+        mkdir -p "$(dirname "$config_path")"
+    fi
+
+    if [ ! -f "$config_path" ]; then
+        log_warn "Profile config not found at $config_path — creating empty config"
+        touch "$config_path"
+        chmod 600 "$config_path"
+    fi
+
+    if grep -q '^  grafana-mcp:' "$config_path" 2>/dev/null; then
+        log_success "grafana-mcp already registered in profile '$profile'"
+        return 0
+    fi
+
+    # Append in DICT format (same as inventory-mcp; Hermes CLI tools_config.py:1365
+    # expects a dict). If the file already has an mcp_servers: block, append our
+    # entry to the END of that block (after any existing entries like inventory-mcp).
+    if grep -q '^mcp_servers:' "$config_path" 2>/dev/null; then
+        cp "$config_path" "${config_path}.bak"
+        python3 - "$config_path" << 'PYEOF'
+import sys
+path = sys.argv[1]
+with open(path) as f:
+    lines = f.readlines()
+
+# Find mcp_servers: line, then find end of its block (first non-2-space-indented
+# line after it that's not blank), insert grafana-mcp entry there.
+insert_idx = None
+for i, line in enumerate(lines):
+    if line.rstrip() == 'mcp_servers:':
+        # End of block = first subsequent line that's blank-or-non-indented
+        for j in range(i + 1, len(lines)):
+            stripped = lines[j].rstrip()
+            if stripped == '' or not lines[j].startswith('  '):
+                insert_idx = j
+                break
+        if insert_idx is None:
+            insert_idx = len(lines)
+        break
+
+if insert_idx is None:
+    # mcp_servers: not found despite the grep — shouldn't happen, but append safely
+    with open(path, 'a') as f:
+        f.write('\nmcp_servers:\n  grafana-mcp:\n    url: http://localhost:8000/mcp\n    transport: streamable-http\n')
+else:
+    new_entry = ['  grafana-mcp:\n', '    url: http://localhost:8000/mcp\n', '    transport: streamable-http\n']
+    out = lines[:insert_idx] + new_entry + lines[insert_idx:]
+    with open(path, 'w') as f:
+        f.writelines(out)
+PYEOF
+        chmod 600 "$config_path"
+        log_success "grafana-mcp registered in profile '$profile' (merged with existing mcp_servers block)"
+    else
+        cp "$config_path" "${config_path}.bak"
+        cat >> "$config_path" << 'EOF'
+
+mcp_servers:
+  grafana-mcp:
+    url: http://localhost:8000/mcp
+    transport: streamable-http
+EOF
+        chmod 600 "$config_path"
+        log_success "grafana-mcp registered in profile '$profile'"
+    fi
+}
+
 # install_inventory_discovery_skill
 # Copies the inventory-discovery skill (shipped in inventory-stack/) into
 # ~/.hermes/skills/inventory-discovery so Hermes can route "inventory X"
@@ -1610,6 +1708,13 @@ main() {
     # without re-running register_inventory_mcp.sh by hand.
     register_inventory_mcp "default"
     register_inventory_mcp "it_admin"
+    # Grafana MCP awareness for it_admin — registers grafana-mcp alongside
+    # inventory-mcp in it_admin's profile config so both MCP server names
+    # exist (are visible to the LLM in the prompt). Default profile gets
+    # grafana-mcp too for symmetry with the inventory pattern; remove the
+    # default line if you only want it_admin aware.
+    register_grafana_mcp "default"
+    register_grafana_mcp "it_admin"
     install_inventory_discovery_skill
     start_nmap_discovery
 
