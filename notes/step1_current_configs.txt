@@ -1,0 +1,52 @@
+=== default config (current) ===
+
+mcp_servers:
+  inventory-mcp:
+    url: http://localhost:8001/mcp
+    transport: streamable-http
+
+=== it_admin config (current) ===
+# IT_ADMIN profile config
+# Inherited from default profile (model.default, model.provider, model.base_url)
+# on 2026-06-27T12:27:28Z
+model:
+  default: minimax/minimax-m2.5
+  provider: openrouter
+  base_url: https://openrouter.ai/api/v1
+
+mcp_servers:
+  inventory-mcp:
+    url: http://localhost:8001/mcp
+    transport: streamable-http
+
+=== global config top section ===
+model:
+  default: minimax/minimax-m2.5
+  provider: openrouter
+  base_url: https://openrouter.ai/api/v1
+terminal:
+  backend: local
+  cwd: .
+  timeout: 180
+  home_mode: auto
+  docker_mount_cwd_to_workspace: false
+  lifetime_seconds: 300
+  container_cpu: 1
+  container_memory: 5120
+  container_disk: 51200
+  container_persistent: true
+browser:
+  inactivity_timeout: 120
+tool_loop_guardrails:
+  warnings_enabled: true
+  hard_stop_enabled: false
+  warn_after:
+    exact_failure: 2
+    same_tool_failure: 3
+    idempotent_no_progress: 2
+  hard_stop_after:
+    exact_failure: 5
+    same_tool_failure: 8
+    idempotent_no_progress: 5
+compression:
+  enabled: true

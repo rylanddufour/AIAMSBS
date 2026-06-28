@@ -1057,25 +1057,38 @@ deploy_inventory_stack() {
 # (the AIAMSBS specialist IT admin profile). Both profiles get wired in so the
 # customer can ask either one about inventory.
 #
-# Hermes config layout auto-detection:
-#   - Multi-profile (workstation dev): ~/.hermes/profiles/<name>/config.yaml
-#   - Single-profile (AIAMSBS customer VM): ~/.hermes/config.yaml
-# This function writes to whichever location exists, preferring multi-profile
-# when the profiles/ dir is present (the dev path) and falling back to
-# ~/.hermes/config.yaml for the single-profile customer deploy.
+# Hermes profile paths (verified 2026-06-27 via `hermes profile show <name>`):
+#   - default  → ~/.hermes/config.yaml            (the GLOBAL config IS the
+#                 default profile's config; ~/.hermes/profiles/default/ is a
+#                 dead location Hermes does not read — see BACKLOG #24)
+#   - it_admin → ~/.hermes/profiles/it_admin/config.yaml
+#                 (named profiles live under ~/.hermes/profiles/<name>/)
 #
-# Idempotent — skips if already registered.
+# For the "default" profile we therefore always write to ~/.hermes/config.yaml,
+# regardless of whether the workstation has a ~/.hermes/profiles/ dir. Named
+# profiles still use the multi-profile layout when the dir exists, falling back
+# to the global config otherwise.
+#
+# Idempotent — skips if already registered. Also migrates stale inventory-mcp
+# blocks accidentally written to ~/.hermes/profiles/default/config.yaml by
+# older bootstrap.sh versions (pre-BACKLOG #24) into the global config.
 register_inventory_mcp() {
     local profile="${1:-default}"
     local config_path
+    local stale_default_config="$HOME/.hermes/profiles/default/config.yaml"
 
-    # Multi-profile layout: ~/.hermes/profiles/<name>/config.yaml
-    if [ -d "$HOME/.hermes/profiles" ]; then
-        config_path="$HOME/.hermes/profiles/${profile}/config.yaml"
-    # Single-profile layout (AIAMSBS customer VM): ~/.hermes/config.yaml
-    elif [ -f "$HOME/.hermes/config.yaml" ] || [ -d "$HOME/.hermes" ]; then
+    if [ "$profile" = "default" ]; then
+        # The default profile's config IS the global config. Always write here
+        # regardless of layout — writing to ~/.hermes/profiles/default/config.yaml
+        # is silently ignored by Hermes (BACKLOG #24).
         config_path="$HOME/.hermes/config.yaml"
-        profile="default"  # ignore profile arg in single-profile mode
+    elif [ -d "$HOME/.hermes/profiles" ]; then
+        # Multi-profile layout for a named profile
+        config_path="$HOME/.hermes/profiles/${profile}/config.yaml"
+    elif [ -f "$HOME/.hermes/config.yaml" ] || [ -d "$HOME/.hermes" ]; then
+        # Single-profile layout fallback
+        config_path="$HOME/.hermes/config.yaml"
+        profile="default"
     else
         log_error "No Hermes config found at ~/.hermes/ — run bootstrap.sh first?"
         return 1
@@ -1097,26 +1110,52 @@ register_inventory_mcp() {
     # Idempotent: skip if already registered (DICT format marker)
     if grep -q '^  inventory-mcp:' "$config_path" 2>/dev/null; then
         log_success "inventory-mcp already registered in profile '$profile'"
-        return 0
-    fi
-
-    # Backup + append in DICT format (Hermes CLI's tools_config.py:1365 expects
-    # a dict, not a list — see BACKLOG #21). DICT format example:
-    #   mcp_servers:
-    #     inventory-mcp:
-    #       url: http://localhost:8001/mcp
-    #       transport: streamable-http
-    cp "$config_path" "${config_path}.bak"
-    cat >> "$config_path" << 'EOF'
+    else
+        # Backup + append in DICT format (Hermes CLI's tools_config.py:1365 expects
+        # a dict, not a list — see BACKLOG #21). DICT format example:
+        #   mcp_servers:
+        #     inventory-mcp:
+        #       url: http://localhost:8001/mcp
+        #       transport: streamable-http
+        cp "$config_path" "${config_path}.bak"
+        cat >> "$config_path" << 'EOF'
 
 mcp_servers:
   inventory-mcp:
     url: http://localhost:8001/mcp
     transport: streamable-http
 EOF
+        chmod 600 "$config_path"
+        log_success "inventory-mcp registered in profile '$profile'"
+    fi
 
-    chmod 600 "$config_path"
-    log_success "inventory-mcp registered in profile '$profile'"
+    # Migration: if a stale inventory-mcp block was written to the dead
+    # ~/.hermes/profiles/default/config.yaml path by an older bootstrap.sh,
+    # strip it now so the source of truth is unambiguous.
+    if [ "$profile" = "default" ] && [ -f "$stale_default_config" ]; then
+        if grep -q '^  inventory-mcp:' "$stale_default_config" 2>/dev/null; then
+            cp "$stale_default_config" "${stale_default_config}.bak"
+            # Remove the trailing mcp_servers: inventory-mcp: ... block.
+            # Use python for a clean YAML-key removal (sed would be fragile with
+            # the 2-space indent + nested keys).
+            python3 - "$stale_default_config" << 'PYEOF'
+import sys, re
+path = sys.argv[1]
+with open(path) as f:
+    content = f.read()
+# Strip the mcp_servers: inventory-mcp: ... block (with leading blank line)
+pattern = re.compile(
+    r'\n*mcp_servers:\n  inventory-mcp:\n    url: http://localhost:8001/mcp\n    transport: streamable-http\n*$',
+    re.MULTILINE
+)
+new_content = pattern.sub('\n', content).rstrip() + '\n'
+with open(path, 'w') as f:
+    f.write(new_content)
+PYEOF
+            chmod 600 "$stale_default_config"
+            log_success "Migrated stale inventory-mcp from $stale_default_config to $config_path (BACKLOG #24)"
+        fi
+    fi
 }
 
 # install_inventory_discovery_skill

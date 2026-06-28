@@ -1,0 +1,30 @@
+STEP 3: Test hypothesis A (add model block to default profile)
+
+=== BEFORE FIX (Step 2 reproduce, default profile) ===
+NO MCP SERVERS SECTION FOR DEFAULT PROFILE
+
+=== ACTION TAKEN ===
+Added `model:` block to ~/.hermes/profiles/default/config.yaml (mirroring global config):
+    model:
+      default: minimax/minimax-m2.5
+      provider: openrouter
+      base_url: https://openrouter.ai/api/v1
+
+    mcp_servers:
+      inventory-mcp:
+        url: http://localhost:8001/mcp
+        transport: streamable-http
+
+Backup saved at ~/.hermes/profiles/default/config.yaml.bak2 on VM.
+
+=== AFTER FIX (default profile, with model block) ===
+hermes tools list output (24 lines total, no MCP servers section):
+- Built-in toolsets (cli) - 23 lines listed
+- No "MCP servers:" section anywhere
+- Output truncated at "computer_use" line; ends without MCP servers
+
+=== VERDICT ===
+Hypothesis A FAILED: adding `model:` block to default profile does NOT enable MCP servers.
+The bug is not "missing model block causes profile to be skipped".
+
+Next: try Hypothesis B — investigate loader behavior, profile reset, and config-merge logic.

@@ -1,0 +1,6 @@
+=== DEFAULT PROFILE (bug) ===
+NO MCP SERVERS SECTION FOR DEFAULT PROFILE
+
+=== IT_ADMIN PROFILE (works) ===
+MCP servers:
+  inventory-mcp  all tools enabled

@@ -1,0 +1,3 @@
+--- IT_ADMIN PROFILE ---
+MCP servers:
+  inventory-mcp  all tools enabled
