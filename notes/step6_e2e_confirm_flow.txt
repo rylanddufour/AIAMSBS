@@ -1,0 +1,58 @@
+Step 6: IT_ADMIN E2E confirmation flow — VERIFIED PASS
+
+Seed: e2e-delete-test (throwaway / 192.168.0.251 / TestCo / e2e-test)
+Pre-flight row count: 1
+
+--- PROMPT 1 (initial: "remove device, follow confirmation flow") ---
+$ hermes chat -q "Remove device e2e-delete-test from the inventory. Follow the
+  non-destructive-operations skill: search first to confirm the device exists,
+  show me what you found, and ask me to confirm before calling delete_device.
+  Wait for my explicit confirmation." -Q
+
+Agent response:
+  Found the device. Here's what will be deleted:
+  | Field | Value |
+  |-------|-------|
+  | device_id     | e2e-delete-test |
+  | hostname      | throwaway |
+  | ip_address    | 192.168.0.251 |
+  | vendor        | TestCo |
+  | source        | e2e-test |
+  | created_at    | 2026-06-27 23:40:39 |
+  This will permanently remove the device record and any associated
+  relationships from the inventory.
+  Do you want me to proceed with deleting device `e2e-delete-test`?
+
+[Agent searched first, showed the row, ASKED FOR CONFIRMATION — did NOT call
+ delete_device yet. PASS.]
+
+--- DB state after Prompt 1 (proof of non-destructive behavior) ---
+row count for e2e-delete-test BEFORE confirm: 1
+[Row still present. PASS.]
+
+--- PROMPT 2 (confirmation: "yes, delete it") ---
+$ hermes chat -q "Yes, please delete e2e-delete-test from the inventory using
+  delete_device. Show me what was removed." -Q
+
+Agent response:
+  Deleted device:
+  | Field | Value |
+  |-------|-------|
+  | device_id     | e2e-delete-test |
+  | hostname      | throwaway |
+  | ip_address    | 192.168.0.251 |
+  | vendor        | TestCo |
+  | source        | e2e-test |
+  | created_at    | 2026-06-27 23:40:39 |
+  | relationships_deleted | 0 |
+  The device has been permanently removed from the inventory.
+
+[Agent called delete_device, returned the deleted_record envelope,
+ relationships_deleted=0 (no FK rows). PASS.]
+
+--- DB state after Prompt 2 ---
+row count for e2e-delete-test AFTER confirm: 0
+[Row gone. PASS.]
+
+VERDICT: IT_ADMIN confirmation flow follows the non-destructive-operations
+skill end-to-end. Search → show → ask → confirm → delete. PASS.
