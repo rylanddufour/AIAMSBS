@@ -1040,13 +1040,11 @@ install_backup_scripts() {
 #
 # Must run AFTER install_backup_scripts (which installs the script itself).
 
-install_dashboard_backup_cron() {
-    if [ "$(id -u)" -ne 0 ]; then
-        log_warn "Not running as root; cannot install /etc/cron.d/ file"
-        log_warn "Re-run bootstrap.sh with sudo to install the backup cron"
-        return 0
-    fi
+# Uses sudo because bootstrap runs as the install user (not root); /etc/cron.d/
+# is root-owned and the existing pattern for root-path ops in this script is
+# `sudo tee` + `sudo chmod`. See also install_hermes_dashboard_service().
 
+install_dashboard_backup_cron() {
     local script_path="$HERMES_HOME/scripts/backup-dashboards.sh"
     if [ ! -x "$script_path" ]; then
         log_warn "backup-dashboards.sh not found at $script_path; skipping cron install"
@@ -1071,14 +1069,15 @@ HOME=$HERMES_HOME
 EOF
 )
 
-    if [ -f "$cron_file" ] && [ "$(cat "$cron_file" 2>/dev/null)" = "$desired" ]; then
+    if [ -f "$cron_file" ] && [ "$(sudo cat "$cron_file" 2>/dev/null)" = "$desired" ]; then
         log_info "Cron already installed at $cron_file; skipping"
         return 0
     fi
 
     log_info "Installing $cron_file..."
-    printf '%s\n' "$desired" > "$cron_file"
-    chmod 0644 "$cron_file"
+    printf '%s\n' "$desired" | sudo tee "$cron_file" > /dev/null
+    sudo chmod 0644 "$cron_file"
+    sudo chown root:root "$cron_file"
     log_success "Installed $cron_file (daily 01:00 as $HERMES_USER)"
 }
 
