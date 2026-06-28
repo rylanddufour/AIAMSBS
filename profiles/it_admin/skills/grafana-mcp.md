@@ -8,8 +8,7 @@ datacenter-administration work — health checks, alert triage, dashboard
 inspection, log/error analysis, and incident response.
 
 The MCP server is already registered in this profile's
-`~/.hermes/profiles/it_admin/config.yaml` by `bootstrap.sh` (BACKLOG #7 +
-#21). This skill is what makes the agent *aware* of the tools and follow
+`~/.hermes/profiles/it_admin/config.yaml` This skill is what makes the agent *aware* of the tools and follow
 safe workflows when using them.
 
 ## Non-Destructive Policy
@@ -183,6 +182,5 @@ by purpose:
 
 - MCP server: `grafana-mcp` (container `grafana-mcp`, port 8000)
 - Source: `mcp/grafana/` (grafana/mcp-grafana Docker image)
-- Bootstrap step: `register_grafana_mcp` in `bootstrap.sh` (BACKLOG #21)
 - All 64 tools: run `mcporter call list_tools --http-url
   http://localhost:8000/mcp --allow-http`
