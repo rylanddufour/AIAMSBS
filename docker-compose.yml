@@ -91,7 +91,24 @@ services:
       - monitoring
     restart: unless-stopped
 
-  
+  # Blackbox Exporter — HTTP/TCP probes for service health
+  # network_mode: host so probes can hit localhost endpoints
+  # (Grafana, Loki, Prometheus, Alloy, Hermes Dashboard, MCP servers, Promtail syslog)
+  blackbox_exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox_exporter
+    network_mode: host
+    ports:
+      - "0.0.0.0:9115:9115"
+    volumes:
+      - ./config/blackbox.yml:/etc/blackbox_exporter/blackbox.yml:ro
+    # Override the image's default --config.file=/etc/blackbox_exporter/config.yml
+    # so it reads our project-named blackbox.yml.
+    command:
+      - '--config.file=/etc/blackbox_exporter/blackbox.yml'
+    restart: unless-stopped
+
+
 
 networks:
   monitoring:

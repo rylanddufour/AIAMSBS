@@ -1,0 +1,52 @@
+# Blackbox Exporter configuration for AIAMSBS
+# Probes hit localhost endpoints on the VM host.
+# All endpoints live on the VM that runs this compose stack.
+#
+# Modules:
+#   http_2xx       — HTTP probe, success on 2xx (used for /ready, /api/health, MCP root)
+#   http_2xx_login — HTTP probe, success on 2xx OR 3xx (Hermes Dashboard /login returns 302)
+#   tcp_connect    — TCP probe (Promtail syslog receiver on :514)
+#
+# Prometheus picks the module per-target via the `module` URL param on /probe.
+
+modules:
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200, 204]
+      method: GET
+      fail_if_ssl: false
+      fail_if_not_ssl: false
+
+  http_2xx_login:
+    prober: http
+    timeout: 5s
+    http:
+      preferred_ip_protocol: ip4
+      # Hermes Dashboard /login responds 302 → / (see server.py send_redirect).
+      # We accept 2xx AND 3xx so the probe counts as up when the redirect is served.
+      valid_status_codes: [200, 204, 301, 302, 303, 307, 308]
+      method: GET
+      follow_redirects: false
+      fail_if_ssl: false
+      fail_if_not_ssl: false
+
+  # For MCP servers (Inventory MCP :8001, Grafana MCP :8000) which return 404
+  # at "/" but are otherwise healthy. Accepts 2xx and 404 — 5xx still fails.
+  http_2xx_or_404:
+    prober: http
+    timeout: 5s
+    http:
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200, 204, 404]
+      method: GET
+      fail_if_ssl: false
+      fail_if_not_ssl: false
+
+  tcp_connect:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      preferred_ip_protocol: ip4

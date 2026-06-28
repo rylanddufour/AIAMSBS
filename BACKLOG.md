@@ -7,7 +7,7 @@
 | # | Item | Description | Complexity |
 |---|------|-------------|-------------|
 | 1 | Pre-provisioned Grafana dashboards | Create default dashboards for host overview, container overview, Hermes logs, service health | Medium |
-| 2 | Health check dashboard | Simple page showing if metrics/logs are flowing, last data received, service status | Low |
+| 2 | Health check dashboard | **[RESOLVED — commit 7385d7b](https://github.com/rylanddufour/AIAMSBS/commit/7385d7b), 2026-06-28.** Added `config/grafana/provisioning/dashboards/health-check.json` (uid `aiamsbs-health`, 11 panels, 30s refresh) auto-provisioned by Grafana's existing dashboards.yml. Rows: overview stats (services up, prom series, loki 5m lines), per-service status (5 prom jobs + Loki sources), Service Detail table (color-coded up/scrape-age), Live Logs panel (docker + syslog). E2E-verified on VM 220. **Side note:** the other 3 dashboards (docker-logs, docker-monitoring, linux-host-overview) still use the old nested `{meta, dashboard}` JSON format and silently fail to load with "Dashboard title cannot be empty" — separate item to flatten those. | Low |
 | 3 | Default alerting rules | Prometheus alert rules for no metrics, high CPU, disk usage, service down | Low |
 
 ### Medium Priority
@@ -50,10 +50,11 @@
 ### Low Priority
 
 | # | Item | Description | Complexity |
-|---|------|-------------|-------------|
+|---|------|-------------|------------|
 | 7 | TLS/HTTPS for all services | Enable automatic HTTPS via nginx+certbot | Medium |
 | 8 | Service dependency health | Show if service depends on another that's down | Low |
 | 9 | Metrics for Hermes itself | Monitor Hermes Agent with Prometheus | Low |
+| 26 | Blackbox HTTP/TCP probes for service health | **[RESOLVED — pending commit on wt/clean-install-e2e-20260627, 2026-06-28.** Added `prom/blackbox-exporter:latest` service in `docker-compose.yml` (network_mode: host, port 9115) with `config/blackbox.yml` defining three modules: `http_2xx` (readiness + MCP roots), `http_2xx_login` (accepts 2xx+3xx for Hermes Dashboard `/login` 302 redirect), and `tcp_connect` (Promtail syslog :514). Prometheus scrape jobs (`blackbox`, `blackbox_login`, `blackbox_tcp`, `blackbox_exporter` self-metrics) added to `config/prometheus.yml`. Probes hit `localhost` from inside the container so the host-side services are reachable. Verified E2E on VM 220 — see commit for live `probe_success` values per endpoint. | Low |
 
 ---
 
@@ -85,6 +86,7 @@
 ---
 
 ## Completed
+- [x] BACKLOG #2 — Health check dashboard [RESOLVED — commit 7385d7b](https://github.com/rylanddufour/AIAMSBS/commit/7385d7b), 2026-06-28
 - [x] BACKLOG #25 — Inventory `delete_device` tool + confirmation flow [RESOLVED — PR #10](https://github.com/rylanddufour/AIAMSBS/pull/10), 2026-06-27
 - [x] BACKLOG #24 — Default profile MCP auto-loading [RESOLVED — PR #9](https://github.com/rylanddufour/AIAMSBS/pull/9), 2026-06-27
 - [x] BACKLOG #22 — Skill safety gates (agent self-modification hardening) [RESOLVED — PR #8](https://github.com/rylanddufour/AIAMSBS/pull/8), 2026-06-27. `bootstrap.sh` `configure_skill_safety()` sets `skills.write_approval: true` (skill writes staged to `/skills pending` for review) and `skills.guard_agent_created: true` (agent-created skills scanned for exfiltration/persistence/destructive patterns). Closes the gap that `~/.hermes/profiles/*/skills/*.md` is not in `file_tools._SENSITIVE_PATH_PREFIXES` — out of the box the agent could edit its own skills.

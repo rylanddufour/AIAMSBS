@@ -33,6 +33,97 @@ scrape_configs:
         labels:
           service: 'loki'
 
+  # Blackbox HTTP probes — success on 2xx (readiness/health endpoints + MCP roots)
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - http://localhost:3000/api/health     # Grafana UI
+          - http://localhost:3100/ready          # Loki
+          - http://localhost:9090/-/ready        # Prometheus
+          - http://localhost:12345/-/ready       # Alloy
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        # Prometheus runs on the 'monitoring' docker bridge network, but
+        # blackbox_exporter uses host network so it can hit localhost services.
+        # Reach it via the host's external IP. Override per-host via env if needed.
+        replacement: 192.168.0.220:9115
+
+  # Blackbox HTTP probes — MCP servers return 404 at "/" but are healthy.
+  # 2xx or 404 both count as up; 5xx still fails.
+  - job_name: 'blackbox_mcp'
+    metrics_path: /probe
+    params:
+      module: [http_2xx_or_404]
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - http://localhost:8001/               # Inventory MCP
+          - http://localhost:8000/               # Grafana MCP
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        # Prometheus runs on the 'monitoring' docker bridge network, but
+        # blackbox_exporter uses host network so it can hit localhost services.
+        # Reach it via the host's external IP. Override per-host via env if needed.
+        replacement: 192.168.0.220:9115
+
+  # Blackbox HTTP probes — success on 2xx OR 3xx (redirects expected)
+  # Hermes Dashboard /login redirects (302 → /) — see server.py send_redirect.
+  - job_name: 'blackbox_login'
+    metrics_path: /probe
+    params:
+      module: [http_2xx_login]
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - http://localhost:9119/login          # Hermes Dashboard
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.0.220:9115
+
+  # Blackbox TCP probes — Promtail syslog receiver
+  - job_name: 'blackbox_tcp'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - localhost:514                       # Promtail syslog
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.0.220:9115
+
+  # Blackbox exporter self-metrics (probe_duration_seconds histogram, etc.)
+  - job_name: 'blackbox_exporter'
+    static_configs:
+      - targets: ['192.168.0.220:9115']
+        labels:
+          service: 'blackbox_exporter'
+
 # Remote write configuration for Alloy
 remote_write:
   - url: 'http://prometheus:9090/api/v1/write'
