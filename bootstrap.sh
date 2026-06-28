@@ -982,6 +982,107 @@ EOF
 }
 
 # ============================================
+# Install Backup Scripts (dashboard backup, etc.)
+# ============================================
+# Copies script sources from $INFRA_DIR/scripts/ into $HERMES_HOME/scripts/
+# and chmods them 0755. Idempotent: skips files that already exist at the
+# destination. To force-reinstall, delete the destination file first.
+#
+# Pre-req: HERMES_HOME must exist (set up by install_hermes) and the SA token
+# file must exist at $HERMES_HOME/secrets/grafana-mcp.env (set up by
+# create_grafana_mcp_service_account). The backup-dashboards.sh script reads
+# that token file at runtime, so install_backup_scripts MUST run after
+# create_grafana_mcp_service_account.
+
+install_backup_scripts() {
+    local src_dir="$INFRA_DIR/scripts"
+    local dest_dir="$HERMES_HOME/scripts"
+
+    if [ ! -d "$src_dir" ]; then
+        log_warn "Source scripts dir not found at $src_dir; skipping"
+        return 0
+    fi
+
+    log_info "Installing backup scripts from $src_dir to $dest_dir..."
+    mkdir -p "$dest_dir"
+
+    local installed=0 skipped=0
+    for src in "$src_dir"/*.sh; do
+        [ -f "$src" ] || continue
+        local name
+        name=$(basename "$src")
+        local dest="$dest_dir/$name"
+        if [ -f "$dest" ]; then
+            log_info "  $name already installed; skipping (delete to force reinstall)"
+            skipped=$((skipped + 1))
+            continue
+        fi
+        cp "$src" "$dest"
+        chmod 0755 "$dest"
+        if [ -n "$HERMES_USER" ] && id "$HERMES_USER" &>/dev/null; then
+            chown "$HERMES_USER:$HERMES_USER" "$dest" 2>/dev/null || true
+        fi
+        log_success "  Installed $name"
+        installed=$((installed + 1))
+    done
+
+    log_success "Backup scripts: installed=$installed skipped=$skipped"
+}
+
+# ============================================
+# Install Dashboard Backup Cron (system cron, /etc/cron.d)
+# ============================================
+# Writes a /etc/cron.d/ file that runs backup-dashboards.sh daily. Uses
+# system cron instead of Hermes-managed cron because:
+#   - Hermes cron (jobs.json) is profile-scoped and dies if the profile is deleted
+#   - Hermes cron burns LLM tokens daily just to invoke a shell script
+#   - /etc/cron.d is portable, runs as the right user, and survives profile churn
+#
+# Must run AFTER install_backup_scripts (which installs the script itself).
+
+install_dashboard_backup_cron() {
+    if [ "$(id -u)" -ne 0 ]; then
+        log_warn "Not running as root; cannot install /etc/cron.d/ file"
+        log_warn "Re-run bootstrap.sh with sudo to install the backup cron"
+        return 0
+    fi
+
+    local script_path="$HERMES_HOME/scripts/backup-dashboards.sh"
+    if [ ! -x "$script_path" ]; then
+        log_warn "backup-dashboards.sh not found at $script_path; skipping cron install"
+        return 0
+    fi
+
+    local log_dir="$HERMES_HOME/logs"
+    mkdir -p "$log_dir"
+    if [ -n "$HERMES_USER" ] && id "$HERMES_USER" &>/dev/null; then
+        chown "$HERMES_USER:$HERMES_USER" "$log_dir" 2>/dev/null || true
+    fi
+
+    local cron_file="/etc/cron.d/aiamsbs-dashboard-backup"
+    local desired
+    desired=$(cat <<EOF
+# AIAMSBS Grafana dashboard backup - daily at 01:00 (token sourced from \$HOME/.hermes/secrets/grafana-mcp.env)
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+HOME=$HERMES_HOME
+
+0 1 * * * $HERMES_USER $script_path >> $log_dir/backup-dashboards.log 2>&1
+EOF
+)
+
+    if [ -f "$cron_file" ] && [ "$(cat "$cron_file" 2>/dev/null)" = "$desired" ]; then
+        log_info "Cron already installed at $cron_file; skipping"
+        return 0
+    fi
+
+    log_info "Installing $cron_file..."
+    printf '%s\n' "$desired" > "$cron_file"
+    chmod 0644 "$cron_file"
+    log_success "Installed $cron_file (daily 01:00 as $HERMES_USER)"
+}
+
+# ============================================
 # Deploy MCP Stack (grafana-mcp)
 # ============================================
 
@@ -1520,6 +1621,13 @@ main() {
     # Post-install steps: skills install, MCP service account, MCP deploy
     install_grafana_skills
     create_grafana_mcp_service_account
+
+    # Backup scripts depend on the Grafana SA token file existing, and the
+    # dashboard backup cron depends on the script being installed. Wire them
+    # in order right after create_grafana_mcp_service_account.
+    install_backup_scripts
+    install_dashboard_backup_cron
+
     deploy_mcp_stack
     deploy_inventory_stack
 
