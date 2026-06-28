@@ -50,7 +50,6 @@ CLI_PROVIDER="openrouter"
 CLI_MODEL=""
 AUTO_DEPLOY=true
 DASHBOARD_USER="admin"
-INSTALL_IT_ADMIN=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -78,25 +77,6 @@ while [[ $# -gt 0 ]]; do
             DASHBOARD_USER="$2"
             shift 2
             ;;
-        --profile)
-            case "$2" in
-                it_admin)
-                    INSTALL_IT_ADMIN=true
-                    ;;
-                all)
-                    INSTALL_IT_ADMIN=true
-                    ;;
-                linux_admin|network_admin|windows_admin|vsphere_admin)
-                    echo "Profile '$2' is retired (see BACKLOG #16/#17/#18/#19 — collapsed into 'it_admin'). Ignoring."
-                    exit 0
-                    ;;
-                *)
-                    echo "Unknown profile: $2"
-                    exit 1
-                    ;;
-            esac
-            shift 2
-            ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
@@ -107,10 +87,6 @@ while [[ $# -gt 0 ]]; do
             echo "  --auto-deploy       Automatically deploy stack after setup (default)"
             echo "  --no-auto-deploy    Skip auto-deploy"
             echo "  --dashboard-user USER   Username for the Hermes dashboard (default: admin)"
-            echo "  --profile NAME     Install specialist profile(s). NAME = it_admin,"
-            echo "                     or all. (Replaces the retired linux_admin/"
-            echo "                     network_admin/windows_admin/vsphere_admin split — see BACKLOG #20)"
-            echo "                     Multiple --profile flags OK. Default: default profile only."
             echo ""
             echo "Examples:"
             echo "  $0 --api-key sk-xxx --provider openrouter"
@@ -1601,9 +1577,7 @@ main() {
     configure_hermes_api
     configure_skill_safety
     install_default_profile_soul
-    if [ "$INSTALL_IT_ADMIN" = true ]; then
-        install_it_admin_profile_soul
-    fi
+    install_it_admin_profile_soul
     build_dashboard_ui
     generate_dashboard_credentials
     install_hermes_dashboard_service
@@ -1635,9 +1609,7 @@ main() {
     # customer can immediately ask Hermes to discover/inventory their network
     # without re-running register_inventory_mcp.sh by hand.
     register_inventory_mcp "default"
-    if [ "$INSTALL_IT_ADMIN" = true ]; then
-        register_inventory_mcp "it_admin"
-    fi
+    register_inventory_mcp "it_admin"
     install_inventory_discovery_skill
     start_nmap_discovery
 
