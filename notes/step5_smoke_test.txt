@@ -1,10 +1,13 @@
+STEP 5 — SMOKE TEST 14/14
+==========================
 
-=== preflight ===
+$ bash ~/AIAMSBS/inventory-stack/tests/smoke_test.sh
+
   [PASS] seed (DB reseeded via seed.py)
   [PASS] container inventory-mcp is up
 
 === MCP session ===
-  [PASS] initialize (session=368feb40db8e4cbf93385310c9833590)
+  [PASS] initialize (session=64f5ba4a31c744f28fd766a72ece2644)
 
 === MCP tools (8) ===
   [PASS] get_device(dev-linux-01) returns seeded linux host
@@ -15,8 +18,8 @@
   [PASS] update_device returns success envelope
   [PASS] get_device confirms update_device wrote new hostname
   [PASS] get_device_relationships(dev-switch-01) returns 2 entries
-  [PASS] delete_device returns success envelope with deleted_record
-  [PASS] get_device after delete_device returns not found
+  [PASS] delete_device returns success envelope with deleted_record     ← PR #10
+  [PASS] get_device after delete_device returns not found               ← PR #10
 
 === nmap-discovery wrapper (port 8002) ===
   [PASS] nmap-discovery TCP connect to 127.0.0.1:8002 (no healthcheck endpoint exposed)
@@ -25,3 +28,8 @@
   passed: 14
   failed: 0
 OK: all smoke checks passed
+
+CONCLUSION: 14/14 PASS ✅
+- 12 baseline tests (BACKLOG #14)
+- + update_device (PR for BACKLOG #14)
+- + delete_device (PR #10, BACKLOG #25)

@@ -1,0 +1,58 @@
+STEP 3 — BOOTSTRAP OUTPUT (key markers + tail)
+=================================================
+Date: 2026-06-28T02:27:00Z (started) → 02:37:00Z (completed, BOOTSTRAP_EXIT=0)
+VM: gstack-iac (192.168.0.220, Ubuntu 24.04.4)
+Baseline: gstack-testing snapshot (rolled back from prior partial bootstrap)
+Bootstrap cmd: curl -fsSL https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh | bash -s --
+                --api-key "$API_KEY" --provider openrouter --model minimax/minimax-m2.5 --profile it_admin
+Full log: /tmp/aiamsbs-bootstrap3.log on VM (136568 bytes, 84 lines after compression)
+
+KEY SUCCESS MARKERS (in order):
+- [SUCCESS] Prerequisites check complete (Node.js v20.20.2, Docker 29.6.1)
+- [SUCCESS] Docker installed (apt installed 7 pkgs, 380 MB)
+- [SUCCESS] Hermes installed (HTTPS clone, venv created, deps installed)
+- [SUCCESS] Cloned infrastructure repo at /home/ansible/AIAMSBS (commit 8c267a2 = main)
+- [SUCCESS] API key configured for openrouter
+- [SUCCESS] Provider set to openrouter / model minimax/minimax-m2.5
+- [SUCCESS] skills.write_approval=true (skill writes staged for review)         ← PR #8
+- [SUCCESS] skills.guard_agent_created=true (agent-created skills scanned)     ← PR #8
+- [SUCCESS] IT_ADMIN SOUL.md installed at /home/ansible/.hermes/profiles/it_admin/SOUL.md
+- [SUCCESS] IT_ADMIN 19 skill file(s) installed at /home/ansible/.hermes/profiles/it_admin/skills/
+- [SUCCESS] IT_ADMIN profile installed (2 set(s) of files)
+- [SUCCESS] IT_ADMIN config.yaml written with provider=openrouter model=minimax/minimax-m2.5
+- [SUCCESS] Hermes Dashboard web UI built (vite, 481 modules, 1.35s)
+- [SUCCESS] Dashboard credentials written to /home/ansible/.hermes/config.yaml (basic plugin)
+- [SUCCESS] Installed systemd unit: hermes-dashboard.service
+- [SUCCESS] Hermes Dashboard started on port 9119
+- [SUCCESS] Stack deployed successfully!  (5 containers: alloy, grafana, loki, prometheus, promtail)
+- [SUCCESS] Installed 13 Grafana skill(s) into /home/ansible/.hermes/skills/grafana
+- [SUCCESS] Grafana service account created (id=2); token saved to /home/ansible/.hermes/secrets/grafana-mcp.env
+- [SUCCESS] MCP stack deployed (grafana-mcp on port 8000)
+- [SUCCESS] Inventory stack deployed (inventory-mcp on port 8001)               ← inventory-stack dir
+- [SUCCESS] inventory-mcp registered in profile 'default'                       ← PR #9
+- [SUCCESS] inventory-mcp registered in profile 'it_admin'                      ← PR #7
+- [SUCCESS] inventory-discovery skill installed (trigger: 'inventory the subnet ...')
+- [SUCCESS] nmap-discovery started on port 8002 (host-network mode)
+
+VERIFY STEP:
+- [SUCCESS] LLM responds to "hello!"
+- [SUCCESS] Prometheus HTTP 200
+- [ERROR]   ✗ Loki: HTTP 503 (expected 200)   ← first-boot race, recovered shortly after
+- [SUCCESS] Grafana HTTP 200
+- [SUCCESS] Alloy HTTP 200
+- [SUCCESS] Inventory MCP HTTP 406 (normal — MCP doesn't expose /health at root)
+- [SUCCESS] Grafana MCP HTTP 200
+- [SUCCESS] Hermes Dashboard HTTP 302 (auth gate active)
+- BOOTSTRAP_EXIT=0
+
+LISTENING PORTS:
+   12345  0.0.0.0:12345   public    (alloy)
+    1514  0.0.0.0:1514    public    (promtail)
+    3000  0.0.0.0:3000    public    (grafana)
+    3100  0.0.0.0:3100    public    (loki)
+     514  0.0.0.0:514     public    (promtail)
+    8000  0.0.0.0:8000    public    (grafana-mcp)
+    8001  127.0.0.1:8001  localhost (inventory-mcp)
+    8002  127.0.0.1:8002  localhost (nmap-discovery)
+    9090  0.0.0.0:9090    public    (prometheus)
+    9119  0.0.0.0:9119    public    (hermes dashboard)

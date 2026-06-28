@@ -1,0 +1,26 @@
+STEP 8 — NMAP DISCOVERY
+========================
+
+$ export INVENTORY_DISCOVERY_DIR=/home/ansible/AIAMSBS/inventory-stack/inventory-discovery
+$ cd /home/ansible/AIAMSBS/inventory-stack
+$ timeout 240 python3 inventory-discovery/scripts/discover.py 192.168.0.0/24
+
+Inventory discovery: scanning 192.168.0.0/24...
+
+Inventory discovery complete:
+  Target:   192.168.0.0/24
+  Found:    53 device(s)
+  Inserted: 53 new device(s)
+  Skipped:  0 duplicate(s)
+
+NMAP_EXIT=0
+
+POST-SCAN DB COUNT: 57 total
+- 3 from smoke test seed (dev-linux-01, dev-switch-01, dev-ap-01)
+- 1 from smoke test create_device test (dev-smoke-new-XXXXX)
+- 53 from nmap discovery of 192.168.0.0/24
+- Total: 57 (1 was e2e-delete-confirm seeded then deleted via PR #10 test)
+
+CONCLUSION: nmap discovery works ✅ — found 53 hosts in the test subnet and inserted them all
+without duplicates. The wrapper handles MCP session handshake + create_device wire format
+properly (see BACKLOG #14 history).

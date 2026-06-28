@@ -1,0 +1,25 @@
+STEP 4 — CONTAINER HEALTH
+=========================
+
+$ docker compose ps -a   (in /home/ansible/AIAMSBS)
+NAME          IMAGE                        COMMAND                  SERVICE       CREATED         STATUS         PORTS
+alloy         grafana/alloy:latest         "/bin/alloy run --se…"   alloy         3 minutes ago   Up 3 minutes   0.0.0.0:12345->12345/tcp
+grafana       grafana/grafana:13.0.1       "/run.sh"                grafana       3 minutes ago   Up 3 minutes   0.0.0.0:3000->3000/tcp
+grafana-mcp   grafana/mcp-grafana:latest   "/app/mcp-grafana --…"   grafana-mcp   2 minutes ago   Up 2 minutes   0.0.0.0:8000->8000/tcp
+loki          grafana/loki:3.2.0           "/usr/bin/loki -conf…"   loki          3 minutes ago   Up 3 minutes   0.0.0.0:3100->3100/tcp
+prometheus    prom/prometheus:v2.54.1      "/bin/prometheus --c…"   prometheus    3 minutes ago   Up 3 minutes   0.0.0.0:9090->9090/tcp
+promtail      grafana/promtail:latest      "/usr/bin/promtail -…"   promtail      3 minutes ago   Up 3 minutes   0.0.0.0:514->514/tcp, 0.0.0.0:1514->514/tcp
+
+$ docker compose ps -a   (in /home/ansible/AIAMSBS/inventory-stack)
+[NOTE: task body assumed separate ~/inventory-stack dir but bootstrap places it inside ~/AIAMSBS/inventory-stack]
+NAME             IMAGE                     COMMAND                 SERVICE          CREATED         STATUS                    PORTS
+inventory-mcp    aiamsbs_inventory-mcp     "python3 -m uvicorn…"   inventory-mcp    2 minutes ago   Up 2 minutes (healthy)    127.0.0.1:8001->8001/tcp
+nmap-discovery   aiamsbs_nmap-discovery    "python3 -m http.ser…"  nmap-discovery   2 minutes ago   Up 2 minutes              (host-network mode)
+
+docker compose ls:
+NAME                STATUS              CONFIG FILES
+aiamsbs             running(6)          /home/ansible/AIAMSBS/docker-compose.mcp.yml,/home/ansible/AIAMSBS/docker-compose.yml
+inventory-stack     running(2)          /home/ansible/AIAMSBS/inventory-stack/docker-compose.yml
+
+TOTAL: 8/8 containers Up ✅
+- alloy, grafana, loki, prometheus, promtail, grafana-mcp, inventory-mcp, nmap-discovery

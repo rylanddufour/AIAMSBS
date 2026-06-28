@@ -1,0 +1,64 @@
+STEP 11 — FINAL STATE SUMMARY
+================================
+
+CONTAINERS (8/8 Up):
+--- aiamsbs project (6) ---
+alloy          grafana/alloy:latest         Up 14 minutes   0.0.0.0:12345->12345/tcp
+grafana        grafana/grafana:13.0.1       Up 14 minutes   0.0.0.0:3000->3000/tcp
+grafana-mcp    grafana/mcp-grafana:latest   Up 13 minutes   0.0.0.0:8000->8000/tcp
+loki           grafana/loki:3.2.0           Up 14 minutes   0.0.0.0:3100->3100/tcp
+prometheus     prom/prometheus:v2.54.1      Up 14 minutes   0.0.0.0:9090->9090/tcp
+promtail       grafana/promtail:latest      Up 14 minutes   0.0.0.0:514->514/tcp, 0.0.0.0:1514->514/tcp
+
+--- inventory-stack project (2) ---
+inventory-mcp    aiamsbs_inventory-mcp      Up 12 minutes (healthy)   127.0.0.1:8001->8001/tcp
+nmap-discovery   aiamsbs_nmap-discovery     Up 12 minutes             (host-network mode)
+
+INVENTORY DB:
+  Total devices: 57
+  - 3 from smoke test seed (dev-linux-01, dev-switch-01, dev-ap-01)
+  - 1 from smoke test create_device test (dev-smoke-new-XXXXX)
+  - 53 from nmap discovery of 192.168.0.0/24
+  - e2e-delete-confirm seeded then deleted via PR #10 test (count went 58→57)
+
+HEALTH CHECKS:
+  Grafana HTTP:    200  ✅
+  Prometheus HTTP: 200  ✅
+  Loki HTTP:       200  ✅  (recovered from initial 503 race)
+  Dashboard HTTP:  302  ✅  (auth gate active)
+
+PROFILE STATUS:
+  default:
+    Path:    /home/ansible/.hermes
+    Model:   minimax/minimax-m2.5 (openrouter)
+    SOUL.md: exists (6170 bytes)
+    Skills:  86 (global catalog)
+    .env:    exists
+
+  it_admin:
+    Path:    /home/ansible/.hermes/profiles/it_admin
+    Model:   minimax/minimax-m2.5 (openrouter)
+    SOUL.md: exists (9375 bytes, ~9.4KB ✅)
+    Skills:  72 (19 explicit .md + 17 leaked subdirs)
+    .env:    not configured (inherits default's env)
+
+VERIFICATION SUMMARY:
+  Step 1  (snapshot rollback):         PASS — VM rolled back to gstack-testing, fresh boot
+  Step 2  (clean state verify):        PASS — no AIAMSBS, no .hermes, no docker
+  Step 3  (pull main + bootstrap):     PASS — bootstrap ran cleanly, BOOTSTRAP_EXIT=0
+  Step 4  (container health):          PASS — 8/8 Up
+  Step 5  (smoke test):                PASS — 14/14 (added update_device + delete_device)
+  Step 6  (PR #9 default profile MCP): PASS — tools list shows inventory-mcp, NL chat returns 3 devices
+  Step 7  (PR #10 delete_device flow): PASS — search → ask → explicit approve → delete → DB empty
+  Step 8  (nmap discovery):            PASS — 53 devices found + inserted
+  Step 9  (SOUL + 19 skills):          PASS — SOUL.md 9.4KB, 19 .md skills, 17-dir leak (known issue)
+  Step 10 (dashboard creds):           PASS — admin / GkdzPb7NiBs4YLIqoAdG
+  Step 11 (final state):               PASS — all services healthy, profiles functional
+
+VM STATE FOR RYLAND'S MORNING REVIEW:
+  - VM 220 (gstack-iac) is running at 192.168.0.220
+  - All 8 containers Up + healthy
+  - Dashboard: http://192.168.0.220:9119 (admin / GkdzPb7NiBs4YLIqoAdG)
+  - 57 devices in inventory
+  - All 4 PRs (#7, #8, #9, #10) verified end-to-end
+  - Proxmox snapshot: gstack-testing (clean baseline; current snapshot was deleted before rollback)

@@ -1,0 +1,40 @@
+STEP 9 — SOUL.md + 19-SKILL INVENTORY CHECK
+=============================================
+
+SOUL.md sizes:
+   6170 /home/ansible/.hermes/SOUL.md                 (default profile, ~6KB)
+   9375 /home/ansible/.hermes/profiles/it_admin/SOUL.md (it_admin profile, ~9.4KB — matches expected)
+
+it_admin .md skill files (19, all expected):
+  active-directory.md
+  automation.md
+  backup-recovery.md
+  change-management.md
+  dns-dhcp.md
+  file-services.md
+  linux-admin.md
+  monitoring-observability.md
+  network-change-safety.md
+  networking-core.md
+  network-oem-cisco-ios.md
+  network-oem-hpe-aruba.md
+  network-oem-index.md
+  network-oem-ubiquiti-unifi.md
+  non-destructive-operations.md
+  security-baseline.md
+  troubleshooting-methodology.md
+  vsphere-admin.md
+  windows-server.md
+
+SKILL DIR LEAK (known separate issue, documented in prior cards):
+The 17 leaked skill subdirs from the global catalog are still present in it_admin/skills/:
+  apple/, autonomous-ai-agents/, computer-use/, creative/, data-science/, dogfood/, email/,
+  github/, media/, mlops/, note-taking/, productivity/, research/, smart-home/, social-media/,
+  software-development/, yuanbao/
+
+These contain ~330 nested .md files total but are NOT the it_admin's actual skills. They're a
+known leak from the global skill catalog (per BACKLOG history). Out of scope for this card.
+
+hermes profile show counts:
+  default:    86 skills (global catalog, no .md files at root, all 19 subdirs)
+  it_admin:   72 skills (19 explicit .md + 17 leaked subdirs ≈ 72)

@@ -1,0 +1,37 @@
+STEP 6 — PR #9 DEFAULT PROFILE MCP AUTO-LOADING
+=================================================
+
+TEST A: hermes tools list (default profile)
+-------------------------------------------
+$ export PATH=/home/ansible/.local/bin:$PATH
+$ hermes profile use default
+$ hermes tools list
+
+MCP servers:
+  inventory-mcp  all tools enabled       ← PR #9 verified at config + tools level
+
+~/.hermes/config.yaml mcp_servers section:
+  mcp_servers:
+    inventory-mcp:
+      url: http://localhost:8001/mcp
+      transport: streamable-http
+
+TEST B: Natural-language inventory query via default profile
+------------------------------------------------------------
+$ hermes auth reset openrouter
+$ hermes profile use default
+$ hermes chat -q "Use the search_devices MCP tool with query empty string and limit 3.
+                  Show IP, hostname, vendor."
+
+RESULT (session_id 20260628_024002_7e2871, exit 0):
+
+| IP            | Hostname       | Vendor   |
+|---------------|----------------|----------|
+| 192.168.10.10 | linux-host-01  | Dell     |
+| 192.168.10.1  | core-switch-01 | Cisco    |
+| 192.168.10.50 | ap-floor1-01   | Ubiquiti |
+
+CONCLUSION:
+- Before PR #9: default profile had no mcp_servers block; agent couldn't call inventory tools
+- After PR #9:  default profile mcp_servers: { inventory-mcp: {...} } present, agent calls search_devices MCP directly
+- PR #9 VERIFIED at both config layer and agent layer ✅
