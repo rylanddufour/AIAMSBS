@@ -8,7 +8,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": {
     "from": "now-15m",
@@ -237,7 +237,7 @@
       },
       "targets": [
         {
-          "expr": "max by (instance) (probe_success{job=\"blackbox_exporter\"})",
+          "expr": "max by (instance) (up{job=\"blackbox_exporter\"})",
           "legendFormat": "Blackbox",
           "refId": "A"
         }
@@ -504,11 +504,11 @@
               },
               {
                 "color": "yellow",
-                "value": 60
+                "value": 80
               },
               {
                 "color": "red",
-                "value": 85
+                "value": 90
               }
             ]
           }
@@ -553,7 +553,7 @@
               },
               {
                 "color": "yellow",
-                "value": 70
+                "value": 80
               },
               {
                 "color": "red",
@@ -602,7 +602,7 @@
               },
               {
                 "color": "yellow",
-                "value": 70
+                "value": 80
               },
               {
                 "color": "red",
@@ -811,14 +811,14 @@
     },
     {
       "id": 30,
-      "title": "Live Logs (docker + syslog, last 15m)",
+      "title": "Live Logs (docker + syslog)",
       "type": "logs",
       "datasource": {
         "type": "loki",
         "uid": "Loki"
       },
       "gridPos": {
-        "h": 10,
+        "h": 30,
         "w": 24,
         "x": 0,
         "y": 14
@@ -830,15 +830,17 @@
           "datasource": {
             "type": "loki",
             "uid": "Loki"
-          }
+          },
+          "queryType": "range"
         }
       ],
       "options": {
         "showLabels": true,
         "showCommonLabels": false,
         "wrapLogMessage": true,
-        "sortOrder": "Descending",
-        "enableLogDetails": true
+        "sortOrder": "Ascending",
+        "enableLogDetails": true,
+        "live": false
       }
     }
   ]
