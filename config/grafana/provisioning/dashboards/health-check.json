@@ -8,7 +8,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 3,
+  "version": 4,
   "refresh": "30s",
   "time": {
     "from": "now-15m",
@@ -26,7 +26,7 @@
       "title": "Host",
       "type": "text",
       "gridPos": {
-        "h": 2,
+        "h": 4,
         "w": 8,
         "x": 0,
         "y": 0
