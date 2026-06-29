@@ -846,33 +846,23 @@
     {
       "id": 71,
       "title": "",
-      "type": "stat",
+      "type": "text",
       "gridPos": {
         "h": 2,
         "w": 2,
         "x": 16,
         "y": 2
       },
-      "targets": [],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          }
-        }
-      },
       "options": {
-        "colorMode": "none",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "textMode": "value"
+        "mode": "markdown",
+        "content": "",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        }
       }
     }
-  ]
+  ],
+  "revision": 2
 }
