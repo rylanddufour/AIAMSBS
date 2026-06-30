@@ -1,0 +1,31 @@
+services:
+  kb-mcp:
+    image: aiamsbs_kb-mcp
+    container_name: kb-mcp
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    volumes:
+      - type: bind
+        source: ./mcp
+        target: /app
+      - kb-data:/data
+    ports:
+      - "127.0.0.1:8002:8002"
+    environment:
+      - KB_DB_PATH=/data/kb.db
+    networks:
+      - monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1', 8002)); s.close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  kb-data:
+
+networks:
+  monitoring:
+    external: true
