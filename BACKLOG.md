@@ -74,6 +74,13 @@
 | ~~19~~ | ~~vsphere_admin Profile~~ | **RETIRED 2026-06-26.** Absorbed into IT_ADMIN (#20) as `skills/vsphere-admin.md`. | — |
 | 20 | IT_ADMIN Profile | Single generalist datacenter IT admin agent. Replaces the planned 4 specialist profiles (16-19). SOUL.md + 19 skill files from OneDrive source: `obsidian_vaults/agent vault/AIAMSBS_Potential_Agent_Soul_skills/it-admin-agent-soul-skills/it-admin-agent/`. Sibling to `default`. Profile name = `IT_ADMIN` (open to rename when product name is decided). | Medium |
 
+## Knowledge Base (New Track)
+
+| # | Item | Description | Complexity |
+|---|------|-------------|------------|
+| 30 | Knowledge Base feature (overall) | Design captured 2026-06-30 in OneDrive: `obsidian_vaults/agent vault/AIAMSBS_Docs_Diagrams/kb_workflow.md`. MVP scope defined: SQLite + sqlite-vec, `kb-mcp` on `:8002` exposing `kb_search` / `kb_add` / `kb_update` / `kb_list` / `kb_delete`, single vector index over (1) bundled skills, (2) customer-supplied docs, (3) runtime KB. Standalone HTML viewer served by `kb-mcp` at `:8002/ui/`. Doc ingestion = paste text + file upload (no URL fetch in MVP). Auto-capture = Mode C with trust ladder (Levels 0-3, customer climbs over time). Write access = both agent and customer, customer can always edit/delete agent entries. Customer-supplies OEM-specific docs (no bundled curated OEM knowledge — that was rejected as a research tarpit). Agent attempts task first using all five sources (skills, training, runtime KB, customer docs, tools); asks the human only on graduated uncertainty. | High |
+| 31 | KB self-correcting loop | Customer edit/correction of a wrong agent-generated KB entry must propagate to (a) agent's future behavior — corrected entry replaces the wrong one, agent prefers it on the next attempt, (b) trust ladder stats — corrections count against the agent's "clean approval streak" and adjust level-up suggestions. This is the loop that turns "the agent was wrong" into "the agent doesn't make the same mistake twice" — the whole point of Mode C. Design not started; depends on #30. The customer correction surface is part of the standalone HTML viewer; the propagation logic lives in `kb-mcp` and the runtime KB write path. **Backlogged 2026-06-30 per Telegram thread — Ryland flagged the loop as the missing piece after the design was otherwise locked in.** | Medium |
+
 ## Pending Decisions
 
 | # | Item | Description |
