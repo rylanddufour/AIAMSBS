@@ -47,7 +47,7 @@
 
 | # | Item | Description | Complexity |
 |---|------|-------------|-------------|
-| 11 | Test syslog with real network device | Verify Promtail receives syslog on port 514 and Loki stores/logs appear in Grafana dashboard | Low |
+| 11 | Test syslog with real network device | **[RESOLVED 2026-06-30]** Promtail syslog receiver on :514 confirmed end-to-end — firewall logs visible in the Grafana dashboard after E2E runs (verified by Ryland). Multi-OEM syslog path proven. | — |
 
 
 ### Low Priority
@@ -89,6 +89,7 @@
 ---
 
 ## Completed
+- [x] BACKLOG #11 — Test syslog with real network device [RESOLVED 2026-06-30] — firewall logs flowing into Grafana dashboard via Promtail :514 receiver, E2E verified by Ryland
 - [x] BACKLOG #2 — Health check dashboard [RESOLVED — commit 7385d7b](https://github.com/rylanddufour/AIAMSBS/commit/7385d7b), 2026-06-28
 - [x] BACKLOG #25 — Inventory `delete_device` tool + confirmation flow [RESOLVED — PR #10](https://github.com/rylanddufour/AIAMSBS/pull/10), 2026-06-27
 - [x] BACKLOG #24 — Default profile MCP auto-loading [RESOLVED — PR #9](https://github.com/rylanddufour/AIAMSBS/pull/9), 2026-06-27
