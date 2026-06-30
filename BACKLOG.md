@@ -56,7 +56,7 @@
 |---|------|-------------|------------|
 | 7 | TLS/HTTPS for all services | Enable automatic HTTPS via nginx+certbot | Medium |
 | 8 | Service dependency health | Show if service depends on another that's down | Low |
-| 9 | Metrics for Hermes itself | Monitor Hermes Agent with Prometheus | Low |
+| 9 | Metrics for Hermes itself | Monitor Hermes Agent with Prometheus | Medium |
 | 26 | Blackbox HTTP/TCP probes for service health | **[RESOLVED — pending commit on wt/clean-install-e2e-20260627, 2026-06-28.** Added `prom/blackbox-exporter:latest` service in `docker-compose.yml` (network_mode: host, port 9115) with `config/blackbox.yml` defining three modules: `http_2xx` (readiness + MCP roots), `http_2xx_login` (accepts 2xx+3xx for Hermes Dashboard `/login` 302 redirect), and `tcp_connect` (Promtail syslog :514). Prometheus scrape jobs (`blackbox`, `blackbox_login`, `blackbox_tcp`, `blackbox_exporter` self-metrics) added to `config/prometheus.yml`. Probes hit `localhost` from inside the container so the host-side services are reachable. Verified E2E on VM 220 — see commit for live `probe_success` values per endpoint. | Low |
 
 ---
