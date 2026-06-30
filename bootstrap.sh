@@ -1392,6 +1392,174 @@ start_nmap_discovery() {
 }
 
 # ============================================
+# Deploy KB Stack (kb-mcp)
+# ============================================
+#
+# BACKLOG #30 K2: kb-mcp is a knowledge-base MCP server (SQLite/FTS5) that
+# exposes 5 tools (kb_add, kb_search, kb_list, kb_update, kb_delete) plus 2
+# bonus tools (kb_add_source, kb_list_sources). Listens on 127.0.0.1:8002.
+
+deploy_kb_stack() {
+    # INFRA_DIR is set once in main() upfront.
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
+    local kb_dir="$infra_dir/kb-stack"
+    local kb_compose="$kb_dir/docker-compose.yml"
+
+    if [ ! -f "$kb_compose" ]; then
+        log_warn "kb-stack/docker-compose.yml not found at $kb_compose; skipping"
+        return 0
+    fi
+
+    log_info "Deploying kb stack..."
+
+    if sg docker -c "docker compose -f '$kb_compose' up -d" 2>&1 | tail -10; then
+        log_success "kb stack deployed (kb-mcp on port 8002)"
+    else
+        log_warn "kb stack deployment failed; continuing"
+        return 0
+    fi
+}
+
+# register_kb_mcp [profile_name]
+# Registers the kb-mcp MCP server in a Hermes profile's config.yaml.
+# kb-mcp is the BACKLOG #30 knowledge-base server (SQLite/FTS5) that exposes
+# 5 tools (kb_add, kb_search, kb_list, kb_update, kb_delete) over streamable-http
+# at http://localhost:8002/mcp. Registered for both default and it_admin profiles
+# by main() so a customer can ask either profile about KB entries.
+#
+# Same Hermes profile path rules as register_inventory_mcp:
+#   - default  → ~/.hermes/config.yaml
+#                 (the GLOBAL config IS the default profile's config;
+#                 ~/.hermes/profiles/default/ is a dead location Hermes does
+#                 not read — see BACKLOG #24)
+#   - it_admin → ~/.hermes/profiles/it_admin/config.yaml
+# Idempotent — skips if already registered. Migrates stale kb-mcp blocks
+# accidentally written to ~/.hermes/profiles/default/config.yaml (BACKLOG #24)
+# into the global config. If mcp_servers: block already exists (it will, after
+# inventory-mcp and grafana-mcp registration), appends the kb-mcp entry to the
+# existing block rather than creating a second one.
+register_kb_mcp() {
+    local profile="${1:-default}"
+    local config_path
+    local stale_default_config="$HOME/.hermes/profiles/default/config.yaml"
+
+    if [ "$profile" = "default" ]; then
+        # The default profile's config IS the global config. Always write here
+        # regardless of layout — writing to ~/.hermes/profiles/default/config.yaml
+        # is silently ignored by Hermes (BACKLOG #24).
+        config_path="$HOME/.hermes/config.yaml"
+    elif [ -d "$HOME/.hermes/profiles" ]; then
+        # Multi-profile layout for a named profile
+        config_path="$HOME/.hermes/profiles/${profile}/config.yaml"
+    elif [ -f "$HOME/.hermes/config.yaml" ] || [ -d "$HOME/.hermes" ]; then
+        # Single-profile layout fallback
+        config_path="$HOME/.hermes/config.yaml"
+        profile="default"
+    else
+        log_error "No Hermes config found at ~/.hermes/ — run bootstrap.sh first?"
+        return 1
+    fi
+
+    log_info "Registering kb-mcp in profile '$profile' (config: $config_path)..."
+
+    if [ ! -d "$(dirname "$config_path")" ]; then
+        log_warn "Profile dir not found at $(dirname "$config_path") — creating"
+        mkdir -p "$(dirname "$config_path")"
+    fi
+
+    if [ ! -f "$config_path" ]; then
+        log_warn "Profile config not found at $config_path — creating empty config"
+        touch "$config_path"
+        chmod 600 "$config_path"
+    fi
+
+    # Idempotent: skip if already registered (DICT format marker)
+    if grep -q '^  kb-mcp:' "$config_path" 2>/dev/null; then
+        log_success "kb-mcp already registered in profile '$profile'"
+    else
+        # Append in DICT format (Hermes CLI's tools_config.py:1365 expects a
+        # dict, not a list — see BACKLOG #21). If mcp_servers: already exists
+        # (it will after inventory-mcp + grafana-mcp), merge into that block.
+        # Otherwise append a fresh mcp_servers: block.
+        if grep -q '^mcp_servers:' "$config_path" 2>/dev/null; then
+            cp "$config_path" "${config_path}.bak"
+            python3 - "$config_path" << 'PYEOF'
+import sys
+path = sys.argv[1]
+with open(path) as f:
+    lines = f.readlines()
+
+# Find mcp_servers: line, then find end of its block (first non-2-space-indented
+# line after it that's not blank), insert kb-mcp entry there.
+insert_idx = None
+for i, line in enumerate(lines):
+    if line.rstrip() == 'mcp_servers:':
+        # End of block = first subsequent line that's blank-or-non-indented
+        for j in range(i + 1, len(lines)):
+            stripped = lines[j].rstrip()
+            if stripped == '' or not lines[j].startswith('  '):
+                insert_idx = j
+                break
+        if insert_idx is None:
+            insert_idx = len(lines)
+        break
+
+if insert_idx is None:
+    # mcp_servers: not found despite the grep — shouldn't happen, but append safely
+    with open(path, 'a') as f:
+        f.write('\nmcp_servers:\n  kb-mcp:\n    url: http://localhost:8002/mcp\n    transport: streamable-http\n')
+else:
+    new_entry = ['  kb-mcp:\n', '    url: http://localhost:8002/mcp\n', '    transport: streamable-http\n']
+    out = lines[:insert_idx] + new_entry + lines[insert_idx:]
+    with open(path, 'w') as f:
+        f.writelines(out)
+PYEOF
+            chmod 600 "$config_path"
+            log_success "kb-mcp registered in profile '$profile' (merged with existing mcp_servers block)"
+        else
+            cp "$config_path" "${config_path}.bak"
+            cat >> "$config_path" << 'EOF'
+
+mcp_servers:
+  kb-mcp:
+    url: http://localhost:8002/mcp
+    transport: streamable-http
+EOF
+            chmod 600 "$config_path"
+            log_success "kb-mcp registered in profile '$profile'"
+        fi
+    fi
+
+    # Migration: if a stale kb-mcp block was written to the dead
+    # ~/.hermes/profiles/default/config.yaml path by an older bootstrap.sh,
+    # strip it now so the source of truth is unambiguous.
+    if [ "$profile" = "default" ] && [ -f "$stale_default_config" ]; then
+        if grep -q '^  kb-mcp:' "$stale_default_config" 2>/dev/null; then
+            cp "$stale_default_config" "${stale_default_config}.bak"
+            # Remove the trailing mcp_servers: kb-mcp: ... block.
+            # Use python for a clean YAML-key removal (sed would be fragile with
+            # the 2-space indent + nested keys).
+            python3 - "$stale_default_config" << 'PYEOF'
+import sys, re
+path = sys.argv[1]
+with open(path) as f:
+    content = f.read()
+# Strip the mcp_servers: kb-mcp: ... block (with leading blank line)
+pattern = re.compile(
+    r'\n*mcp_servers:\n  kb-mcp:\n    url: http://localhost:8002/mcp\n    transport: streamable-http\n*$',
+    re.MULTILINE
+)
+new_content = pattern.sub('\n', content).rstrip() + '\n'
+with open(path, 'w') as f:
+    f.write(new_content)
+PYEOF
+            chmod 600 "$stale_default_config"
+            log_success "Migrated stale kb-mcp from $stale_default_config to $config_path (BACKLOG #24)"
+        fi
+    fi
+}
+
+# ============================================
 # Auto-Deploy Stack
 # ============================================
 
@@ -1717,6 +1885,13 @@ main() {
     register_grafana_mcp "it_admin"
     install_inventory_discovery_skill
     start_nmap_discovery
+
+    # BACKLOG #30 K2: deploy the kb-mcp knowledge-base server and wire it
+    # into both default and it_admin profiles. kb-mcp is the SQLite/FTS5
+    # server on port 8002 (5 required tools + 2 bonus).
+    deploy_kb_stack
+    register_kb_mcp "default"
+    register_kb_mcp "it_admin"
 
     # Print customer-facing access summary (URLs, credentials, ports, hints)
     print_access_summary
