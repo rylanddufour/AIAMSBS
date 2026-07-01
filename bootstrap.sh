@@ -1384,7 +1384,7 @@ start_nmap_discovery() {
 
     log_info "Starting nmap-discovery (compose profile 'discovery', requires NET_RAW + NET_ADMIN)..."
     if sg docker -c "docker compose -f '$inv_compose' --profile discovery up -d nmap-discovery" 2>&1 | tail -10; then
-        log_success "nmap-discovery started on port 8002 (host-network mode)"
+        log_success "nmap-discovery started on port 8003 (host-network mode)"
     else
         log_warn "nmap-discovery failed to start; continuing (inventory-mcp still works for CRUD)"
         return 0  # don't fail bootstrap on this
@@ -1661,7 +1661,7 @@ list_listening_ports() {
         port="${port%]}"
         # Filter to known AIAMSBS ports
         case "$port" in
-            514|1514|3000|3100|8000|8001|8002|9090|9119|12345) ;;
+            514|1514|3000|3100|8000|8001|8002|8003|9090|9119|12345) ;;
             *) continue ;;
         esac
         # Determine scope (public vs localhost-only)

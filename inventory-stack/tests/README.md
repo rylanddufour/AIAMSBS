@@ -51,7 +51,7 @@ and the script returns 1.
 | `create_device`            | echoes the new device_id with `status`/`created_at` |
 | `update_device`            | returns success envelope + `get_device` confirms the rename |
 | `get_device_relationships` | switch has 2 entries                              |
-| nmap-discovery             | TCP connect to 127.0.0.1:8002                     |
+| nmap-discovery             | TCP connect to 127.0.0.1:8003                     |
 
 ## MCP wire format
 

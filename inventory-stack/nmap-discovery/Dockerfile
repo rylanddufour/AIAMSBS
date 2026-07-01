@@ -13,4 +13,4 @@ RUN apt-get update && \
 
 COPY server.py /app/server.py
 
-CMD ["python", "server.py", "--host", "127.0.0.1", "--port", "8002"]
+CMD ["python", "server.py", "--host", "127.0.0.1", "--port", "8003"]
