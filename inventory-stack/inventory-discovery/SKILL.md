@@ -42,7 +42,7 @@ Trigger this skill when the user says any of:
 
 `scripts/discover.py`:
 
-1. Calls `GET http://localhost:8002/scan?target=<CIDR>` (the nmap-discovery
+1. Calls `GET http://localhost:8003/scan?target=<CIDR>` (the nmap-discovery
    wrapper running on the AIAMSBS host in host-network mode).
 2. Parses the XML output to extract every host:
    - IPv4 address
@@ -69,7 +69,7 @@ Trigger this skill when the user says any of:
 
 Both must be running (bootstrap.sh installs + starts both as of 2026-06-25):
 
-- **nmap-discovery** container — listens on host port 8002 (`network_mode: host`,
+- **nmap-discovery** container — listens on host port 8003 (`network_mode: host`,
   requires `NET_RAW + NET_ADMIN` Linux capabilities)
 - **inventory-mcp** container — listens on host port 8001
 - **inventory-mcp registered** in the active Hermes profile (bootstrap.sh does this)
@@ -77,7 +77,7 @@ Both must be running (bootstrap.sh installs + starts both as of 2026-06-25):
 Verify before invoking:
 
 ```bash
-curl -sf http://localhost:8002/scan?target=127.0.0.1 >/dev/null && \
+curl -sf http://localhost:8003/scan?target=127.0.0.1 >/dev/null && \
 curl -sf -X POST http://localhost:8001/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \

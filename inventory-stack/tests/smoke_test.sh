@@ -23,7 +23,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 
 MCP_URL="http://127.0.0.1:8001/mcp"
-NMAP_PORT=8002
+NMAP_PORT=8003
 NMAP_HOST=127.0.0.1
 MCP_CONTAINER="${MCP_CONTAINER:-inventory-mcp}"
 NMAP_CONTAINER="${NMAP_CONTAINER:-nmap-discovery}"

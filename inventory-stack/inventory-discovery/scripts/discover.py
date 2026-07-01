@@ -25,7 +25,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from typing import Optional
 
-NMAP_URL = "http://localhost:8002/scan"
+NMAP_URL = "http://localhost:8003/scan"
 INVENTORY_URL = "http://localhost:8001/mcp"
 DEFAULT_CIDR = "192.168.0.0/24"
 

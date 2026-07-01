@@ -34,7 +34,7 @@ def scan(target: str = "192.168.0.0/24"):
 def main():
     parser = argparse.ArgumentParser(description="AIAMSBS nmap discovery service")
     parser.add_argument("--host", default="127.0.0.1", help="bind host (default 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8002, help="bind port (default 8002)")
+    parser.add_argument("--port", type=int, default=8003, help="bind port (default 8003)")
     args = parser.parse_args()
     uvicorn.run(app, host=args.host, port=args.port)
 

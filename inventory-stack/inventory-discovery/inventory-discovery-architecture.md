@@ -14,7 +14,7 @@ sequenceDiagram
     participant Hermes as Hermes Dashboard<br/>host:9119
     participant Skill as inventory-discovery skill<br/>~/.hermes/skills/
     participant Disc as discover.py<br/>host process
-    participant Nmap as nmap-discovery<br/>container:8002
+    participant Nmap as nmap-discovery<br/>container:8003
     participant NmapBin as nmap binary<br/>(in container)
     participant Inv as inventory-mcp<br/>container:8001
     participant DB as SQLite<br/>(in container)
@@ -43,7 +43,7 @@ sequenceDiagram
 | Component | Runs in | Why this location |
 |---|---|---|
 | `discover.py` | **Host** (`~/.hermes/skills/inventory-discovery/scripts/`) | Orchestrator — calls two services (nmap + inventory-mcp). Containerizing it would add a docker.sock dependency or a 3rd service for no benefit. |
-| `nmap-discovery` | **Container** (`network_mode: host`, port 8002) | Needs `NET_RAW + NET_ADMIN` Linux capabilities for raw-socket scans. Granting those on the host is a security hole; the container scopes them to one process. |
+| `nmap-discovery` | **Container** (`network_mode: host`, port 8003) | Needs `NET_RAW + NET_ADMIN` Linux capabilities for raw-socket scans. Granting those on the host is a security hole; the container scopes them to one process. |
 | nmap binary | **Inside nmap-discovery container** | Same — capability isolation. nmap is invoked via `subprocess.run` from the wrapper. |
 | `inventory-mcp` | **Container** (port 8001, host-bound to 127.0.0.1) | Database + MCP server co-located. SQLite is on the container's volume; the MCP transport (streamable-http) is what discover.py talks to. |
 | `inventory-discovery` skill | **Host** (`~/.hermes/skills/inventory-discovery/`) | Hermes loads skills from `~/.hermes/skills/` at startup. No containerization layer exists in the skill path. |
@@ -53,7 +53,7 @@ sequenceDiagram
 | Endpoint | Port (host) | Bind | Protocol | Auth |
 |---|---|---|---|---|
 | Hermes Dashboard | 9119 | 0.0.0.0 | HTTP | basic_auth (admin / random 20-char) |
-| nmap-discovery `/scan` | 8002 | 127.0.0.1 (host-network mode) | HTTP GET | none (localhost-only) |
+| nmap-discovery `/scan` | 8003 | 127.0.0.1 (host-network mode) | HTTP GET | none (localhost-only) |
 | inventory-mcp `/mcp` | 8001 | 127.0.0.1 | HTTP POST (JSON-RPC 2.0, streamable-http) | none (localhost-only) |
 
 Both service endpoints are localhost-bound on purpose — they're only
@@ -64,7 +64,7 @@ surface.
 ## What `discover.py` does, step by step
 
 1. **Parse args** — `<target_cidr>` positional, `--dry-run`, `--timeout`
-2. **Call nmap-discovery** — `GET http://localhost:8002/scan?target=$cidr`,
+2. **Call nmap-discovery** — `GET http://localhost:8003/scan?target=$cidr`,
    returns JSON with `output` (XML), `code`, `error`
 3. **Parse XML** — `xml.etree.ElementTree.fromstring()` then walk `<host>`
    elements; for each, extract:
@@ -91,7 +91,7 @@ surface.
 
 ## Prerequisites (already set up by `bootstrap.sh`)
 
-- ✅ nmap-discovery container running (port 8002 bound)
+- ✅ nmap-discovery container running (port 8003 bound)
 - ✅ inventory-mcp container running (port 8001 bound)
 - ✅ inventory-mcp registered in the active Hermes profile's config
   (`register_inventory_mcp "default"` in `bootstrap.sh`)
@@ -104,7 +104,7 @@ which command to run to fix it.
 
 ```bash
 # 1. Verify the wrappers respond
-curl -s http://localhost:8002/scan?target=127.0.0.1 | jq '.code, .output | length'
+curl -s http://localhost:8003/scan?target=127.0.0.1 | jq '.code, .output | length'
 # expect: 0, 1000+
 
 # 2. Run discover.py in dry-run (no DB writes)
