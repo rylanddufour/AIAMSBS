@@ -56,3 +56,43 @@ loki.write "systemd" {
         url = "http://loki:3100/loki/api/v1/push"
     }
 }
+
+// ---------------------------------------------------------------------------
+// Hermes agent activity (BACKLOG #29 — research/agent-activity-dashboard-2026-07-01.md)
+//
+// Tails the Hermes agent log (mounted read-only via docker-compose) into Loki
+// so the dashboard's "Live logs" panel can show recent activity. The Python
+// agent-exporter service (services/agent-exporter/, port 9117) carries the
+// numeric metrics from state.db + kanban.db + cron/jobs.json — see Prometheus
+// scrape config for `agent-exporter` job in config/prometheus.yml.
+//
+// PRIVACY DEFAULT: the agent.log line format includes structured per-API-call
+// token + latency data, but does NOT include the user/assistant message
+// content. The raw log line is forwarded to Loki so operators can scan recent
+// activity, but no prompt body is parsed or exposed in metrics.
+//
+// Future work: alloy loki.process stage.metrics can derive 6 log-derived
+// counters/histograms (api calls, tool latencies, errors) without Python.
+// Deferred to a follow-up so v1 ships with the SQLite-derived metrics only.
+// ---------------------------------------------------------------------------
+
+// File matcher for the Hermes agent log
+local.file_match "hermes_agent_log" {
+    path_targets = [{
+        __path__ = "/var/lib/hermes/logs/agent.log",
+    }]
+}
+
+// Tail agent.log → forward raw lines to Loki
+loki.source.file "hermes_agent_log" {
+    targets    = local.file_match.hermes_agent_log.targets
+    labels     = { job = "hermes-agent", source = "hermes_agent" }
+    forward_to = [loki.write.hermes_agent.receiver]
+}
+
+// Write Hermes agent log to Loki
+loki.write "hermes_agent" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}

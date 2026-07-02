@@ -1,0 +1,47 @@
+# agent-exporter — AIAMSBS Hermes agent activity Prometheus exporter.
+# BACKLOG #29 (research/agent-activity-dashboard-2026-07-01.md).
+#
+# Reads SQLite + JSON from ~/.hermes/ (read-only) and exposes /metrics on :9117.
+# Prometheus scrapes it via the static_configs entry added in
+# config/prometheus.yml. Grafana renders the agent-activity dashboard
+# (config/grafana/provisioning/dashboards/agent-activity.json) from the data.
+#
+# Run with:  docker compose -f services/agent-exporter/docker-compose.yml up -d
+# Or let bootstrap.sh do it via deploy_agent_exporter().
+#
+# IMPORTANT — privacy: the exporter only reads aggregate counters from
+# state.db (session count, token totals, cost). It does NOT export prompt
+# bodies, message content, or system_prompt fields. The alloy redaction
+# pipeline (config/alloy.yml) handles log-side redaction.
+
+services:
+  agent-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aiamsbs/agent-exporter:0.1.0
+    container_name: agent-exporter
+    # host network so the exporter sees ~/.hermes at its real path and so
+    # Prometheus can scrape it on localhost:9117 (matches the alloy pattern:
+    # the alloy container also uses host paths for the same reason).
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      AGENT_EXPORTER_PORT: "9117"
+      AGENT_EXPORTER_INTERVAL: "15"
+      AGENT_EXPORTER_LOG_LEVEL: "INFO"
+      # Read-only mount path: keep this identical to the on-host $HOME so
+      # ~/.hermes/... resolves to the real Hermes data.
+      HERMES_HOME: "${HOME}/.hermes"
+    volumes:
+      # Read-only mount of the entire Hermes home. The exporter only opens
+      # SQLite files in mode=ro (with PRAGMA query_only=1) so even a misconfig
+      # can't write through the read-only bind mount.
+      - ${HOME}/.hermes:${HOME}/.hermes:ro
+    # No ports directive needed with network_mode: host (already bound on :9117).
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:9117/healthz', timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
