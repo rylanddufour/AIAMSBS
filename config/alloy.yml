@@ -29,6 +29,7 @@ loki.source.docker "containers" {
     targets = discovery.docker.containers.targets
     labels = {
         job = "docker",
+        source = "aiamsbs_host",
     }
     forward_to = [loki.write.docker.receiver]
 }
@@ -37,6 +38,7 @@ loki.source.docker "containers" {
 loki.source.journal "systemd" {
     labels = {
         job = "systemd",
+        source = "aiamsbs_host",
     }
     forward_to = [loki.write.systemd.receiver]
 }

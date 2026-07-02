@@ -15,7 +15,7 @@
       "id": 1,
       "targets": [
         {
-          "expr": "sum by (severity) (count_over_time({job=\"syslog\", host=\"$host\"}[1m]))",
+          "expr": "sum by (severity) (count_over_time({source=\"network_device\", host=\"$host\"}[1m]))",
           "legendFormat": "{{severity}}",
           "refId": "A"
         }
@@ -44,7 +44,7 @@
       },
       "targets": [
         {
-          "expr": "{job=\"syslog\", host=\"$host\", severity=~\"$severity\"} |~ \"(?i)$search\"",
+          "expr": "{source=\"network_device\", host=\"$host\", severity=~\"$severity\"} |~ \"(?i)$search\"",
           "refId": "A"
         }
       ],
@@ -70,7 +70,7 @@
         "includeAll": false,
         "label": "Host",
         "name": "host",
-        "query": "label_values({job=\"syslog\"}, host)",
+        "query": "label_values({source=\"network_device\"}, host)",
         "refresh": 1,
         "type": "query"
       },
@@ -124,5 +124,5 @@
   "timezone": "browser",
   "title": "Network Device Logs",
   "uid": "network-syslog",
-  "version": 1
+  "version": 2
 }

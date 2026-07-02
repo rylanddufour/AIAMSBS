@@ -8,7 +8,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 6,
+  "version": 7,
   "refresh": "30s",
   "time": {
     "from": "now-15m",
@@ -811,7 +811,7 @@
     },
     {
       "id": 30,
-      "title": "Live Logs (docker + syslog + systemd)",
+      "title": "Live Logs (aiamsbs host)",
       "type": "logs",
       "datasource": {
         "type": "loki",
@@ -825,7 +825,7 @@
       },
       "targets": [
         {
-          "expr": "{job=~\"docker|syslog|systemd\"} |~ \"(?i)(sshd|sudo|auth|kernel|oom|failed|denied|error)\"",
+          "expr": "{source=\"aiamsbs_host\"}",
           "refId": "A",
           "datasource": {
             "type": "loki",

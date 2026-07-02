@@ -9,13 +9,17 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: syslog
+  # Network device syslog (OPNsense, switches, APs, etc.) — sent TO this port by devices.
+  # Future customer-host syslog receivers will get their own block on a different port
+  # with `source: customer_host`, so port = divider between source types.
+  - job_name: network_syslog
     syslog:
       listen_address: 0.0.0.0:514
       idle_timeout: 60s
       label_structured_data: yes
       labels:
-        job: syslog
+        job: network_syslog
+        source: network_device
     relabel_configs:
       - source_labels: ['__syslog_message_hostname']
         target_label: 'host'
