@@ -5,6 +5,7 @@ apiVersion: 1
 
 datasources:
   - name: Prometheus
+    uid: aiamsbs-prom
     type: prometheus
     access: proxy
     url: http://prometheus:9090
@@ -14,6 +15,7 @@ datasources:
       httpMethod: POST
 
   - name: Loki
+    uid: aiamsbs-loki
     type: loki
     access: proxy
     url: http://loki:3100

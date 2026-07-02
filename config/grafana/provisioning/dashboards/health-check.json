@@ -47,7 +47,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 2,
@@ -92,7 +92,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 2,
@@ -137,7 +137,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 2,
@@ -182,7 +182,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 2,
@@ -227,7 +227,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 2,
@@ -272,7 +272,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 2,
@@ -323,7 +323,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 2,
@@ -374,7 +374,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 2,
@@ -425,7 +425,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 2,
@@ -476,7 +476,7 @@
       "type": "gauge",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 4,
@@ -525,7 +525,7 @@
       "type": "gauge",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 4,
@@ -574,7 +574,7 @@
       "type": "gauge",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 4,
@@ -623,7 +623,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 4,
@@ -687,7 +687,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 4,
@@ -751,7 +751,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "Prometheus"
+        "uid": "aiamsbs-prom"
       },
       "gridPos": {
         "h": 4,
@@ -815,7 +815,7 @@
       "type": "logs",
       "datasource": {
         "type": "loki",
-        "uid": "Loki"
+        "uid": "aiamsbs-loki"
       },
       "gridPos": {
         "h": 30,
@@ -829,7 +829,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "Loki"
+            "uid": "aiamsbs-loki"
           },
           "queryType": "range"
         }
