@@ -4,7 +4,7 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
+        "uid": "aiamsbs-loki"
       },
       "gridPos": {
         "h": 10,
@@ -26,7 +26,7 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
+        "uid": "aiamsbs-loki"
       },
       "gridPos": {
         "h": 14,
@@ -64,7 +64,7 @@
       {
         "datasource": {
           "type": "loki",
-          "uid": "P8E80F9AEF21F6940"
+          "uid": "aiamsbs-loki"
         },
         "hide": 0,
         "includeAll": false,
