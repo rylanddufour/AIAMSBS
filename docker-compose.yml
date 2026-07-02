@@ -51,6 +51,9 @@ services:
       - alloy-data:/etc/alloy
       # Mount Hermes logs for collection
       - ${HOME}/.hermes/logs:/var/lib/hermes/logs:ro
+      # Mount systemd journal for loki.source.journal (BACKLOG #27)
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
     privileged: true
     environment:
       - DOCKER_HOST=unix:///var/run/docker.sock
