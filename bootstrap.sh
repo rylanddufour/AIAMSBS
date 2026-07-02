@@ -1661,7 +1661,7 @@ list_listening_ports() {
         port="${port%]}"
         # Filter to known AIAMSBS ports
         case "$port" in
-            514|1514|3000|3100|8000|8001|8002|8003|9090|9119|12345) ;;
+            514|1514|3000|3100|8000|8001|8002|8003|9090|9117|9119|12345) ;;
             *) continue ;;
         esac
         # Determine scope (public vs localhost-only)
@@ -1734,6 +1734,36 @@ print_access_summary() {
     echo ""
 }
 
+# deploy_agent_exporter
+# Bring up the AI Agent activity exporter (BACKLOG #29, services/agent-exporter/).
+# Reads ~/.hermes/profiles/*/state.db + kanban.db + cron/jobs.json read-only
+# and exposes 6 Prometheus metrics on port 9117. Pairs with config/alloy.yml's
+# Hermes agent log shipping (Loki side) and config/prometheus.yml's `agent-exporter`
+# scrape job. Skipped gracefully if the compose file is absent (a customer's
+# checkout may not include services/ yet, or may run with --no-agent-exporter).
+deploy_agent_exporter() {
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
+    local agent_dir="$infra_dir/services/agent-exporter"
+    local agent_compose="$agent_dir/docker-compose.yml"
+
+    if [ ! -f "$agent_compose" ]; then
+        log_warn "services/agent-exporter/docker-compose.yml not found at $agent_compose; skipping"
+        return 0
+    fi
+
+    log_info "Deploying agent-exporter (BACKLOG #29)..."
+
+    # network_mode: host means the container sees ~/.hermes at its real path,
+    # so HERMES_HOME=${HOME}/.hermes in compose resolves to the actual
+    # ~/.hermes on the host. Mirrors the alloy pattern.
+    if sg docker -c "docker compose -f '$agent_compose' up -d --build" 2>&1 | tail -10; then
+        log_success "agent-exporter deployed (port 9117, /metrics + /healthz)"
+    else
+        log_warn "agent-exporter deployment failed; continuing"
+        return 0
+    fi
+}
+
 verify_installation() {
     log_info "Verifying installation..."
     local errors=0
@@ -1793,6 +1823,8 @@ verify_installation() {
         # the SSE stream opened; 406 means the endpoint exists. Either is OK.
         verify_service_health "Inventory MCP"   "http://localhost:8001/mcp"                "200|406" || errors=$((errors+1))
         verify_service_health "Grafana MCP"     "http://localhost:8000/mcp"                "200|406" || errors=$((errors+1))
+        # agent-exporter is a Prometheus exporter with a JSON healthz at /healthz.
+        verify_service_health "agent-exporter"  "http://localhost:9117/healthz"            "200"    || errors=$((errors+1))
         verify_service_health "Hermes Dashboard" "http://localhost:$HERMES_PORT/"          "302"    || errors=$((errors+1))
 
         log_info "Listening ports (AIAMSBS services):"
@@ -1892,6 +1924,13 @@ main() {
     deploy_kb_stack
     register_kb_mcp "default"
     register_kb_mcp "it_admin"
+
+    # BACKLOG #29: deploy the agent-exporter (port 9117) which reads Hermes
+    # state.db + kanban.db + cron/jobs.json and exposes 6 SQLite-derived
+    # Prometheus metrics. Pairs with config/alloy.yml's Loki pipeline and
+    # config/prometheus.yml's `agent-exporter` scrape job. The new
+    # agent-activity.json dashboard reads both.
+    deploy_agent_exporter
 
     # Print customer-facing access summary (URLs, credentials, ports, hints)
     print_access_summary

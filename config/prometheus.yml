@@ -124,6 +124,17 @@ scrape_configs:
         labels:
           service: 'blackbox_exporter'
 
+  # AI Agent activity exporter (BACKLOG #29).
+  # Reads ~/.hermes/profiles/*/state.db + kanban.db + cron/jobs.json read-only
+  # and exposes session/kanban/cron/cost metrics. Sibling to alloy's
+  # log-derived metrics (config/alloy.yml → loki.process stage.metrics).
+  - job_name: 'agent-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['192.168.0.220:9117']
+        labels:
+          service: 'agent-exporter'
+
 # Remote write configuration for Alloy
 remote_write:
   - url: 'http://prometheus:9090/api/v1/write'
