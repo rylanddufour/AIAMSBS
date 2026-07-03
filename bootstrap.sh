@@ -983,7 +983,10 @@ install_backup_scripts() {
     mkdir -p "$dest_dir"
 
     local installed=0 skipped=0
-    for src in "$src_dir"/*.sh; do
+    # Copy both .sh (shell scripts) and .py (Python helpers). The Python
+    # helper install_dashboard_backup_hermes_cron.py edits ~/.hermes/cron/jobs.json
+    # and is invoked by the bash function below.
+    for src in "$src_dir"/*.sh "$src_dir"/*.py; do
         [ -f "$src" ] || continue
         local name
         name=$(basename "$src")
@@ -1006,55 +1009,56 @@ install_backup_scripts() {
 }
 
 # ============================================
-# Install Dashboard Backup Cron (system cron, /etc/cron.d)
+# Install Dashboard Backup Cron (Hermes-managed cron)
 # ============================================
-# Writes a /etc/cron.d/ file that runs backup-dashboards.sh daily. Uses
-# system cron instead of Hermes-managed cron because:
-#   - Hermes cron (jobs.json) is profile-scoped and dies if the profile is deleted
-#   - Hermes cron burns LLM tokens daily just to invoke a shell script
-#   - /etc/cron.d is portable, runs as the right user, and survives profile churn
+# Registers a Hermes cron job against the it_admin profile that runs the
+# existing backup-dashboards.sh script daily at 01:00. Replaces the legacy
+# /etc/cron.d/aiamsbs-dashboard-backup system cron (which the Python helper
+# removes on first run).
 #
-# Must run AFTER install_backup_scripts (which installs the script itself).
+# Why Hermes cron over system cron:
+#   - Profile-scoped, runs in the right Hermes context with the right MCP tools
+#     (e.g. the it_admin profile has grafana-mcp for any future "restore dashboard"
+#     workflow)
+#   - Session history + last_status / last_error live in jobs.json; visible via
+#     `hermes cron list` instead of having to tail a log file
+#   - Optional Telegram delivery when the user configures a messaging service
+#     (per Telegram 2026-07-03 — no deliver target set in this installer; user
+#     adds it later)
+#
+# The shell script (scripts/backup-dashboards.sh) is the workhorse and is
+# unchanged. The agent's prompt is a thin wrapper that invokes the script
+# and reports the result. See skills/dashboard-backup.md (in the it_admin
+# profile) for what the agent sees.
+#
+# Must run AFTER install_backup_scripts (which installs both the shell
+# script and the Python helper). The Python helper lives at
+# scripts/install_dashboard_backup_hermes_cron.py and is invoked below.
 
-# Uses sudo because bootstrap runs as the install user (not root); /etc/cron.d/
-# is root-owned and the existing pattern for root-path ops in this script is
-# `sudo tee` + `sudo chmod`. See also install_hermes_dashboard_service().
-
-install_dashboard_backup_cron() {
-    local script_path="$HERMES_HOME/scripts/backup-dashboards.sh"
-    if [ ! -x "$script_path" ]; then
-        log_warn "backup-dashboards.sh not found at $script_path; skipping cron install"
+install_dashboard_backup_hermes_cron() {
+    local helper="$HERMES_HOME/scripts/install_dashboard_backup_hermes_cron.py"
+    if [ ! -x "$helper" ]; then
+        log_warn "install_dashboard_backup_hermes_cron.py not found at $helper; skipping"
+        log_warn "(install_backup_scripts should have installed it; check that step)"
         return 0
     fi
 
-    local log_dir="$HERMES_HOME/logs"
-    mkdir -p "$log_dir"
-    if [ -n "$HERMES_USER" ] && id "$HERMES_USER" &>/dev/null; then
-        chown "$HERMES_USER:$HERMES_USER" "$log_dir" 2>/dev/null || true
+    # Removing the legacy /etc/cron.d file requires root, so this step
+    # uses sudo. Same pattern as the old install_dashboard_backup_cron.
+    if [ -f /etc/cron.d/aiamsbs-dashboard-backup ]; then
+        log_info "Removing legacy system cron /etc/cron.d/aiamsbs-dashboard-backup..."
+        if ! sudo rm -f /etc/cron.d/aiamsbs-dashboard-backup; then
+            log_warn "Could not remove legacy cron (sudo failed); remove manually with: sudo rm /etc/cron.d/aiamsbs-dashboard-backup"
+        fi
     fi
 
-    local cron_file="/etc/cron.d/aiamsbs-dashboard-backup"
-    local desired
-    desired=$(cat <<EOF
-# AIAMSBS Grafana dashboard backup - daily at 01:00 (token sourced from \$HOME/.hermes/secrets/grafana-mcp.env)
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-HOME=$HERMES_HOME
-
-0 1 * * * $HERMES_USER $script_path >> $log_dir/backup-dashboards.log 2>&1
-EOF
-)
-
-    if [ -f "$cron_file" ] && [ "$(sudo cat "$cron_file" 2>/dev/null)" = "$desired" ]; then
-        log_info "Cron already installed at $cron_file; skipping"
-        return 0
+    log_info "Registering AIAMSBS Dashboard Backup as a Hermes cron job (profile=it_admin, daily 01:00)..."
+    # The helper handles the jobs.json edit + idempotency + legacy removal.
+    if python3 "$helper" "$HERMES_HOME" it_admin; then
+        log_success "Hermes dashboard backup cron installed"
+    else
+        log_warn "Hermes dashboard backup cron install failed (exit $?); jobs.json may need manual edit"
     fi
-
-    log_info "Installing $cron_file..."
-    printf '%s\n' "$desired" | sudo tee "$cron_file" > /dev/null
-    sudo chmod 0644 "$cron_file"
-    sudo chown root:root "$cron_file"
-    log_success "Installed $cron_file (daily 01:00 as $HERMES_USER)"
 }
 
 # ============================================
@@ -1937,7 +1941,7 @@ main() {
     # dashboard backup cron depends on the script being installed. Wire them
     # in order right after create_grafana_mcp_service_account.
     install_backup_scripts
-    install_dashboard_backup_cron
+    install_dashboard_backup_hermes_cron
 
     deploy_mcp_stack
     deploy_inventory_stack
