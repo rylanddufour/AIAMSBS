@@ -19,12 +19,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Pass host UID/GID so the in-container user (created in Dockerfile)
+        # matches the on-host user that owns ~/.hermes. Defaults are 1000:1000
+        # (ansible on Ubuntu 24.04); override via the env when run by another
+        # user. See Dockerfile for why this matters.
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
     image: aiamsbs/agent-exporter:0.1.0
     container_name: agent-exporter
     # host network so the exporter sees ~/.hermes at its real path and so
     # Prometheus can scrape it on localhost:9117 (matches the alloy pattern:
     # the alloy container also uses host paths for the same reason).
     network_mode: host
+    # Force the running process to the same UID/GID as the build-time user.
+    # This is what lets the container read ~/.hermes (mode 700 on the host).
+    user: "${UID:-1000}:${GID:-1000}"
     restart: unless-stopped
     environment:
       AGENT_EXPORTER_PORT: "9117"

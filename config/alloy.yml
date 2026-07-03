@@ -83,10 +83,23 @@ local.file_match "hermes_agent_log" {
     }]
 }
 
-// Tail agent.log → forward raw lines to Loki
+// Tail agent.log → forward raw lines to Loki.
+// Note: `loki.source.file` does NOT accept a top-level `labels = {...}` block
+// in Alloy v1.x. Labels must be added via a `loki.process` stage after the
+// source. (See E2E t_8d0a7527 failure 4f.)
 loki.source.file "hermes_agent_log" {
     targets    = local.file_match.hermes_agent_log.targets
-    labels     = { job = "hermes-agent", source = "hermes_agent" }
+    forward_to = [loki.process.hermes_agent_log.receiver]
+}
+
+// Add the job + source labels in a dedicated processing stage.
+loki.process "hermes_agent_log" {
+    stage.labels {
+        values = {
+            job    = "hermes-agent",
+            source = "hermes_agent",
+        }
+    }
     forward_to = [loki.write.hermes_agent.receiver]
 }
 

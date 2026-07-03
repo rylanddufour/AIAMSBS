@@ -23,10 +23,17 @@ WORKDIR /app
 COPY agent_exporter.py /app/agent_exporter.py
 RUN pip install --no-cache-dir "prometheus_client>=0.20,<1.0"
 
-# Hermes data is read-only; the container must never write to it.
-# Compose mounts ~/.hermes:/home/ansible/.hermes:ro so the in-container path
-# matches the on-host path (matches alloy's mount convention).
-USER nobody:nogroup
+# Match the host user that owns ~/.hermes. The exporter only needs to READ
+# state.db / kanban.db / cron/jobs.json — those files are mode 700 on the host,
+# so the in-container UID/GID must match the host owner, or reads fail with
+# PermissionError. Compose passes UID/GID as build args + runs the container
+# with `user:` set to the same values, so the in-container process matches the
+# on-host user. Default 1000:1000 (ansible on Ubuntu 24.04).
+ARG UID=1000
+ARG GID=1000
+RUN groupadd -g $GID hermes \
+ && useradd  -u $UID -g $GID -M -s /usr/sbin/nologin hermes
+USER hermes:hermes
 
 EXPOSE 9117
 
