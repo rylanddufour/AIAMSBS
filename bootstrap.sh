@@ -1793,6 +1793,7 @@ print_access_summary() {
     echo ""
     echo "  🔧 MCP servers (localhost-only by default)"
     echo "     Inventory MCP: http://localhost:8001/mcp"
+    echo "     KB MCP:        http://localhost:8002/mcp"
     echo "     Grafana MCP:   http://localhost:8000/mcp"
     echo ""
     echo "  📝 Verify the LLM is working:"
