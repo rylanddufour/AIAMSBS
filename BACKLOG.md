@@ -39,7 +39,7 @@
 |---|------|-------------|-------------|
 | A | Fix container metrics | Ensure `container_cpu_usage_seconds_total` and other container_* metrics flow to Prometheus | — |
 | B | Add hostname label | Add `hostname` label to all metrics for multi-host dropdown selector | — |
-| 5 | Log retention config | Configure Loki retention to prevent disk exhaustion | Low |
+| 5 | Log retention config | **[RESOLVED — PR #18](https://github.com/rylanddufour/AIAMSBS/pull/18), 2026-07-03.** Was: no compactor configured; chunks accumulated until disk filled. The earlier "30 days" assumption was wrong — `reject_old_samples_max_age: 168h` is a 7-day ingest window for late arrivals, not a retention policy. Now: `limits_config.retention_period: 2160h` (90 days) + a `compactor:` block (`working_directory`, `retention_enabled: true`, `compaction_interval: 10m`). Shape #1 from 2026-07-03 Telegram — single global policy, no per-stream rules (small IT shop volume doesn't justify the complexity). Loki 3.x runs the compactor in-process; no docker-compose change needed. Closes the "prevent disk exhaustion" goal. | Low |
 | 6 | Backup script | Export config files and dashboards for disaster recovery | Low |
 | 6a | Hermes WebUI scheduled jobs | Enable gateway in container so cron jobs work in WebUI | Medium |
 
@@ -96,7 +96,7 @@
 ---
 
 ## Completed
-- [x] BACKLOG #11 — Test syslog with real network device [RESOLVED 2026-06-30] — firewall logs flowing into Grafana dashboard via Promtail :514 receiver, E2E verified by Ryland
+- [x] BACKLOG #5 — Log retention config [RESOLVED — PR #18](https://github.com/rylanddufour/AIAMSBS/pull/18), 2026-07-03. Loki compactor enforces 90-day global retention (`limits_config.retention_period: 2160h` + `compactor: {retention_enabled: true, working_directory: /loki/compactor, compaction_interval: 10m}`). Single global policy across all streams (aiamsbs_host, network_device, future hermes-*). Loki 3.x runs compactor in-process; no docker-compose change.
 - [x] BACKLOG #2 — Health check dashboard [RESOLVED — commit 7385d7b](https://github.com/rylanddufour/AIAMSBS/commit/7385d7b), 2026-06-28
 - [x] BACKLOG #25 — Inventory `delete_device` tool + confirmation flow [RESOLVED — PR #10](https://github.com/rylanddufour/AIAMSBS/pull/10), 2026-06-27
 - [x] BACKLOG #24 — Default profile MCP auto-loading [RESOLVED — PR #9](https://github.com/rylanddufour/AIAMSBS/pull/9), 2026-06-27
