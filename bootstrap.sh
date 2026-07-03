@@ -1361,6 +1361,77 @@ install_inventory_discovery_skill() {
     log_success "inventory-discovery skill installed (trigger: 'inventory the subnet ...')"
 }
 
+# install_inventory_mcp_skill
+# Copies the inventory-mcp skill (shipped in inventory-stack/inventory-mcp/)
+# into both the default profile's skill tree AND the it_admin specialist
+# profile. The MCP server itself is wired by register_inventory_mcp() — this
+# function only ships the SKILL.md so the agent knows the tool surface.
+# Idempotent — overwrites on each bootstrap run.
+install_inventory_mcp_skill() {
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
+    local src="$infra_dir/inventory-stack/inventory-mcp/SKILL.md"
+    local default_dst="$HOME/.hermes/skills/inventory-mcp/SKILL.md"
+    local it_admin_dst="$HOME/.hermes/profiles/it_admin/skills/inventory-mcp/SKILL.md"
+
+    if [ ! -f "$src" ]; then
+        log_warn "inventory-mcp skill source not found at $src; skipping"
+        return 0
+    fi
+
+    log_info "Installing inventory-mcp skill..."
+
+    # Default profile: ~/.hermes/skills/inventory-mcp/SKILL.md
+    mkdir -p "$(dirname "$default_dst")"
+    cp "$src" "$default_dst"
+    chmod u+rwX,go-rwx "$(dirname "$default_dst")"
+
+    # it_admin specialist profile (BACKLOG #20).
+    # If the it_admin profile doesn't exist yet, skip silently — the next
+    # install_it_admin_profile_soul() run will create it; the MCP wiring in
+    # register_inventory_mcp() will then re-trigger the install. Better than
+    # creating the profile dir out of order.
+    if [ -d "$HOME/.hermes/profiles/it_admin" ]; then
+        mkdir -p "$(dirname "$it_admin_dst")"
+        cp "$src" "$it_admin_dst"
+        chmod -R u+rwX,go-rwx "$(dirname "$it_admin_dst")"
+        log_success "  → default + it_admin"
+    else
+        log_success "  → default (it_admin profile not yet created; will install on next bootstrap)"
+    fi
+}
+
+# install_kb_mcp_skill
+# Mirrors install_inventory_mcp_skill() for the kb-mcp server (port 8002).
+# Same dual-profile install: default + it_admin. Idempotent.
+install_kb_mcp_skill() {
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
+    local src="$infra_dir/kb-stack/kb-mcp/SKILL.md"
+    local default_dst="$HOME/.hermes/skills/kb-mcp/SKILL.md"
+    local it_admin_dst="$HOME/.hermes/profiles/it_admin/skills/kb-mcp/SKILL.md"
+
+    if [ ! -f "$src" ]; then
+        log_warn "kb-mcp skill source not found at $src; skipping"
+        return 0
+    fi
+
+    log_info "Installing kb-mcp skill..."
+
+    # Default profile
+    mkdir -p "$(dirname "$default_dst")"
+    cp "$src" "$default_dst"
+    chmod u+rwX,go-rwx "$(dirname "$default_dst")"
+
+    # it_admin specialist profile (BACKLOG #20)
+    if [ -d "$HOME/.hermes/profiles/it_admin" ]; then
+        mkdir -p "$(dirname "$it_admin_dst")"
+        cp "$src" "$it_admin_dst"
+        chmod -R u+rwX,go-rwx "$(dirname "$it_admin_dst")"
+        log_success "  → default + it_admin"
+    else
+        log_success "  → default (it_admin profile not yet created; will install on next bootstrap)"
+    fi
+}
+
 # start_nmap_discovery
 # Starts the nmap-discovery container in the 'discovery' compose profile.
 # Idempotent — skips if already running. Requires NET_RAW + NET_ADMIN caps,
@@ -1884,6 +1955,7 @@ main() {
     register_grafana_mcp "default"
     register_grafana_mcp "it_admin"
     install_inventory_discovery_skill
+    install_inventory_mcp_skill
     start_nmap_discovery
 
     # BACKLOG #30 K2: deploy the kb-mcp knowledge-base server and wire it
@@ -1892,6 +1964,7 @@ main() {
     deploy_kb_stack
     register_kb_mcp "default"
     register_kb_mcp "it_admin"
+    install_kb_mcp_skill
 
     # Print customer-facing access summary (URLs, credentials, ports, hints)
     print_access_summary
