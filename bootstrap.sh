@@ -816,6 +816,95 @@ start_hermes_dashboard() {
 }
 
 # ============================================
+# Install Hermes Gateway systemd service
+# ============================================
+# Writes a unit file so the hermes-gateway daemon (and therefore every
+# Hermes cron job, e.g. AIAMSBS Dashboard Backup) survives reboots and is
+# supervised by systemd. The gateway is the daemon that TICKS scheduled
+# jobs — without it, cron entries are registered in jobs.json but never
+# fire. See hermes_agent/cron/__init__.py: "Cron jobs are executed
+# automatically by the gateway daemon".
+#
+# We use the system-level install (`hermes gateway install --system`) so
+# the unit lives in /etc/systemd/system/hermes-gateway.service and is
+# started at multi-user.target boot — independent of any user login.
+# This is the right scope for a server (Proxmox VM/CT, bare metal). The
+# per-user service (`hermes gateway install`, no --system) only starts on
+# user login, so it would not survive a reboot of a headless server.
+#
+# Modeled on install_hermes_dashboard_service above — same pattern,
+# same sudo gymnastics for /etc/systemd/system/.
+
+install_hermes_gateway_service() {
+    # Bail out quietly on non-systemd systems (containers, minimal VMs).
+    if [ ! -d /run/systemd/system ] && [ ! -d /etc/systemd/system ]; then
+        log_info "systemd not detected; skipping gateway service install"
+        return 0
+    fi
+    if ! command -v systemctl > /dev/null 2>&1; then
+        log_info "systemctl not available; skipping gateway service install"
+        return 0
+    fi
+    local hermes_bin="$HERMES_HOME/hermes-agent/venv/bin/hermes"
+    if [ ! -x "$hermes_bin" ]; then
+        log_warn "hermes CLI not found at $hermes_bin; skipping gateway service install"
+        return 0
+    fi
+
+    local hermes_user="${HERMES_USER:-$USER}"
+
+    # `hermes gateway install --system` writes
+    # /etc/systemd/system/hermes-gateway.service, runs `systemctl
+    # daemon-reload`, and `systemctl enable hermes-gateway.service`. It
+    # does NOT start the service — we do that explicitly below so the
+    # gateway is up before install_dashboard_backup_hermes_cron() later
+    # registers the cron entry.
+    #
+    # Refuses to install as root unless --run-as-user is given. Bootstrap
+    # runs as the install user (e.g. `ansible` on the Proxmox VM), so
+    # --run-as-user is just $USER. If a customer runs bootstrap as root
+    # (uncommon — they would have lost docker group on next login), we
+    # pass --run-as-user root explicitly to keep the install non-fatal.
+    if [ ! -f /etc/systemd/system/hermes-gateway.service ]; then
+        log_info "Installing hermes-gateway as a system service (user=$hermes_user)..."
+        local run_as_flag=()
+        if [ "$hermes_user" = "root" ]; then
+            run_as_flag=(--run-as-user root)
+        else
+            run_as_flag=(--run-as-user "$hermes_user")
+        fi
+        if ! sudo "$hermes_bin" gateway install --system "${run_as_flag[@]}" >/dev/null 2>&1; then
+            log_warn "hermes gateway install --system failed; cron jobs will not run automatically"
+            log_warn "Retry manually: sudo -E $hermes_bin gateway install --system --run-as-user $hermes_user"
+            return 0
+        fi
+        log_success "Installed systemd unit: hermes-gateway.service (system, user=$hermes_user)"
+    else
+        log_info "hermes-gateway.service already installed; skipping (use --force to refresh)"
+    fi
+
+    # Start the service. Idempotent: `systemctl start` on an already-
+    # running service is a no-op. We intentionally do NOT use --no-block;
+    # blocking here is fast (the service starts in <2s) and gives us a
+    # clear log line on success/failure.
+    log_info "Starting hermes-gateway.service..."
+    if ! sudo systemctl start hermes-gateway.service; then
+        log_warn "Failed to start hermes-gateway.service; cron jobs will not run"
+        log_warn "Diagnose with: sudo systemctl status hermes-gateway.service"
+        return 0
+    fi
+
+    # Verify it's actually running (not just "started but crash-looping").
+    # systemctl is-active returns 0 only when the service is up.
+    if sudo systemctl is-active --quiet hermes-gateway.service; then
+        log_success "Hermes gateway is active (system service; survives reboots)"
+    else
+        log_warn "hermes-gateway.service is installed but not active; check journalctl -u hermes-gateway"
+        return 0
+    fi
+}
+
+# ============================================
 # Install Grafana Skills (grafana-core + grafana-lgtm)
 # ============================================
 
@@ -1924,6 +2013,13 @@ main() {
     generate_dashboard_credentials
     install_hermes_dashboard_service
     start_hermes_dashboard
+
+    # Install the gateway as a system service so the cron scheduler daemon
+    # survives reboots. Must run before install_dashboard_backup_hermes_cron
+    # below so the gateway is up when the AIAMSBS Dashboard Backup cron
+    # entry is first registered and on every subsequent 01:00 tick. See
+    # install_hermes_gateway_service for the full rationale.
+    install_hermes_gateway_service
 
     if [ "$AUTO_DEPLOY" = true ]; then
         auto_deploy_stack

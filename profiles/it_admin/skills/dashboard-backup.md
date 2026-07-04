@@ -45,6 +45,19 @@ The agent:
 
 The agent does NOT rewrite the script or implement backup logic in-line. The script is the source of truth; the agent is a thin wrapper that provides logging + delivery.
 
+## The gateway is what ticks the cron
+
+Per `hermes_agent/cron/__init__.py`: *"Cron jobs are executed automatically by the gateway daemon"*. This means the `AIAMSBS Dashboard Backup` entry in `~/.hermes/cron/jobs.json` is **inert until the `hermes-gateway` daemon is running** — registration alone is not enough.
+
+`bootstrap.sh` installs the gateway as a **system-level systemd service** (`sudo hermes gateway install --system --run-as-user <user>`) so it:
+- Lives in `/etc/systemd/system/hermes-gateway.service`
+- Starts automatically at `multi-user.target` (server boot, independent of any user login)
+- Is supervised by systemd (Restart=always; auto-recovers from crashes)
+
+This is the right scope for a headless server. The per-user variant (`hermes gateway install`, no `--system`) only starts on user login and would not survive a reboot of a headless Proxmox VM/CT.
+
+To verify on a live install: `sudo systemctl status hermes-gateway.service` — should show `Active: active (running)`.
+
 ## Reading a backup
 
 ```bash
@@ -65,6 +78,7 @@ cat /tmp/dash-restore/MANIFEST.json
 | `ERROR: GRAFANA_SERVICE_ACCOUNT_TOKEN missing or placeholder` | Token file exists but is empty or contains a placeholder. Re-run `create_grafana_mcp_service_account()`. |
 | `WARN: failed to fetch <uid>, skipping` | One dashboard's JSON is malformed or the API call was rate-limited. The export continues with the other dashboards. Investigate the specific UID separately. |
 | No `dashboard-backup-*.tar.gz` files in `~/backups/` | Cron never ran. Check the Hermes cron state: `hermes cron list`, look for `AIAMSBS Dashboard Backup`, check `last_status`. |
+| Cron registered in jobs.json with `state: scheduled` and `enabled: true` but never fires | The **hermes-gateway daemon is not running** — it is the daemon that ticks scheduled jobs. Check `sudo systemctl status hermes-gateway.service`; on a fresh install it should be `active (running)`. If `inactive` or `failed`, start it with `sudo systemctl start hermes-gateway.service` and inspect `journalctl -u hermes-gateway.service -n 50` for the cause. |
 | `last_status: error` on the cron | Read `last_error` from `~/.hermes/cron/jobs.json` or `hermes cron status <id>`. |
 | Archive size much smaller than usual | A dashboard was deleted (or the manifest changed). Compare against the manifest from a prior archive. |
 
@@ -78,4 +92,5 @@ cat /tmp/dash-restore/MANIFEST.json
 - Script: `scripts/backup-dashboards.sh` (the workhorse)
 - Service account: `create_grafana_mcp_service_account()` in `bootstrap.sh`
 - Cron registration: `install_dashboard_backup_hermes_cron()` in `bootstrap.sh` (replaces the legacy `/etc/cron.d/aiamsbs-dashboard-backup` system cron)
+- Gateway (cron scheduler daemon): `install_hermes_gateway_service()` in `bootstrap.sh` — installs the system-level systemd service that ticks the cron
 - Legacy system cron: `/etc/cron.d/aiamsbs-dashboard-backup` — removed by the new install on re-bootstrap
