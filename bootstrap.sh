@@ -1966,6 +1966,27 @@ verify_installation() {
         log_warn "Docker not running; skipping service health checks"
     fi
 
+    # Hermes gateway is a systemd service, not an HTTP endpoint, so it
+    # doesn't fit verify_service_health() (which curls a URL). Check its
+    # systemd state directly. Without the gateway running, every Hermes
+    # cron job (e.g. AIAMSBS Dashboard Backup) is inert — see
+    # install_hermes_gateway_service for context. The check runs
+    # independently of the docker block above: a healthy gateway matters
+    # even on a host where docker is down.
+    if command -v systemctl >/dev/null 2>&1 && sudo test -f /etc/systemd/system/hermes-gateway.service 2>/dev/null; then
+        log_info "Checking hermes-gateway.service status..."
+        if sudo systemctl is-active --quiet hermes-gateway.service; then
+            log_success "  ✓ Hermes Gateway: active (system service)"
+        else
+            log_error "  ✗ Hermes Gateway: installed but not active"
+            log_info "    Diagnose: sudo systemctl status hermes-gateway.service"
+            log_info "    Logs:    sudo journalctl -u hermes-gateway.service -n 50"
+            errors=$((errors+1))
+        fi
+    else
+        log_warn "  ! Hermes Gateway: system service not installed (cron jobs will not run automatically)"
+    fi
+
     if [ $errors -eq 0 ]; then
         log_success "All checks passed!"
     else
