@@ -1,0 +1,1740 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "hermes-agent",
+  "elements": [
+    {
+      "type": "text",
+      "id": "e1",
+      "x": 380,
+      "y": 40,
+      "width": 640,
+      "height": 32,
+      "text": "Promtail Per-Port Syslog Flow",
+      "fontSize": 28,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "originalText": "Promtail Per-Port Syslog Flow",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e2",
+      "x": 280,
+      "y": 82,
+      "width": 840,
+      "height": 22,
+      "text": "3 source types -> 3 host ports -> 3 Promtail listeners -> 3 Loki streams (BACKLOG #35, kanban t_df72bab6)",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "textAlign": "center",
+      "originalText": "3 source types -> 3 host ports -> 3 Promtail listeners -> 3 Loki streams (BACKLOG #35, kanban t_df72bab6)",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e3",
+      "x": 1280,
+      "y": 120,
+      "width": 120,
+      "height": 18,
+      "text": "Color key",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "originalText": "Color key",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e4",
+      "x": 1280,
+      "y": 145,
+      "width": 20,
+      "height": 14,
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      }
+    },
+    {
+      "type": "text",
+      "id": "e5",
+      "x": 1308,
+      "y": 143,
+      "width": 140,
+      "height": 18,
+      "text": "External source",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "originalText": "External source",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e6",
+      "x": 1280,
+      "y": 167,
+      "width": 20,
+      "height": 14,
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      }
+    },
+    {
+      "type": "text",
+      "id": "e7",
+      "x": 1308,
+      "y": 165,
+      "width": 140,
+      "height": 18,
+      "text": "Port / annotation",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "originalText": "Port / annotation",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e8",
+      "x": 1280,
+      "y": 189,
+      "width": 20,
+      "height": 14,
+      "backgroundColor": "#d0bfff",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      }
+    },
+    {
+      "type": "text",
+      "id": "e9",
+      "x": 1308,
+      "y": 187,
+      "width": 140,
+      "height": 18,
+      "text": "Processing",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "originalText": "Processing",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e10",
+      "x": 1280,
+      "y": 211,
+      "width": 20,
+      "height": 14,
+      "backgroundColor": "#c3fae8",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      }
+    },
+    {
+      "type": "text",
+      "id": "e11",
+      "x": 1308,
+      "y": 209,
+      "width": 140,
+      "height": 18,
+      "text": "Storage (Loki)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "originalText": "Storage (Loki)",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e12",
+      "x": 50,
+      "y": 180,
+      "width": 240,
+      "height": 110,
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e13",
+          "type": "text"
+        },
+        {
+          "id": "e14",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e13",
+      "x": 60,
+      "y": 188,
+      "width": 220,
+      "height": 22,
+      "text": "Network Device",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": "e12",
+      "originalText": "Network Device",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e14",
+      "x": 60,
+      "y": 218,
+      "width": 220,
+      "height": 64,
+      "text": "Cisco / UniFi / Aruba\nOPNsense / firewall\nNative syslog (UDP+TCP)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": "e12",
+      "originalText": "Cisco / UniFi / Aruba\nOPNsense / firewall\nNative syslog (UDP+TCP)",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e15",
+      "x": 50,
+      "y": 360,
+      "width": 240,
+      "height": 110,
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e16",
+          "type": "text"
+        },
+        {
+          "id": "e17",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e16",
+      "x": 60,
+      "y": 368,
+      "width": 220,
+      "height": 22,
+      "text": "Linux Host",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": "e15",
+      "originalText": "Linux Host",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e17",
+      "x": 60,
+      "y": 398,
+      "width": 220,
+      "height": 64,
+      "text": "rsyslog forwarding\n*.* @@<aiamsbs>:1514\n(TCP for reliability)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": "e15",
+      "originalText": "rsyslog forwarding\n*.* @@<aiamsbs>:1514\n(TCP for reliability)",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e18",
+      "x": 50,
+      "y": 540,
+      "width": 240,
+      "height": 110,
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e19",
+          "type": "text"
+        },
+        {
+          "id": "e20",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e19",
+      "x": 60,
+      "y": 548,
+      "width": 220,
+      "height": 22,
+      "text": "Windows Host",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": "e18",
+      "originalText": "Windows Host",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e20",
+      "x": 60,
+      "y": 578,
+      "width": 220,
+      "height": 64,
+      "text": "NxLog / Snare / Event Log\nOmTcp -> <aiamsbs>:2514\nConvert EVT to syslog",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": "e18",
+      "originalText": "NxLog / Snare / Event Log\nOmTcp -> <aiamsbs>:2514\nConvert EVT to syslog",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e21",
+      "x": 360,
+      "y": 205,
+      "width": 130,
+      "height": 60,
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e22",
+          "type": "text"
+        },
+        {
+          "id": "e23",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e22",
+      "x": 365,
+      "y": 210,
+      "width": 120,
+      "height": 20,
+      "text": "host:514",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "e21",
+      "originalText": "host:514",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e23",
+      "x": 365,
+      "y": 235,
+      "width": 120,
+      "height": 18,
+      "text": "TCP+UDP",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "e21",
+      "originalText": "TCP+UDP",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e24",
+      "x": 360,
+      "y": 385,
+      "width": 130,
+      "height": 60,
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e25",
+          "type": "text"
+        },
+        {
+          "id": "e26",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e25",
+      "x": 365,
+      "y": 390,
+      "width": 120,
+      "height": 20,
+      "text": "host:1514",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "e24",
+      "originalText": "host:1514",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e26",
+      "x": 365,
+      "y": 415,
+      "width": 120,
+      "height": 18,
+      "text": "TCP",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "e24",
+      "originalText": "TCP",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e27",
+      "x": 360,
+      "y": 565,
+      "width": 130,
+      "height": 60,
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e28",
+          "type": "text"
+        },
+        {
+          "id": "e29",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e28",
+      "x": 365,
+      "y": 570,
+      "width": 120,
+      "height": 20,
+      "text": "host:2514",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "e27",
+      "originalText": "host:2514",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e29",
+      "x": 365,
+      "y": 595,
+      "width": 120,
+      "height": 18,
+      "text": "TCP",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "e27",
+      "originalText": "TCP",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e30",
+      "x": 560,
+      "y": 140,
+      "width": 440,
+      "height": 620,
+      "backgroundColor": "#d0bfff",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e31",
+          "type": "text"
+        },
+        {
+          "id": "e32",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e31",
+      "x": 570,
+      "y": 152,
+      "width": 420,
+      "height": 26,
+      "text": "Promtail container",
+      "fontSize": 20,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": "e30",
+      "originalText": "Promtail container",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e32",
+      "x": 570,
+      "y": 182,
+      "width": 420,
+      "height": 18,
+      "text": "grafana/promtail:latest - 3 syslog listeners",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": "e30",
+      "originalText": "grafana/promtail:latest - 3 syslog listeners",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e33",
+      "x": 580,
+      "y": 175,
+      "width": 400,
+      "height": 160,
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e34",
+          "type": "text"
+        },
+        {
+          "id": "e35",
+          "type": "text"
+        },
+        {
+          "id": "e36",
+          "type": "text"
+        },
+        {
+          "id": "e37",
+          "type": "text"
+        },
+        {
+          "id": "e38",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e34",
+      "x": 592,
+      "y": 187,
+      "width": 376,
+      "height": 26,
+      "text": "Listener:  0.0.0.0:514",
+      "fontSize": 16,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e33",
+      "originalText": "Listener:  0.0.0.0:514",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e35",
+      "x": 592,
+      "y": 213,
+      "width": 376,
+      "height": 26,
+      "text": "job_name:  network_syslog",
+      "fontSize": 15,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e33",
+      "originalText": "job_name:  network_syslog",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e36",
+      "x": 592,
+      "y": 239,
+      "width": 376,
+      "height": 26,
+      "text": "labels:    source: network_device",
+      "fontSize": 13,
+      "fontFamily": 3,
+      "strokeColor": "#0c8599",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e33",
+      "originalText": "labels:    source: network_device",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e37",
+      "x": 592,
+      "y": 265,
+      "width": 376,
+      "height": 26,
+      "text": "relabel:   hostname, severity, app, facility",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "strokeColor": "#495057",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e33",
+      "originalText": "relabel:   hostname, severity, app, facility",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e38",
+      "x": 592,
+      "y": 291,
+      "width": 376,
+      "height": 26,
+      "text": "// Cisco/UniFi/Aruba native syslog",
+      "fontSize": 11,
+      "fontFamily": 3,
+      "strokeColor": "#868e96",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e33",
+      "originalText": "// Cisco/UniFi/Aruba native syslog",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e39",
+      "x": 580,
+      "y": 355,
+      "width": 400,
+      "height": 160,
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e40",
+          "type": "text"
+        },
+        {
+          "id": "e41",
+          "type": "text"
+        },
+        {
+          "id": "e42",
+          "type": "text"
+        },
+        {
+          "id": "e43",
+          "type": "text"
+        },
+        {
+          "id": "e44",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e40",
+      "x": 592,
+      "y": 367,
+      "width": 376,
+      "height": 26,
+      "text": "Listener:  0.0.0.0:1514",
+      "fontSize": 16,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e39",
+      "originalText": "Listener:  0.0.0.0:1514",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e41",
+      "x": 592,
+      "y": 393,
+      "width": 376,
+      "height": 26,
+      "text": "job_name:  customer_host_linux",
+      "fontSize": 15,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e39",
+      "originalText": "job_name:  customer_host_linux",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e42",
+      "x": 592,
+      "y": 419,
+      "width": 376,
+      "height": 26,
+      "text": "labels:    source: customer_host_linux",
+      "fontSize": 13,
+      "fontFamily": 3,
+      "strokeColor": "#0c8599",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e39",
+      "originalText": "labels:    source: customer_host_linux",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e43",
+      "x": 592,
+      "y": 445,
+      "width": 376,
+      "height": 26,
+      "text": "relabel:   hostname, severity, app, facility",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "strokeColor": "#495057",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e39",
+      "originalText": "relabel:   hostname, severity, app, facility",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e44",
+      "x": 592,
+      "y": 471,
+      "width": 376,
+      "height": 26,
+      "text": "// rsyslog from Linux hosts (TCP)",
+      "fontSize": 11,
+      "fontFamily": 3,
+      "strokeColor": "#868e96",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e39",
+      "originalText": "// rsyslog from Linux hosts (TCP)",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e45",
+      "x": 580,
+      "y": 535,
+      "width": 400,
+      "height": 160,
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e46",
+          "type": "text"
+        },
+        {
+          "id": "e47",
+          "type": "text"
+        },
+        {
+          "id": "e48",
+          "type": "text"
+        },
+        {
+          "id": "e49",
+          "type": "text"
+        },
+        {
+          "id": "e50",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e46",
+      "x": 592,
+      "y": 547,
+      "width": 376,
+      "height": 26,
+      "text": "Listener:  0.0.0.0:2514",
+      "fontSize": 16,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e45",
+      "originalText": "Listener:  0.0.0.0:2514",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e47",
+      "x": 592,
+      "y": 573,
+      "width": 376,
+      "height": 26,
+      "text": "job_name:  customer_host_windows",
+      "fontSize": 15,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e45",
+      "originalText": "job_name:  customer_host_windows",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e48",
+      "x": 592,
+      "y": 599,
+      "width": 376,
+      "height": 26,
+      "text": "labels:    source: customer_host_windows",
+      "fontSize": 13,
+      "fontFamily": 3,
+      "strokeColor": "#0c8599",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e45",
+      "originalText": "labels:    source: customer_host_windows",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e49",
+      "x": 592,
+      "y": 625,
+      "width": 376,
+      "height": 26,
+      "text": "relabel:   hostname, severity, app, facility",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "strokeColor": "#495057",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e45",
+      "originalText": "relabel:   hostname, severity, app, facility",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e50",
+      "x": 592,
+      "y": 651,
+      "width": 376,
+      "height": 26,
+      "text": "// NxLog/Snare from Windows hosts",
+      "fontSize": 11,
+      "fontFamily": 3,
+      "strokeColor": "#868e96",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e45",
+      "originalText": "// NxLog/Snare from Windows hosts",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e51",
+      "x": 1060,
+      "y": 140,
+      "width": 320,
+      "height": 620,
+      "backgroundColor": "#c3fae8",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e52",
+          "type": "text"
+        },
+        {
+          "id": "e53",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e52",
+      "x": 1070,
+      "y": 152,
+      "width": 300,
+      "height": 26,
+      "text": "Loki",
+      "fontSize": 20,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": "e51",
+      "originalText": "Loki",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e53",
+      "x": 1070,
+      "y": 182,
+      "width": 300,
+      "height": 18,
+      "text": "grafana/loki:3.2.0 - 3 label-keyed streams",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "containerId": "e51",
+      "originalText": "grafana/loki:3.2.0 - 3 label-keyed streams",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e54",
+      "x": 1080,
+      "y": 175,
+      "width": 280,
+      "height": 160,
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e55",
+          "type": "text"
+        },
+        {
+          "id": "e56",
+          "type": "text"
+        },
+        {
+          "id": "e57",
+          "type": "text"
+        },
+        {
+          "id": "e58",
+          "type": "text"
+        },
+        {
+          "id": "e59",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e55",
+      "x": 1092,
+      "y": 187,
+      "width": 256,
+      "height": 24,
+      "text": "source = network_device",
+      "fontSize": 16,
+      "fontFamily": 3,
+      "strokeColor": "#0c8599",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e54",
+      "originalText": "source = network_device",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e56",
+      "x": 1092,
+      "y": 211,
+      "width": 256,
+      "height": 24,
+      "text": "{source=\"network_device\"}",
+      "fontSize": 13,
+      "fontFamily": 3,
+      "strokeColor": "#495057",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e54",
+      "originalText": "{source=\"network_device\"}",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e57",
+      "x": 1092,
+      "y": 235,
+      "width": 256,
+      "height": 24,
+      "text": "",
+      "fontSize": 6,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e54",
+      "originalText": "",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e58",
+      "x": 1092,
+      "y": 259,
+      "width": 256,
+      "height": 24,
+      "text": "Queryable:",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "strokeColor": "#868e96",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e54",
+      "originalText": "Queryable:",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e59",
+      "x": 1092,
+      "y": 283,
+      "width": 256,
+      "height": 24,
+      "text": "Network Device Logs dashboard",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e54",
+      "originalText": "Network Device Logs dashboard",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e60",
+      "x": 1080,
+      "y": 355,
+      "width": 280,
+      "height": 160,
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e61",
+          "type": "text"
+        },
+        {
+          "id": "e62",
+          "type": "text"
+        },
+        {
+          "id": "e63",
+          "type": "text"
+        },
+        {
+          "id": "e64",
+          "type": "text"
+        },
+        {
+          "id": "e65",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e61",
+      "x": 1092,
+      "y": 367,
+      "width": 256,
+      "height": 24,
+      "text": "source = customer_host_linux",
+      "fontSize": 16,
+      "fontFamily": 3,
+      "strokeColor": "#0c8599",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e60",
+      "originalText": "source = customer_host_linux",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e62",
+      "x": 1092,
+      "y": 391,
+      "width": 256,
+      "height": 24,
+      "text": "{source=\"customer_host_linux\"}",
+      "fontSize": 13,
+      "fontFamily": 3,
+      "strokeColor": "#495057",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e60",
+      "originalText": "{source=\"customer_host_linux\"}",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e63",
+      "x": 1092,
+      "y": 415,
+      "width": 256,
+      "height": 24,
+      "text": "",
+      "fontSize": 6,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e60",
+      "originalText": "",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e64",
+      "x": 1092,
+      "y": 439,
+      "width": 256,
+      "height": 24,
+      "text": "Queryable:",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "strokeColor": "#868e96",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e60",
+      "originalText": "Queryable:",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e65",
+      "x": 1092,
+      "y": 463,
+      "width": 256,
+      "height": 24,
+      "text": "Per-host node_exporter dashboard\n(Linux host logs panel)",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e60",
+      "originalText": "Per-host node_exporter dashboard\n(Linux host logs panel)",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "e66",
+      "x": 1080,
+      "y": 535,
+      "width": 280,
+      "height": 160,
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e67",
+          "type": "text"
+        },
+        {
+          "id": "e68",
+          "type": "text"
+        },
+        {
+          "id": "e69",
+          "type": "text"
+        },
+        {
+          "id": "e70",
+          "type": "text"
+        },
+        {
+          "id": "e71",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e67",
+      "x": 1092,
+      "y": 547,
+      "width": 256,
+      "height": 24,
+      "text": "source = customer_host_windows",
+      "fontSize": 16,
+      "fontFamily": 3,
+      "strokeColor": "#0c8599",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e66",
+      "originalText": "source = customer_host_windows",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e68",
+      "x": 1092,
+      "y": 571,
+      "width": 256,
+      "height": 24,
+      "text": "{source=\"customer_host_windows\"}",
+      "fontSize": 13,
+      "fontFamily": 3,
+      "strokeColor": "#495057",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e66",
+      "originalText": "{source=\"customer_host_windows\"}",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e69",
+      "x": 1092,
+      "y": 595,
+      "width": 256,
+      "height": 24,
+      "text": "",
+      "fontSize": 6,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e66",
+      "originalText": "",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e70",
+      "x": 1092,
+      "y": 619,
+      "width": 256,
+      "height": 24,
+      "text": "Queryable:",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "strokeColor": "#868e96",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e66",
+      "originalText": "Queryable:",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e71",
+      "x": 1092,
+      "y": 643,
+      "width": 256,
+      "height": 24,
+      "text": "Per-host node_exporter dashboard\n(Windows event log panel)",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e66",
+      "originalText": "Per-host node_exporter dashboard\n(Windows event log panel)",
+      "autoResize": true
+    },
+    {
+      "type": "arrow",
+      "id": "e72",
+      "x": 290,
+      "y": 235,
+      "width": 70,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          70,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "startBinding": {
+        "elementId": "e12",
+        "fixedPoint": [
+          1,
+          0.5
+        ]
+      },
+      "endBinding": {
+        "elementId": "e21",
+        "fixedPoint": [
+          0,
+          0.5
+        ]
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "e73",
+      "x": 490,
+      "y": 235,
+      "width": 70,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          70,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "startBinding": {
+        "elementId": "e21",
+        "fixedPoint": [
+          1,
+          0.5
+        ]
+      },
+      "endBinding": {
+        "elementId": "e33",
+        "fixedPoint": [
+          0,
+          0.5
+        ]
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "e74",
+      "x": 1000,
+      "y": 235,
+      "width": 60,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          60,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "startBinding": {
+        "elementId": "e33",
+        "fixedPoint": [
+          1,
+          0.5
+        ]
+      },
+      "endBinding": {
+        "elementId": "e54",
+        "fixedPoint": [
+          0,
+          0.5
+        ]
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "e75",
+      "x": 290,
+      "y": 415,
+      "width": 70,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          70,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "startBinding": {
+        "elementId": "e15",
+        "fixedPoint": [
+          1,
+          0.5
+        ]
+      },
+      "endBinding": {
+        "elementId": "e24",
+        "fixedPoint": [
+          0,
+          0.5
+        ]
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "e76",
+      "x": 490,
+      "y": 415,
+      "width": 70,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          70,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "startBinding": {
+        "elementId": "e24",
+        "fixedPoint": [
+          1,
+          0.5
+        ]
+      },
+      "endBinding": {
+        "elementId": "e39",
+        "fixedPoint": [
+          0,
+          0.5
+        ]
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "e77",
+      "x": 1000,
+      "y": 415,
+      "width": 60,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          60,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "startBinding": {
+        "elementId": "e39",
+        "fixedPoint": [
+          1,
+          0.5
+        ]
+      },
+      "endBinding": {
+        "elementId": "e60",
+        "fixedPoint": [
+          0,
+          0.5
+        ]
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "e78",
+      "x": 290,
+      "y": 595,
+      "width": 70,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          70,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "startBinding": {
+        "elementId": "e18",
+        "fixedPoint": [
+          1,
+          0.5
+        ]
+      },
+      "endBinding": {
+        "elementId": "e27",
+        "fixedPoint": [
+          0,
+          0.5
+        ]
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "e79",
+      "x": 490,
+      "y": 595,
+      "width": 70,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          70,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "startBinding": {
+        "elementId": "e27",
+        "fixedPoint": [
+          1,
+          0.5
+        ]
+      },
+      "endBinding": {
+        "elementId": "e45",
+        "fixedPoint": [
+          0,
+          0.5
+        ]
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "e80",
+      "x": 1000,
+      "y": 595,
+      "width": 60,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          60,
+          0
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#1e1e1e",
+      "startBinding": {
+        "elementId": "e45",
+        "fixedPoint": [
+          1,
+          0.5
+        ]
+      },
+      "endBinding": {
+        "elementId": "e66",
+        "fixedPoint": [
+          0,
+          0.5
+        ]
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "e81",
+      "x": 50,
+      "y": 790,
+      "width": 1330,
+      "height": 90,
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "e82",
+          "type": "text"
+        },
+        {
+          "id": "e83",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "e82",
+      "x": 62,
+      "y": 798,
+      "width": 1306,
+      "height": 22,
+      "text": "Port convention (locked in config/promtail.yml - do not change without updating BACKLOG #35)",
+      "fontSize": 15,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e81",
+      "originalText": "Port convention (locked in config/promtail.yml - do not change without updating BACKLOG #35)",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e83",
+      "x": 62,
+      "y": 826,
+      "width": 1306,
+      "height": 50,
+      "text": "514  = network devices   (source: network_device)        - TCP+UDP, privileged port, native syslog from switches/routers/firewalls/APs\n1514 = customer Linux       (source: customer_host_linux)   - TCP, non-privileged, rsyslog `*.* @@<aiamsbs>:1514`\n2514 = customer Windows     (source: customer_host_windows) - TCP, NxLog OmTcp -> <aiamsbs>:2514, converts Event Log Security/System/Application to syslog",
+      "fontSize": 12,
+      "fontFamily": 3,
+      "strokeColor": "#495057",
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": "e81",
+      "originalText": "514  = network devices   (source: network_device)        - TCP+UDP, privileged port, native syslog from switches/routers/firewalls/APs\n1514 = customer Linux       (source: customer_host_linux)   - TCP, non-privileged, rsyslog `*.* @@<aiamsbs>:1514`\n2514 = customer Windows     (source: customer_host_windows) - TCP, NxLog OmTcp -> <aiamsbs>:2514, converts Event Log Security/System/Application to syslog",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "e84",
+      "x": 50,
+      "y": 900,
+      "width": 1330,
+      "height": 18,
+      "text": "Post-merge fix (commit 34f3134): docker-compose.yml port mapping 0.0.0.0:1514:514/tcp -> 0.0.0.0:1514:1514/tcp so host:1514 actually reaches the customer_host_linux listener inside the container.",
+      "fontSize": 12,
+      "fontFamily": 1,
+      "strokeColor": "#c92a2a",
+      "textAlign": "left",
+      "originalText": "Post-merge fix (commit 34f3134): docker-compose.yml port mapping 0.0.0.0:1514:514/tcp -> 0.0.0.0:1514:1514/tcp so host:1514 actually reaches the customer_host_linux listener inside the container.",
+      "autoResize": true
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  }
+}
