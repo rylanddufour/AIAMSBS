@@ -20,6 +20,14 @@ scrape_configs:
       - targets: ['alloy:12345']
         labels:
           service: 'alloy'
+    # BACKLOG #10 / #B: Alloy runs prometheus.exporter.unix "self" inside the container
+    # and remote_writes the AIAMSBS host metrics to this Prometheus. The exporter does
+    # not emit a `host` label, so the per-host dashboard (aiamsbs-node-exporter) cannot
+    # filter on it. Relabel a stable hostname onto every Alloy-sourced metric so the
+    # dropdown selector in the node_exporter dashboard has at least one entry to find.
+    relabel_configs:
+      - target_label: host
+        replacement: 'aiamsbs-host'
 
   - job_name: 'grafana'
     static_configs:
@@ -123,6 +131,29 @@ scrape_configs:
       - targets: ['192.168.0.220:9115']
         labels:
           service: 'blackbox_exporter'
+
+  # Multi-host node_exporter scrape. Customers add their own entries here as
+  # they install node_exporter on each managed host. The AIAMSBS host's entry
+  # is reserved but not active today: the host is currently scraped via
+  # Alloy's `prometheus.exporter.unix "self"` (see job `alloy` above). Once a
+  # node_exporter is installed on 192.168.0.220:9100, this target will come
+  # up and the same `host=aiamsbs-host` label will appear in both sources.
+  # The dashboard's `label_values(node_uname_info, host)` query naturally
+  # surfaces every host with an active node_exporter — no hard-coded list.
+  - job_name: 'node_exporter'
+    honor_labels: true
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      # AIAMSBS host (192.168.0.220). Install node_exporter there as part of
+      # the multi-host observability rollout (docs/multi-host-monitoring.md).
+      - targets: ['192.168.0.220:9100']
+        labels:
+          host: aiamsbs-host
+      # Customer Windows hosts — add a block per host. Example:
+      #   - targets: ['<windows-host-ip>:9100']
+      #     labels:
+      #       host: <windows-hostname>
 
 # Remote write configuration for Alloy
 remote_write:
