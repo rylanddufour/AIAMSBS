@@ -75,10 +75,7 @@ services:
       - "0.0.0.0:514:514/tcp"
       - "0.0.0.0:514:514/udp"
       # Customer Linux hosts: TCP only (rsyslog commonly uses TCP for reliability).
-      # 1514:514/tcp kept as-is to match the existing convention even though promtail
-      # binds to 0.0.0.0:1514 inside the container. Fixing the host->container port
-      # mapping is out of scope for BACKLOG #35; tracked separately.
-      - "0.0.0.0:1514:514/tcp"
+      - "0.0.0.0:1514:1514/tcp"
       # Customer Windows hosts: TCP only (NxLog uses TCP+TLS by default).
       - "0.0.0.0:2514:2514/tcp"
     volumes:
