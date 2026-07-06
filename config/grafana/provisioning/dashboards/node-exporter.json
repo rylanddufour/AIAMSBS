@@ -1,0 +1,1220 @@
+{
+  "uid": "aiamsbs-node-exporter",
+  "title": "AIAMSBS Node Exporter (per-host)",
+  "tags": [
+    "aiamsbs",
+    "node-exporter",
+    "per-host"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "host",
+        "label": "Host",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "aiamsbs-prom"
+        },
+        "query": "label_values(node_uname_info, host)",
+        "refresh": 1,
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "selected": false,
+          "text": "aiamsbs-host",
+          "value": "aiamsbs-host"
+        },
+        "options": [],
+        "sort": 1
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 100,
+      "title": "Identity",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "id": 101,
+      "title": "Hostname",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "node_uname_info{host=\"$host\"}",
+          "legendFormat": "{{nodename}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "name"
+      }
+    },
+    {
+      "id": 102,
+      "title": "OS",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "node_uname_info{host=\"$host\"}",
+          "legendFormat": "{{sysname}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "name"
+      }
+    },
+    {
+      "id": 103,
+      "title": "Kernel / Arch",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "node_uname_info{host=\"$host\"}",
+          "legendFormat": "{{release}} / {{machine}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "name"
+      }
+    },
+    {
+      "id": 104,
+      "title": "Uptime",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "node_time_seconds{host=\"$host\"} - node_boot_time_seconds{host=\"$host\"}",
+          "legendFormat": "Uptime",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 110,
+      "title": "CPU & Load",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "panels": []
+    },
+    {
+      "id": 111,
+      "title": "CPU usage by core",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "expr": "100 - (avg by (cpu) (rate(node_cpu_seconds_total{host=\"$host\", mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "cpu{{cpu}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 112,
+      "title": "Load 1m",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 6
+      },
+      "targets": [
+        {
+          "expr": "node_load1{host=\"$host\"}",
+          "legendFormat": "1m",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 113,
+      "title": "Load 5m",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 6
+      },
+      "targets": [
+        {
+          "expr": "node_load5{host=\"$host\"}",
+          "legendFormat": "5m",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 114,
+      "title": "Load 15m",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 10
+      },
+      "targets": [
+        {
+          "expr": "node_load15{host=\"$host\"}",
+          "legendFormat": "15m",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 115,
+      "title": "CPU cores",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 10
+      },
+      "targets": [
+        {
+          "expr": "count(count(node_cpu_seconds_total{host=\"$host\"}) by (cpu))",
+          "legendFormat": "cores",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 120,
+      "title": "Memory",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "panels": []
+    },
+    {
+      "id": 121,
+      "title": "Memory used",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 15
+      },
+      "targets": [
+        {
+          "expr": "node_memory_MemTotal_bytes{host=\"$host\"} - node_memory_MemAvailable_bytes{host=\"$host\"}",
+          "legendFormat": "Used",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 75161927680
+              },
+              {
+                "color": "red",
+                "value": 85899345920
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 122,
+      "title": "Memory total",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 15
+      },
+      "targets": [
+        {
+          "expr": "node_memory_MemTotal_bytes{host=\"$host\"}",
+          "legendFormat": "Total",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 123,
+      "title": "Memory available",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 15
+      },
+      "targets": [
+        {
+          "expr": "node_memory_MemAvailable_bytes{host=\"$host\"}",
+          "legendFormat": "Available",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 124,
+      "title": "Memory usage %",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 15
+      },
+      "targets": [
+        {
+          "expr": "(1 - (node_memory_MemAvailable_bytes{host=\"$host\"} / node_memory_MemTotal_bytes{host=\"$host\"})) * 100",
+          "legendFormat": "Used %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 125,
+      "title": "Memory usage over time",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "targets": [
+        {
+          "expr": "(1 - (node_memory_MemAvailable_bytes{host=\"$host\"} / node_memory_MemTotal_bytes{host=\"$host\"})) * 100",
+          "legendFormat": "Used %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 130,
+      "title": "Disk",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "panels": []
+    },
+    {
+      "id": 131,
+      "title": "Filesystem space used",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "targets": [
+        {
+          "expr": "(node_filesystem_size_bytes{host=\"$host\",fstype!~\"tmpfs|overlay|aufs|squashfs\"} - node_filesystem_avail_bytes{host=\"$host\",fstype!~\"tmpfs|overlay|aufs|squashfs\"}) / node_filesystem_size_bytes{host=\"$host\",fstype!~\"tmpfs|overlay|aufs|squashfs\"} * 100",
+          "legendFormat": "{{mountpoint}}",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 132,
+      "title": "Disk I/O (read/write)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 26
+      },
+      "targets": [
+        {
+          "expr": "rate(node_disk_read_bytes_total{host=\"$host\",device=~\"sd.*|nvme.*|vd.*\"}[5m])",
+          "legendFormat": "read {{device}}",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(node_disk_written_bytes_total{host=\"$host\",device=~\"sd.*|nvme.*|vd.*\"}[5m])",
+          "legendFormat": "write {{device}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 140,
+      "title": "Network",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "panels": []
+    },
+    {
+      "id": 141,
+      "title": "Network RX/TX",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "targets": [
+        {
+          "expr": "rate(node_network_receive_bytes_total{host=\"$host\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m]) * 8",
+          "legendFormat": "RX {{device}}",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(node_network_transmit_bytes_total{host=\"$host\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m]) * 8",
+          "legendFormat": "TX {{device}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 142,
+      "title": "Network errors / dropped",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 35
+      },
+      "targets": [
+        {
+          "expr": "rate(node_network_receive_errs_total{host=\"$host\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m])",
+          "legendFormat": "rx_err {{device}}",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "rate(node_network_transmit_errs_total{host=\"$host\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m])",
+          "legendFormat": "tx_err {{device}}",
+          "refId": "B",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "rate(node_network_receive_drop_total{host=\"$host\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m])",
+          "legendFormat": "rx_drop {{device}}",
+          "refId": "C",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "expr": "rate(node_network_transmit_drop_total{host=\"$host\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m])",
+          "legendFormat": "tx_drop {{device}}",
+          "refId": "D",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 150,
+      "title": "System",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "panels": []
+    },
+    {
+      "id": 151,
+      "title": "Process count",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 44
+      },
+      "targets": [
+        {
+          "expr": "count(node_processes_state{host=\"$host\"})",
+          "legendFormat": "processes",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 152,
+      "title": "Open file descriptors",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 44
+      },
+      "targets": [
+        {
+          "expr": "node_processes_open_fds{host=\"$host\"}",
+          "legendFormat": "open fds",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 153,
+      "title": "FDs (used / max)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 44
+      },
+      "targets": [
+        {
+          "expr": "node_processes_open_fds{host=\"$host\"} / node_processes_max_fds{host=\"$host\"} * 100",
+          "legendFormat": "used %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 95
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 154,
+      "title": "Filesystem inodes used",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 44
+      },
+      "targets": [
+        {
+          "expr": "(node_filesystem_files{host=\"$host\",fstype!~\"tmpfs|overlay|aufs|squashfs\"} - node_filesystem_files_free{host=\"$host\",fstype!~\"tmpfs|overlay|aufs|squashfs\"}) / node_filesystem_files{host=\"$host\",fstype!~\"tmpfs|overlay|aufs|squashfs\"} * 100",
+          "legendFormat": "{{mountpoint}}",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 95
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 160,
+      "title": "Logs",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "panels": []
+    },
+    {
+      "id": 161,
+      "title": "Recent host logs",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "aiamsbs-loki"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 49
+      },
+      "targets": [
+        {
+          "expr": "{host=\"$host\", job=~\"customer_host_linux|customer_host_windows\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "aiamsbs-loki"
+          },
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": true,
+        "live": false
+      }
+    }
+  ],
+  "revision": 1
+}
