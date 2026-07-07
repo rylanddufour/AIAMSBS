@@ -133,27 +133,52 @@ scrape_configs:
           service: 'blackbox_exporter'
 
   # Multi-host node_exporter scrape. Customers add their own entries here as
-  # they install node_exporter on each managed host. The AIAMSBS host's entry
-  # is reserved but not active today: the host is currently scraped via
-  # Alloy's `prometheus.exporter.unix "self"` (see job `alloy` above). Once a
-  # node_exporter is installed on 192.168.0.220:9100, this target will come
-  # up and the same `host=aiamsbs-host` label will appear in both sources.
-  # The dashboard's `label_values(node_uname_info, host)` query naturally
-  # surfaces every host with an active node_exporter — no hard-coded list.
-  - job_name: 'node_exporter'
+  # they install node_exporter on each managed host.
+  #
+  # Architectural decision (Ryland 2026-07-06): the AIAMSBS host itself is NOT
+  # scraped via this job. Its host metrics come through Alloy's
+  # `prometheus.exporter.unix "self"` (see job `alloy` above), which
+  # remote_writes to this Prometheus under job="integrations/unix". Adding a
+  # node_exporter to the AIAMSBS host is intentionally out of scope — the
+  # Alloy path is the canonical way to monitor the AIAMSBS host and ships
+  # to customer VMs out of the box.
+  #
+  # The Linux dashboard's $host variable filters on `up{job="node_exporter"}`
+  # and therefore only lists Linux hosts that have an actual node_exporter
+  # installed (i.e. customer Linux machines). Windows hosts use a separate
+  # `windows_exporter` job (see BACKLOG #35).
+  # Customer Linux hosts (node_exporter binary on port 9100).
+  # This job ships EMPTY out of the box — no customer targets are pre-configured.
+  # To add a host, prompt the AIAMSBS agent:
+  #     "add linux_exporter target <ip:9100> with hostname <name>"
+  # The agent will add a `static_configs` entry below and trigger a Prometheus
+  # reload (POST /-/reload). One block per host.
+  - job_name: 'linux_exporter'
     honor_labels: true
     scrape_interval: 30s
     scrape_timeout: 10s
     static_configs:
-      # AIAMSBS host (192.168.0.220). Install node_exporter there as part of
-      # the multi-host observability rollout (docs/multi-host-monitoring.md).
-      - targets: ['192.168.0.220:9100']
-        labels:
-          host: aiamsbs-host
-      # Customer Windows hosts — add a block per host. Example:
-      #   - targets: ['<windows-host-ip>:9100']
+      # Example (uncomment + edit, or prompt the agent to add):
+      #   - targets: ['<linux-host-ip>:9100']
+      #     labels:
+      #       host: <linux-hostname>
+
+  # Customer Windows hosts (windows_exporter on port 9182).
+  # This job ships EMPTY out of the box — no customer targets are pre-configured.
+  # To add a host, prompt the AIAMSBS agent:
+  #     "add windows_exporter target <ip:9182> with hostname <name>"
+  # The agent will add a `static_configs` entry below and trigger a Prometheus
+  # reload (POST /-/reload). One block per host.
+  - job_name: 'windows_exporter'
+    honor_labels: true
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      # Example (uncomment + edit, or prompt the agent to add):
+      #   - targets: ['<windows-host-ip>:9182']
       #     labels:
       #       host: <windows-hostname>
+
 
 # Remote write configuration for Alloy
 remote_write:
