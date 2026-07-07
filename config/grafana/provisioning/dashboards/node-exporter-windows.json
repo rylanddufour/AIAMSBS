@@ -28,11 +28,6 @@
         "refresh": 1,
         "includeAll": false,
         "multi": false,
-        "current": {
-          "selected": false,
-          "text": "192.168.0.246",
-          "value": "192.168.0.246"
-        },
         "options": [],
         "sort": 1
       }
