@@ -180,7 +180,3 @@ scrape_configs:
       #       host: <windows-hostname>
 
 
-# Remote write configuration for Alloy
-remote_write:
-  - url: 'http://prometheus:9090/api/v1/write'
-    # Accepts metrics from Alloy via remote write
