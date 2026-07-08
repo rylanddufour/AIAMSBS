@@ -1055,7 +1055,7 @@ EOF
 #
 # Pre-req: HERMES_HOME must exist (set up by install_hermes) and the SA token
 # file must exist at $HERMES_HOME/secrets/grafana-mcp.env (set up by
-# create_grafana_mcp_service_account). The backup-dashboards.sh script reads
+# create_grafana_mcp_service_account). The aiamsbs-backup.sh script reads
 # that token file at runtime, so install_backup_scripts MUST run after
 # create_grafana_mcp_service_account.
 
@@ -1101,7 +1101,7 @@ install_backup_scripts() {
 # Install Dashboard Backup Cron (Hermes-managed cron)
 # ============================================
 # Registers a Hermes cron job against the it_admin profile that runs the
-# existing backup-dashboards.sh script daily at 01:00. Replaces the legacy
+# aiamsbs-backup.sh script daily at 01:00. Replaces the legacy
 # /etc/cron.d/aiamsbs-dashboard-backup system cron (which the Python helper
 # removes on first run).
 #
@@ -1115,9 +1115,9 @@ install_backup_scripts() {
 #     (per Telegram 2026-07-03 — no deliver target set in this installer; user
 #     adds it later)
 #
-# The shell script (scripts/backup-dashboards.sh) is the workhorse and is
+# The shell script (scripts/aiamsbs-backup.sh) is the workhorse and is
 # unchanged. The agent's prompt is a thin wrapper that invokes the script
-# and reports the result. See skills/dashboard-backup.md (in the it_admin
+# and reports the result. See skills/aiamsbs-backup.md (in the it_admin
 # profile) for what the agent sees.
 #
 # Must run AFTER install_backup_scripts (which installs both the shell

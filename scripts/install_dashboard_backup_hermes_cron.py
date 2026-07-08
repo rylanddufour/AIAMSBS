@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
-"""Install the 'AIAMSBS Dashboard Backup' Hermes cron job.
+"""Install the 'AIAMSBS Backup' Hermes cron job.
 
 Idempotent: skips if a job with the same name already exists.
 Also removes the legacy /etc/cron.d/aiamsbs-dashboard-backup system cron
-if present (it ran the same script via system cron before the migration).
+if present (it ran the older backup-dashboards.sh via system cron before
+the migration to Hermes cron).
 
 Usage: install_dashboard_backup_hermes_cron.py <hermes_home> <profile>
   hermes_home: e.g. /home/ansible/.hermes
   profile:     e.g. it_admin
+
+The file name is kept for backward compatibility with bootstrap.sh callers.
+The job it installs was renamed from "AIAMSBS Dashboard Backup" to
+"AIAMSBS Backup" when the script scope grew to include the hermes state,
+inventory + KB DBs, and Grafana-stack yml configs (not just dashboards).
 """
 import json
 import os
@@ -16,7 +22,7 @@ from pathlib import Path
 
 HERMES_HOME = Path(sys.argv[1])
 PROFILE = sys.argv[2]
-JOB_NAME = "AIAMSBS Dashboard Backup"
+JOB_NAME = "AIAMSBS Backup"
 SCHEDULE_EXPR = "0 1 * * *"  # daily at 01:00, same as the old system cron
 LEGACY_CRON_FILE = Path("/etc/cron.d/aiamsbs-dashboard-backup")
 
@@ -36,22 +42,25 @@ if existing is not None:
 else:
     # Build the new job. The shape mirrors the existing jobs in jobs.json
     # (see ~/.hermes/cron/jobs.json for reference). The prompt is a thin
-    # wrapper around the existing backup-dashboards.sh — the script is
+    # wrapper around the existing aiamsbs-backup.sh — the script is
     # the workhorse, the agent is a thin wrapper that provides logging.
     new_job = {
         "id": f"aiamsbs-backup-{PROFILE}",  # stable, deterministic for idempotency re-runs
         "name": JOB_NAME,
         "prompt": (
-            "You are running the AIAMSBS dashboard backup cron job. "
+            "You are running the AIAMSBS backup cron job. "
             "Execute this script and report the result:\n\n"
-            f"    {HERMES_HOME}/scripts/backup-dashboards.sh\n\n"
-            "The script backs up every Grafana dashboard to "
-            "~/backups/dashboard-backup-<timestamp>.tar.gz. Exit code 0 = success. "
+            f"    {HERMES_HOME}/scripts/aiamsbs-backup.sh\n\n"
+            "The script backs up Grafana dashboards (API + provisioning files), "
+            "the hermes state, the inventory + KB SQLite databases, and the "
+            "Grafana-stack yml configs into a single tarball at "
+            "~/backups/aiamsbs-backup-<timestamp>.tar.gz. Exit code 0 = success. "
             "If exit code is non-zero, capture the last 20 lines of stderr and "
             "the exit code in your report. Otherwise report the archive path, size, "
-            "and dashboard count from the script's stdout."
+            "and per-section counts (dashboards exported, dashboards provisioned, "
+            "hermes zip bytes, inventory + KB DB bytes) from the script's stdout."
         ),
-        "skills": [f"{PROFILE}/dashboard-backup"],
+        "skills": [f"{PROFILE}/aiamsbs-backup"],
         "skill": None,
         "model": None,
         "provider": None,
