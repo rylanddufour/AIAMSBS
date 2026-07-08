@@ -105,3 +105,23 @@ When helping with Windows Server:
 - Label read-only vs change commands
 - Include `-WhatIf` when available
 - Include rollback or restore guidance for changes
+
+## References
+
+### Windows Exporter (Prometheus agent on the monitored Windows host)
+
+The `windows_exporter` binary runs on the customer Windows host (`.246` in dev: `192.168.0.246:9182`) and exposes Prometheus metrics for AIAMSBS to scrape. When iterating on Windows dashboards, the **per-collector docs are the source of truth for metric names and labels** — not the Prometheus output, not the grafana.com community dashboards.
+
+- **Repo:** https://github.com/prometheus-community/windows_exporter
+- **Per-collector docs:** https://github.com/prometheus-community/windows_exporter/tree/master/docs/ — one page per collector (e.g., `collector.os.md`, `collector.system.md`, `collector.process.md`, `collector.service.md`, `collector.logical_disk.md`, `collector.net.md`, `collector.cpu.md`, `collector.memory.md`). Each page lists the metric names, label sets, and the WMI/Performance-Counter data sources.
+- **Currently pinned version in AIAMSBS:** `v0.31.7` (verified 2026-07-07). Pin from the actual binary on the host, not from memory:
+  ```powershell
+  (Get-Item "C:\Program Files\windows_exporter\windows_exporter.exe").VersionInfo.FileVersion
+  ```
+
+**Gotchas already hit (2026-07-07):**
+
+- The `cs` (Computer System) collector was **removed in v0.30**. The `windows_cs_hostname` and `windows_computer_system_info` metrics do NOT exist anymore — replaced by `windows_os_hostname` from the `os` collector (which provides `domain`, `fqdn`, `hostname` labels).
+- The `system` collector exposes `windows_system_boot_time_timestamp` (Unix epoch), **not** a pre-computed `windows_system_system_uptime`. Uptime = `time() - windows_system_boot_time_timestamp`.
+- Collector lists can change between minor versions. When a panel shows "No data" with the same `host=` selector that works for other panels, **first check the per-collector doc for the current exporter version** before assuming the metric should exist.
+- `honor_labels: true` on the AIAMSBS scrape job means if the exporter itself exposes a label (rare), it wins over the static `host:` label. Default behavior is the opposite.
