@@ -1,0 +1,541 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: customer-network
+    folder: customer-network
+    interval: 1m
+    rules:
+      # ----------------------------------------------------------------------
+      # 1. NetworkDeviceUnreachable (critical, for: 5m)
+      #    One or more previously-active network devices have sent no syslog
+      #    in the last 5m. "Previously active" = at least one syslog line in
+      #    the last 24h. Fires for any host that drops off.
+      # ----------------------------------------------------------------------
+      - uid: cust-net-device-unreachable
+        title: NetworkDeviceUnreachable
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: aiamsbs-loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: aiamsbs-loki
+              editorMode: code
+              instant: true
+              expr: |
+                count(
+                  count by (host) (count_over_time({job="network_syslog", source="network_device"}[24h]) > 0)
+                  unless
+                  count by (host) (count_over_time({job="network_syslog", source="network_device"}[5m]) > 0)
+                )
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: 'Network device(s) silent for 5m'
+          description: |
+            One or more network devices that sent syslog in the last 24h
+            have not sent any in the last 5m. Check device power, network
+            reachability, and syslog forwarding configuration.
+        labels:
+          severity: critical
+          category: network
+          source: customer-network
+          aiamsbs_alert: 'true'
+
+      # ----------------------------------------------------------------------
+      # 2. NetworkLinkDown (critical)
+      #    Any link protocol down / interface down / UPDOWN syslog event.
+      #    Uplinks/APs/NICs (per-port flap is annoying but rarely a 3AM
+      #    emergency; switch uplinks / AP uplinks are critical).
+      # ----------------------------------------------------------------------
+      - uid: cust-net-link-down
+        title: NetworkLinkDown
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: aiamsbs-loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: aiamsbs-loki
+              editorMode: code
+              instant: true
+              expr: |
+                sum(
+                  count_over_time(
+                    {job="network_syslog", source="network_device"}
+                    |~ "(?i)(line protocol|Interface .* (down|administratively down)|UPDOWN|LINK-UPDOWN|IF_DOWN_LINK_FAILURE)"
+                    [5m]
+                  )
+                )
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'Network link down event'
+          description: |
+            At least one link-down / interface-down / UPDOWN syslog event
+            in the last 5m. Investigate the host(s) in the {{ $labels.host }}
+            label to identify the affected port.
+        labels:
+          severity: critical
+          category: network
+          source: customer-network
+          aiamsbs_alert: 'true'
+
+      # ----------------------------------------------------------------------
+      # 3. InterfaceErrorsHigh (warning)
+      #    Repeated IF_DOWN_LINK_FAILURE / CRC / input / output error events
+      #    from the same device. Threshold > 5 in 5m.
+      # ----------------------------------------------------------------------
+      - uid: cust-net-iface-errors
+        title: InterfaceErrorsHigh
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: aiamsbs-loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: aiamsbs-loki
+              editorMode: code
+              instant: true
+              expr: |
+                count(
+                  sum by (host) (
+                    count_over_time(
+                      {job="network_syslog", source="network_device"}
+                      |~ "(?i)(IF_DOWN_LINK_FAILURE|CRC error|input error|output error|giants|runts|throttles|excessive)"
+                      [5m]
+                    )
+                  ) > 5
+                )
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'High interface error rate on a network device'
+          description: |
+            A network device emitted more than 5 interface-error-class
+            syslog events in the last 5m (CRC / input / output / giants /
+            runts / throttles). Likely a flapping fiber, failing SFP, or
+            bad cable.
+        labels:
+          severity: warning
+          category: network
+          source: customer-network
+          aiamsbs_alert: 'true'
+
+      # ----------------------------------------------------------------------
+      # 4. OSPFNeighborDown (critical)
+      #    OSPF adjacency went Down. Transit uplinks = critical, internal
+      #    adjacencies = critical (single-tenant shop, all adjacencies matter).
+      # ----------------------------------------------------------------------
+      - uid: cust-net-ospf-down
+        title: OSPFNeighborDown
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: aiamsbs-loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: aiamsbs-loki
+              editorMode: code
+              instant: true
+              expr: |
+                sum(
+                  count_over_time(
+                    {job="network_syslog", source="network_device"}
+                    |~ "OSPF-[1-5]-ADJCHG:.*Down|OSPF-3-NBRDOWN"
+                    [5m]
+                  )
+                )
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'OSPF neighbor went Down'
+          description: |
+            An OSPF adjacency changed state to Down in the last 5m. Loss
+            of an OSPF neighbor usually means loss of route convergence
+            to a portion of the network.
+        labels:
+          severity: critical
+          category: network
+          source: customer-network
+          aiamsbs_alert: 'true'
+
+      # ----------------------------------------------------------------------
+      # 5. DHCPScopeExhausted (critical)
+      #    DHCP pool exhausted / no free leases. New devices can't get an
+      #    address; Wi-Fi users will start losing connectivity in minutes.
+      # ----------------------------------------------------------------------
+      - uid: cust-net-dhcp-exhausted
+        title: DHCPScopeExhausted
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: aiamsbs-loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: aiamsbs-loki
+              editorMode: code
+              instant: true
+              expr: |
+                sum(
+                  count_over_time(
+                    {job="network_syslog", source="network_device"}
+                    |~ "(?i)(DHCP-4-POOL_EXHAUSTED|no free leases|pool .* exhausted|DHCP_SOCKET_EXHAUSTED|out of addresses)"
+                    [5m]
+                  )
+                )
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'DHCP scope exhausted'
+          description: |
+            A DHCP pool reported exhaustion / no free leases in the last
+            5m. New devices cannot get an address; Wi-Fi clients will
+            start losing connectivity in minutes.
+        labels:
+          severity: critical
+          category: network
+          source: customer-network
+          aiamsbs_alert: 'true'
+
+      # ----------------------------------------------------------------------
+      # 6. STPTopologyChangeStorm (warning)
+      #    More than 5 STP TCN / topology-change events from the same
+      #    switch in 5m. Indicates a flapping link somewhere downstream.
+      # ----------------------------------------------------------------------
+      - uid: cust-net-stp-storm
+        title: STPTopologyChangeStorm
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: aiamsbs-loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: aiamsbs-loki
+              editorMode: code
+              instant: true
+              expr: |
+                count(
+                  sum by (host) (
+                    count_over_time(
+                      {job="network_syslog", source="network_device"}
+                      |~ "(?i)(SPANTREE.*TOPOLOGY|STP-2-TOPOLOGY|TCN|topology change detected)"
+                      [5m]
+                    )
+                  ) > 5
+                )
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'STP topology change storm'
+          description: |
+            A switch emitted more than 5 STP topology-change / TCN events
+            in the last 5m. A flapping link is somewhere downstream; the
+            whole broadcast domain is recomputing.
+        labels:
+          severity: warning
+          category: network
+          source: customer-network
+          aiamsbs_alert: 'true'
+
+      # ----------------------------------------------------------------------
+      # 7. PortScanDetected (warning)
+      #    More than 50 [UFW BLOCK] events in the last 5m. A normal blocked
+      #    connection produces 1-5 lines; a port scan produces dozens.
+      #    Source: AIAMSBS host's journald (already collected by alloy).
+      # ----------------------------------------------------------------------
+      - uid: cust-net-port-scan
+        title: PortScanDetected
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: aiamsbs-loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: aiamsbs-loki
+              editorMode: code
+              instant: true
+              expr: |
+                sum(
+                  count_over_time(
+                    {job="systemd"} |~ "\\[UFW BLOCK\\]"
+                    [5m]
+                  )
+                )
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: gt
+                    params: [50]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'Port scan activity against AIAMSBS host'
+          description: |
+            More than 50 [UFW BLOCK] events from ufw in the last 5m.
+            A normal blocked connection produces 1-5 lines; a port scan
+            produces dozens. Check journald for the source IPs.
+        labels:
+          severity: warning
+          category: security
+          source: customer-network
+          aiamsbs_alert: 'true'
+
+      # ----------------------------------------------------------------------
+      # 8. RIPNeighborDown (critical) — replacement for BGPNeighborDown
+      #    RIP V1/V2 adjacency went Down. Same critical severity as BGP was.
+      #    RIP is rare but some small shops still run it on edge gear.
+      # ----------------------------------------------------------------------
+      - uid: cust-net-rip-down
+        title: RIPNeighborDown
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: aiamsbs-loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: aiamsbs-loki
+              editorMode: code
+              instant: true
+              expr: |
+                sum(
+                  count_over_time(
+                    {job="network_syslog", source="network_device"}
+                    |~ "RIP-[1-5]-ADJCHANGE:.*Down"
+                    [5m]
+                  )
+                )
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'RIP neighbor went Down'
+          description: |
+            A RIP V1/V2 adjacency changed state to Down in the last 5m.
+            Loss of RIP neighbor means loss of route exchange for the
+            affected prefix.
+        labels:
+          severity: critical
+          category: network
+          source: customer-network
+          aiamsbs_alert: 'true'
