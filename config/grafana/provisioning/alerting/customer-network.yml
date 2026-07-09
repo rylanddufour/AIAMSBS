@@ -35,20 +35,34 @@ groups:
                   unless
                   count by (host) (count_over_time({job="network_syslog", source="network_device"}[5m]) > 0)
                 )
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: reduce
+              expression: A
+              reducer: last
           - refId: C
             queryType: ''
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: __expr
+            datasourceUid: __expr__
             model:
               refId: C
               type: threshold
-              expression: A
+              expression: B
               conditions:
                 - type: query
                   query:
-                    params: [A]
+                    params: [B]
                   reducer:
                     type: last
                     params: []
@@ -103,20 +117,34 @@ groups:
                     [5m]
                   )
                 )
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: reduce
+              expression: A
+              reducer: last
           - refId: C
             queryType: ''
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: __expr
+            datasourceUid: __expr__
             model:
               refId: C
               type: threshold
-              expression: A
+              expression: B
               conditions:
                 - type: query
                   query:
-                    params: [A]
+                    params: [B]
                   reducer:
                     type: last
                     params: []
@@ -171,20 +199,34 @@ groups:
                     )
                   ) > 5
                 )
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: reduce
+              expression: A
+              reducer: last
           - refId: C
             queryType: ''
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: __expr
+            datasourceUid: __expr__
             model:
               refId: C
               type: threshold
-              expression: A
+              expression: B
               conditions:
                 - type: query
                   query:
-                    params: [A]
+                    params: [B]
                   reducer:
                     type: last
                     params: []
@@ -238,20 +280,34 @@ groups:
                     [5m]
                   )
                 )
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: reduce
+              expression: A
+              reducer: last
           - refId: C
             queryType: ''
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: __expr
+            datasourceUid: __expr__
             model:
               refId: C
               type: threshold
-              expression: A
+              expression: B
               conditions:
                 - type: query
                   query:
-                    params: [A]
+                    params: [B]
                   reducer:
                     type: last
                     params: []
@@ -304,20 +360,34 @@ groups:
                     [5m]
                   )
                 )
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: reduce
+              expression: A
+              reducer: last
           - refId: C
             queryType: ''
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: __expr
+            datasourceUid: __expr__
             model:
               refId: C
               type: threshold
-              expression: A
+              expression: B
               conditions:
                 - type: query
                   query:
-                    params: [A]
+                    params: [B]
                   reducer:
                     type: last
                     params: []
@@ -372,20 +442,34 @@ groups:
                     )
                   ) > 5
                 )
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: reduce
+              expression: A
+              reducer: last
           - refId: C
             queryType: ''
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: __expr
+            datasourceUid: __expr__
             model:
               refId: C
               type: threshold
-              expression: A
+              expression: B
               conditions:
                 - type: query
                   query:
-                    params: [A]
+                    params: [B]
                   reducer:
                     type: last
                     params: []
@@ -443,7 +527,7 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: __expr
+            datasourceUid: __expr__
             model:
               refId: C
               type: threshold
@@ -504,20 +588,34 @@ groups:
                     [5m]
                   )
                 )
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: reduce
+              expression: A
+              reducer: last
           - refId: C
             queryType: ''
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: __expr
+            datasourceUid: __expr__
             model:
               refId: C
               type: threshold
-              expression: A
+              expression: B
               conditions:
                 - type: query
                   query:
-                    params: [A]
+                    params: [B]
                   reducer:
                     type: last
                     params: []
