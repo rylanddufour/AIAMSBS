@@ -79,8 +79,12 @@ def list_inventory_devices() -> list[dict]:
         content = result.get("content", [])
         msg = content[0].get("text", "<no content>") if content else "<no content>"
         raise SystemExit(f"list_devices tool error: {msg[:200]}")
-    # tool result text is JSON-encoded string per FastMCP convention
-    text = result.get("content", [{}])[0].get("text", "[]")
+    # tool result text is JSON-encoded string per FastMCP convention.
+    # Empty inventory returns content: [] (no text payload) — treat as empty list.
+    content = result.get("content", [])
+    if not content:
+        return []
+    text = content[0].get("text", "[]")
     return json.loads(text)
 
 
