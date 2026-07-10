@@ -29,7 +29,12 @@ TARGETS_FILE = os.path.join(TARGETS_DIR, "blackbox_inventory.json")
 
 
 def http_post_json(base_url: str, body: dict, session_id: str | None = None) -> tuple[dict, str | None]:
-    """POST JSON-RPC to the MCP server, return (parsed_response, new_session_id)."""
+    """POST JSON-RPC to the MCP server, return (parsed_response, new_session_id).
+
+    For notifications (which receive 202 Accepted with an empty body), the
+    parsed response is an empty dict and the session id is still propagated
+    from the response headers.
+    """
     data = json.dumps(body).encode("utf-8")
     headers = {
         "Content-Type": "application/json",
@@ -41,6 +46,9 @@ def http_post_json(base_url: str, body: dict, session_id: str | None = None) -> 
     with urllib.request.urlopen(req, timeout=10.0) as resp:
         sid = resp.headers.get("mcp-session-id") or session_id
         raw = resp.read().decode("utf-8")
+    if not raw.strip():
+        # FastMCP returns 202 Accepted with an empty body for notifications.
+        return {}, sid
     if raw.startswith("event:"):
         for line in raw.splitlines():
             if line.startswith("data:"):
