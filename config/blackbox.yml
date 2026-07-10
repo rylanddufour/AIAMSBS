@@ -50,3 +50,11 @@ modules:
     timeout: 5s
     tcp:
       preferred_ip_protocol: ip4
+
+  # ICMP probe — used by the blackbox_inventory job to check if discovered
+  # hosts are alive. Targets come from config/prometheus/targets/.
+  icmp:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      preferred_ip_protocol: ip4
