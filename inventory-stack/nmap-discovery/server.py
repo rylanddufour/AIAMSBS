@@ -7,24 +7,55 @@ from fastapi import FastAPI
 app = FastAPI()
 
 
-def nmap_discovery(target: str) -> subprocess.CompletedProcess:
-    """Run an nmap host-discovery scan against the target CIDR.
+def nmap_discovery(target: str, scan_type: str = "ping") -> subprocess.CompletedProcess:
+    """Run an nmap scan against the target.
 
-    Note: '-sn' disables port scanning, which means '-O' and '--top-ports'
-    cannot be combined with it (nmap will error with "OS Scan is unreliable
-    without a port scan"). To get OS info, run a separate scan with '-sS -O'
-    — or pass scan_type='deep' to invoke that path here.
+    scan_type="ping" (default): host-discovery only (`-sn -PR`), no port scan.
+        Fast, no root required inside the container, ~1-2s per /24.
+
+    scan_type="deep": TCP SYN scan on common management ports + OS fingerprint.
+        Slower, requires NET_RAW (which the container has via --cap-add).
+
+    Raises ValueError on unknown scan_type so the caller sees the failure
+    cleanly instead of a silent default.
     """
-    cmd = ["nmap", "-sn", "-PR", "-oX", "-", target]
+    if scan_type == "ping":
+        cmd = ["nmap", "-sn", "-PR", "-oX", "-", target]
+    elif scan_type == "deep":
+        cmd = [
+            "nmap",
+            "-sS",                              # TCP SYN scan
+            "-p", "22,23,80,135,139,443,445,3389,8080,8443",  # ssh, telnet, http, https, RDP-adjacent
+            "-O",                                # OS detection
+            "--osscan-limit",                    # only OS-scan promising hosts (faster)
+            "-oX", "-",
+            target,
+        ]
+    else:
+        raise ValueError(f"unknown scan_type: {scan_type!r} (expected 'ping' or 'deep')")
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
 @app.get("/scan")
-def scan(target: str = "192.168.0.0/24"):
-    """Trigger an nmap discovery scan and return the raw output."""
-    result = nmap_discovery(target)
+def scan(target: str = "192.168.0.0/24", scan_type: str = "ping"):
+    """Trigger an nmap scan and return the raw output.
+
+    scan_type: "ping" (host discovery only, fast) or "deep"
+        (TCP SYN + OS fingerprint, slower, requires NET_RAW).
+    """
+    try:
+        result = nmap_discovery(target, scan_type=scan_type)
+    except ValueError as exc:
+        return {
+            "target": target,
+            "scan_type": scan_type,
+            "error": str(exc),
+            "code": 2,  # 2 = usage/config error (nmap convention)
+            "output": "",
+        }
     return {
         "target": target,
+        "scan_type": scan_type,
         "output": result.stdout,
         "error": result.stderr,
         "code": result.returncode,
