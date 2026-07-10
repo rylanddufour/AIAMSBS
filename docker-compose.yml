@@ -109,6 +109,8 @@ services:
     image: prom/blackbox-exporter:latest
     container_name: blackbox_exporter
     network_mode: host
+    cap_add:
+      - NET_RAW    # BACKLOG #39.5: required for ICMP probing in the blackbox_inventory job
     ports:
       - "0.0.0.0:9115:9115"
     volumes:
