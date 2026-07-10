@@ -81,11 +81,17 @@ def list_inventory_devices() -> list[dict]:
         raise SystemExit(f"list_devices tool error: {msg[:200]}")
     # tool result text is JSON-encoded string per FastMCP convention.
     # Empty inventory returns content: [] (no text payload) — treat as empty list.
+    # FastMCP has a quirk: a tool returning a 1-element list gets unwrapped to
+    # the single element in the wire response. So the parsed JSON is sometimes
+    # a list, sometimes a single dict. Normalize to always be a list.
     content = result.get("content", [])
     if not content:
         return []
     text = content[0].get("text", "[]")
-    return json.loads(text)
+    parsed = json.loads(text)
+    if isinstance(parsed, dict):
+        return [parsed]
+    return parsed
 
 
 def build_target_groups(devices: list[dict]) -> list[list[dict]]:
