@@ -23,6 +23,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from typing import Optional
 
 NMAP_URL = "http://localhost:8003/scan"
@@ -188,6 +189,88 @@ def _get_mcp() -> MCPClient:
     return _mcp_client
 
 
+def _now_iso() -> str:
+    """Return current UTC time as an ISO 8601 string (with timezone offset).
+
+    Used as the value for `last_seen` on update_device so daily re-scans
+    refresh the staleness signal. inventory-mcp's `last_seen` column is a
+    SQLite TIMESTAMP, which is type-flexible and accepts ISO 8601 text.
+    """
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _update_fields_from_payload(payload: dict) -> dict:
+    """Build the PATCH fields dict for inventory-mcp's update_device.
+
+    update_device(device_id, fields) has PATCH semantics — only the fields
+    passed in `fields` are written. `device_id` is the update key (NOT a
+    column) and must not appear in `fields` (it would be silently dropped
+    by the server's VALID_DEVICE_FIELDS filter anyway, but be explicit).
+
+    The set of fields is the device_payload() keys minus device_id, plus
+    last_seen = "now" so each re-scan bumps the staleness timer.
+    """
+    return {
+        "ip_address": payload.get("ip_address", ""),
+        "mac_address": payload.get("mac_address", ""),
+        "hostname": payload.get("hostname", ""),
+        "device_type": payload.get("device_type", ""),
+        "vendor": payload.get("vendor", ""),
+        "source": payload.get("source", ""),
+        "last_seen": _now_iso(),
+    }
+
+
+def get_existing_device(device_id: str) -> tuple[Optional[dict], str]:
+    """Call inventory-mcp's get_device. Returns (device, error_reason).
+
+    - (device_dict, "") — device found; `device_dict` is the row.
+    - (None, "")        — device not found (the tool's normal "not found"
+                          response, NOT an error).
+    - (None, reason)    — infra / protocol / tool error; caller should
+                          surface this as a per-host failure rather than
+                          guess at the device's existence.
+
+    inventory-mcp's get_device returns the row as a dict serialized into
+    `result.content[0].text` as JSON. The "not found" path returns
+    `{"error": "not found", "device_id": ...}` with isError=false — we
+    parse the text body to distinguish that from a real row.
+    """
+    try:
+        client = _get_mcp()
+        resp = client.call_tool("get_device", {"device_id": device_id})
+    except (urllib.error.URLError, ConnectionError, TimeoutError) as exc:
+        return None, f"inventory-mcp unreachable: {exc}"
+    except json.JSONDecodeError as exc:
+        return None, f"inventory-mcp returned non-JSON: {exc}"
+
+    # Protocol-level error (JSON-RPC error envelope)
+    if "error" in resp:
+        err = resp["error"]
+        msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+        return None, f"protocol error: {msg[:200]}"
+
+    result = resp.get("result", {})
+    if result.get("isError"):
+        content = result.get("content", [])
+        msg = content[0].get("text", "") if content else "<no content>"
+        return None, f"tool error: {msg[:200]}"
+
+    # Success — get_device returns a dict wrapped in content[0].text as JSON
+    content = result.get("content", [])
+    if not content:
+        return None, ""  # Empty result — treat as not found
+    try:
+        body = json.loads(content[0].get("text", ""))
+    except (json.JSONDecodeError, TypeError) as exc:
+        return None, f"non-JSON content: {exc}"
+    if isinstance(body, dict) and body.get("error") == "not found":
+        return None, ""  # Normal "not found" response from the tool
+    if not body:
+        return None, ""
+    return body, ""
+
+
 def insert_device(payload: dict, dry_run: bool = False) -> tuple[bool, str]:
     """Call inventory-mcp's create_device. Returns (inserted, reason).
 
@@ -220,7 +303,10 @@ def insert_device(payload: dict, dry_run: bool = False) -> tuple[bool, str]:
     if result.get("isError"):
         content = result.get("content", [])
         msg = content[0].get("text", "") if content else "<no content>"
-        # PRIMARY KEY collisions on device_id are normal (re-scans).
+        # PRIMARY KEY collisions on device_id are unreachable in normal flow:
+        # main() now calls get_device first and routes existing rows through
+        # update_device_fields. Kept as defense-in-depth in case of a race
+        # with another writer between our get_device and create_device.
         lower = msg.lower()
         if "unique" in lower or "primary key" in lower or "duplicate" in lower:
             return False, "duplicate"
@@ -229,13 +315,56 @@ def insert_device(payload: dict, dry_run: bool = False) -> tuple[bool, str]:
     return True, "ok"
 
 
+def update_device_fields(payload: dict, dry_run: bool = False) -> tuple[bool, str]:
+    """Call inventory-mcp's update_device. Returns (updated, reason).
+
+    PATCH semantics: only the fields passed in `fields` are written. Pass
+    `device_id` as the update key (NOT as a field) — the server's
+    VALID_DEVICE_FIELDS filter would drop it anyway. `last_seen` is
+    refreshed to "now" so daily re-scans keep the staleness signal fresh.
+    """
+    if dry_run:
+        return True, "dry-run"
+    device_id = payload.get("device_id", "")
+    if not device_id:
+        return False, "missing device_id"
+    fields = _update_fields_from_payload(payload)
+    try:
+        client = _get_mcp()
+        # update_device signature is `update_device(device_id, fields)` — no
+        # wrapping under "device" (that's only create_device's wire contract).
+        resp = client.call_tool(
+            "update_device",
+            {"device_id": device_id, "fields": fields},
+        )
+    except (urllib.error.URLError, ConnectionError, TimeoutError) as exc:
+        return False, f"inventory-mcp unreachable: {exc}"
+    except json.JSONDecodeError as exc:
+        return False, f"inventory-mcp returned non-JSON: {exc}"
+
+    # Protocol-level error (JSON-RPC error envelope)
+    if "error" in resp:
+        err = resp["error"]
+        msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+        return False, f"protocol error: {msg[:200]}"
+
+    # Tool-level error (FastMCP returns isError=true with text content)
+    result = resp.get("result", {})
+    if result.get("isError"):
+        content = result.get("content", [])
+        msg = content[0].get("text", "") if content else "<no content>"
+        return False, f"tool error: {msg[:200]}"
+
+    return True, "ok"
+
+
 def main() -> int:
-    desc = "Inventory discovery: scan a CIDR via nmap, insert hosts into inventory DB"
+    desc = "Inventory discovery: scan a CIDR via nmap, upsert hosts into inventory DB"
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument("target", nargs="?", default=DEFAULT_CIDR,
                         help=f"target CIDR (default: {DEFAULT_CIDR})")
     parser.add_argument("--dry-run", action="store_true",
-                        help="scan + parse but don't insert into inventory DB")
+                        help="scan + parse but don't touch inventory DB")
     parser.add_argument("--timeout", type=int, default=300,
                         help="nmap scan timeout in seconds (default: 300)")
     args = parser.parse_args()
@@ -252,27 +381,52 @@ def main() -> int:
         print(f"  Target:   {args.target}")
         print(f"  Found:    0 device(s)")
         print(f"  Inserted: 0 new device(s)")
+        print(f"  Updated:  0 existing device(s)")
         print(f"  Skipped:  0 duplicate(s)")
         return 0
 
     inserted = 0
+    updated = 0
     skipped = 0
     failures = []
     for host in hosts:
         payload = device_payload(host)
-        ok, reason = insert_device(payload, dry_run=args.dry_run)
-        if ok:
-            inserted += 1
-        elif reason == "duplicate":
-            skipped += 1
+        device_id = payload["device_id"]
+        # Check existence first so existing rows are refreshed (PATCH) instead
+        # of failing the create with a UNIQUE constraint. This is the upsert
+        # fix that lets a daily cron keep `last_seen` fresh on re-scans.
+        existing, get_err = get_existing_device(device_id)
+        if get_err:
+            failures.append((device_id, get_err))
+            continue
+        if existing is not None:
+            ok, reason = update_device_fields(payload, dry_run=args.dry_run)
+            if ok:
+                updated += 1
+            elif reason == "duplicate":
+                # Unreachable in normal flow — update_device doesn't have a
+                # UNIQUE constraint to collide with. Kept for symmetry with
+                # the insert path's race-condition defense.
+                skipped += 1
+            else:
+                failures.append((device_id, reason))
         else:
-            failures.append((host["ip"], reason))
+            ok, reason = insert_device(payload, dry_run=args.dry_run)
+            if ok:
+                inserted += 1
+            elif reason == "duplicate":
+                # Defense-in-depth: only reachable if another writer inserts
+                # this device_id between our get_device and create_device.
+                skipped += 1
+            else:
+                failures.append((device_id, reason))
 
     print("")
     print("Inventory discovery complete:")
     print(f"  Target:   {args.target}")
     print(f"  Found:    {total} device(s)")
     print(f"  Inserted: {inserted} new device(s)")
+    print(f"  Updated:  {updated} existing device(s)")
     print(f"  Skipped:  {skipped} duplicate(s)")
     if failures:
         print(f"  Failed:   {len(failures)} (showing first 3)")
