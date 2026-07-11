@@ -94,12 +94,16 @@ def list_inventory_devices() -> list[dict]:
     return parsed
 
 
-def build_target_groups(devices: list[dict]) -> list[list[dict]]:
-    """Build Prometheus file_sd_configs target list.
+def build_target_groups(devices: list[dict]) -> list[dict]:
+    """Build a flat list of Prometheus file_sd_configs target groups.
 
-    Returns a list of target groups, one group per device. Each group is a list
-    of {"targets": [...], "labels": {...}}. Using one group per device keeps
-    the labels scoped tightly to that host.
+    Returns one dict per device. Each dict has shape:
+        {"targets": [<ip>], "labels": {"host": ..., "device_type": ...}}
+
+    Prometheus's file_sd_configs accepts either newline-delimited JSON
+    (one object per line) or a single JSON array of objects. The single
+    flat-array form is what this script writes. The previous version
+    wrapped in a nested array which Prometheus could not parse.
     """
     groups = []
     for d in devices:
@@ -108,21 +112,24 @@ def build_target_groups(devices: list[dict]) -> list[list[dict]]:
             continue
         host = d.get("hostname") or ip
         device_type = d.get("device_type") or "unknown"
-        groups.append([{
+        groups.append({
             "targets": [ip],
             "labels": {
                 "host": host,
                 "device_type": device_type[:50],
             },
-        }])
+        })
     return groups
 
 
-def write_targets_file(groups: list[list[dict]]) -> None:
+def write_targets_file(groups: list[dict]) -> None:
     """Atomically write the targets JSON. write-temp + rename is safe here:
     the bind-mount is on the DIRECTORY (not a single file), so the new file
     appears atomically under the watched glob. Avoids the inode-bind-mount
     trap that bites prometheus.yml direct edits.
+
+    Writes a single JSON array (one target group per element) — the form
+    Prometheus file_sd_configs parses correctly.
     """
     os.makedirs(TARGETS_DIR, exist_ok=True)
     tmp = TARGETS_FILE + ".tmp"
