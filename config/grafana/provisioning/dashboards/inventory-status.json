@@ -129,43 +129,66 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "red", "value": null},
-              {"color": "green", "value": 1}
-            ]
-          }
+          "mappings": []
         },
         "overrides": []
       },
       "options": {
-        "polystat": {
-          "shape": "hexagon",
-          "fillColor": "fixed",
-          "globalFillColor": "fixed",
-          "globalBorderColor": "fixed",
-          "compositeConfig": {
-            "composite": false
-          },
-          "tooltip": {
-            "enabled": true,
-            "showTimestamp": true
-          },
-          "sizing": {
-            "auto": true,
-            "polygonSize": 1
-          },
-          "layout": {
-            "auto": true,
-            "columns": 0,
-            "rows": 0
-          },
-          "textMode": "value_and_name",
-          "colorMode": "background",
-          "graphMode": "none",
-          "justifyMode": "center"
-        }
+        "globalShape": "hexagon_pointed_top",
+        "globalFillColor": "rgba(10, 85, 161, 1)",
+        "globalPolygonBorderColor": "rgba(0, 0, 0, 0)",
+        "globalPolygonBorderSize": 1,
+        "autoSizePolygons": true,
+        "globalPolygonSize": "50",
+        "autoSizeColumns": true,
+        "autoSizeRows": true,
+        "layoutNumColumns": 8,
+        "layoutNumRows": 8,
+        "layoutDisplayLimit": 100,
+        "compositeConfig": {
+          "composites": [],
+          "enabled": false,
+          "animationSpeed": ""
+        },
+        "overrideConfig": {
+          "overrides": []
+        },
+        "globalTooltipsEnabled": true,
+        "globalTooltipsShowTimestampEnabled": true,
+        "globalTooltipsShowValueEnabled": true,
+        "globalShowTooltipColumnHeadersEnabled": true,
+        "globalDisplayMode": "all",
+        "globalDisplayTextTriggeredEmpty": "OK",
+        "globalShowValueEnabled": true,
+        "globalShowTimestampEnabled": false,
+        "globalShowTimestampFormat": "YYYY-MM-DD HH:mm:ss",
+        "globalShowTimestampPosition": "below_value",
+        "globalShowTimestampFontSize": 12,
+        "globalShowTimestampYOffset": 0,
+        "globalGradientsEnabled": false,
+        "globalThresholdsConfig": [
+          {"color": "red", "state": 2, "value": null},
+          {"color": "green", "state": 0, "value": 1}
+        ],
+        "globalUnitFormat": "short",
+        "globalOperator": "last",
+        "globalDecimals": 0,
+        "globalTextFontAutoColorEnabled": true,
+        "globalTextFontColor": "#000000",
+        "globalAutoScaleFonts": true,
+        "globalLabelFontSize": 12,
+        "globalValueFontSize": 14,
+        "globalCompositeValueFontSize": 14,
+        "globalTextFontFamily": "Inter",
+        "globalTooltipsFontFamily": "Inter",
+        "tooltipDisplayMode": "all",
+        "tooltipDisplayTextTriggeredEmpty": "OK",
+        "tooltipPrimarySortDirection": 1,
+        "tooltipPrimarySortByField": "thresholdLevel",
+        "tooltipSecondarySortDirection": 1,
+        "tooltipSecondarySortByField": "value",
+        "sortByDirection": 0,
+        "sortByField": "name"
       }
     }
   ],
