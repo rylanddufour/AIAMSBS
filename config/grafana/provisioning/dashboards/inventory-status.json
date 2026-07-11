@@ -115,41 +115,58 @@
     },
     {
       "id": 4,
-      "type": "stat",
-      "gridPos": {"x": 0, "y": 4, "w": 24, "h": 2},
+      "type": "polystat",
+      "title": "Device status",
+      "gridPos": {"x": 0, "y": 4, "w": 24, "h": 12},
       "datasource": {"type": "prometheus", "uid": "aiamsbs-prom"},
       "targets": [
         {
           "expr": "probe_success{job=\"blackbox_inventory\", instance=~\"$instance\"}",
           "legendFormat": "{{host}}",
-          "refId": "A"
+          "refId": "A",
+          "instant": true
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {"color": "red", "value": null},
               {"color": "green", "value": 1}
             ]
-          },
-          "noValue": "?"
+          }
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-        "textMode": "name"
-      },
-      "repeat": "instance",
-      "repeatDirection": "h",
-      "maxPerRow": 12
+        "polystat": {
+          "shape": "hexagon",
+          "fillColor": "fixed",
+          "globalFillColor": "fixed",
+          "globalBorderColor": "fixed",
+          "compositeConfig": {
+            "composite": false
+          },
+          "tooltip": {
+            "enabled": true,
+            "showTimestamp": true
+          },
+          "sizing": {
+            "auto": true,
+            "polygonSize": 1
+          },
+          "layout": {
+            "auto": true,
+            "columns": 0,
+            "rows": 0
+          },
+          "textMode": "value_and_name",
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "center"
+        }
+      }
     }
   ],
   "refresh": "1m",
