@@ -121,7 +121,7 @@
       "datasource": {"type": "prometheus", "uid": "aiamsbs-prom"},
       "targets": [
         {
-          "expr": "probe_success{job=\"blackbox_inventory\", host=~\"$host\"}",
+          "expr": "probe_success{job=\"blackbox_inventory\", instance=~\"$instance\"}",
           "legendFormat": "{{host}}",
           "refId": "A"
         }
@@ -160,7 +160,7 @@
         "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "value_and_name"
       },
-      "repeat": "host",
+      "repeat": "instance",
       "repeatDirection": "h",
       "maxPerRow": 8
     }
@@ -171,11 +171,11 @@
   "templating": {
     "list": [
       {
-        "name": "host",
-        "label": "Host",
+        "name": "instance",
+        "label": "Device",
         "type": "query",
         "datasource": {"type": "prometheus", "uid": "aiamsbs-prom"},
-        "query": {"query": "label_values(probe_success{job=\"blackbox_inventory\"}, host)", "refId": "PrometheusVariableQueryEditor-VariableQuery"},
+        "query": {"query": "label_values(probe_success{job=\"blackbox_inventory\"}, instance)", "refId": "PrometheusVariableQueryEditor-VariableQuery"},
         "refresh": 2,
         "includeAll": true,
         "multi": true,
