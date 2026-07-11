@@ -424,10 +424,17 @@ def main() -> int:
 
     if args.auto_detect_subnet:
         cidr, gateway = auto_detect_subnet()
-        if gateway:
-            target = f"{cidr} {gateway}"
-        else:
-            target = cidr
+        # Use just the CIDR as the nmap target. v1 doesn't force-include the
+        # gateway because the inventory-stack/nmap-discovery container passes
+        # the target as a SINGLE argv element to nmap (`subprocess.run(["nmap",
+        # "-sn", "-PR", "-oX", "-", target])`), and nmap can't parse a
+        # space-separated list when it arrives as one string. The gateway
+        # is force-included implicitly: for the .220 (and ~99% of small-shop
+        # deployments) the gateway is in the same /24 as the host, so the
+        # ARP-ping sweep (`-PR`) finds it naturally. Multi-target nmap
+        # (when the gateway is on a different subnet) is a follow-up BACKLOG
+        # item — see #40.
+        target = cidr
         print(f"Auto-detected subnet: {cidr}, gateway: {gateway or '(none)'}")
     else:
         target = args.target
