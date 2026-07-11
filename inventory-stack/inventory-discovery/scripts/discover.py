@@ -18,6 +18,7 @@ Exits 0 on success (even if 0 devices were found), 1 on infrastructure failure
 
 import argparse
 import json
+import subprocess
 import sys
 import urllib.error
 import urllib.parse
@@ -29,6 +30,54 @@ from typing import Optional
 NMAP_URL = "http://localhost:8003/scan"
 INVENTORY_URL = "http://localhost:8001/mcp"
 DEFAULT_CIDR = "192.168.0.0/24"
+
+
+def auto_detect_subnet() -> tuple[str, Optional[str]]:
+    """Figure out the primary interface's CIDR + default gateway.
+
+    Returns (cidr, gateway) where:
+      - cidr is e.g. "192.168.0.220/24" (the primary interface's IPv4 CIDR)
+      - gateway is e.g. "192.168.0.1" (the default route's next-hop) or None
+        if there's no upstream gateway (e.g. IPv6-only host)
+
+    Raises SystemExit with a clear message if auto-detect can't determine
+    the network (no default route, no IPv4 address on the route's interface,
+    `ip` not installed, etc.).
+    """
+    # Step 1: find the default route's interface
+    try:
+        route_proc = subprocess.run(
+            ["ip", "route", "show", "default"],
+            capture_output=True, text=True, timeout=5, check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise SystemExit(f"auto-detect-subnet: 'ip route show default' failed: {exc}")
+    if not route_proc.stdout.strip():
+        raise SystemExit("auto-detect-subnet: no default route found")
+    # Parse: "default via 192.168.0.1 dev eth0" (or with proto/static/etc).
+    # Be robust to "default dev <iface>" (no via) and trailing fields.
+    parts = route_proc.stdout.split()
+    if "dev" not in parts:
+        raise SystemExit(f"auto-detect-subnet: no 'dev' in default route: {route_proc.stdout!r}")
+    iface = parts[parts.index("dev") + 1]
+    gateway = parts[parts.index("via") + 1] if "via" in parts else None
+    # Step 2: get the CIDR for that interface
+    try:
+        addr_proc = subprocess.run(
+            ["ip", "-j", "-4", "addr", "show", iface],
+            capture_output=True, text=True, timeout=5, check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise SystemExit(f"auto-detect-subnet: 'ip -j -4 addr show {iface}' failed: {exc}")
+    try:
+        addrs = json.loads(addr_proc.stdout or "[]")
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"auto-detect-subnet: 'ip -j' returned non-JSON: {exc}")
+    if not addrs or not addrs[0].get("addr_info"):
+        raise SystemExit(f"auto-detect-subnet: no IPv4 address on interface {iface!r}")
+    primary = addrs[0]["addr_info"][0]
+    cidr = f"{primary['local']}/{primary['prefixlen']}"
+    return cidr, gateway
 
 
 def http_get_json(url: str, timeout: float = 10.0) -> dict:
@@ -363,22 +412,43 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument("target", nargs="?", default=DEFAULT_CIDR,
                         help=f"target CIDR (default: {DEFAULT_CIDR})")
+    parser.add_argument("--auto-detect-subnet", action="store_true",
+                        help="auto-detect the primary interface's subnet + default "
+                             "gateway; for cron mode. Mutually exclusive with the "
+                             "positional <target>.")
     parser.add_argument("--dry-run", action="store_true",
                         help="scan + parse but don't touch inventory DB")
     parser.add_argument("--timeout", type=int, default=300,
                         help="nmap scan timeout in seconds (default: 300)")
     args = parser.parse_args()
 
-    print(f"Inventory discovery: scanning {args.target}...")
+    if args.auto_detect_subnet:
+        cidr, gateway = auto_detect_subnet()
+        # Use just the CIDR as the nmap target. v1 doesn't force-include the
+        # gateway because the inventory-stack/nmap-discovery container passes
+        # the target as a SINGLE argv element to nmap (`subprocess.run(["nmap",
+        # "-sn", "-PR", "-oX", "-", target])`), and nmap can't parse a
+        # space-separated list when it arrives as one string. The gateway
+        # is force-included implicitly: for the .220 (and ~99% of small-shop
+        # deployments) the gateway is in the same /24 as the host, so the
+        # ARP-ping sweep (`-PR`) finds it naturally. Multi-target nmap
+        # (when the gateway is on a different subnet) is a follow-up BACKLOG
+        # item — see #40.
+        target = cidr
+        print(f"Auto-detected subnet: {cidr}, gateway: {gateway or '(none)'}")
+    else:
+        target = args.target
 
-    xml_text = run_nmap(args.target, timeout=args.timeout)
+    print(f"Inventory discovery: scanning {target}...")
+
+    xml_text = run_nmap(target, timeout=args.timeout)
     hosts = parse_hosts(xml_text)
     total = len(hosts)
 
     if total == 0:
         print("")
         print("Inventory discovery complete:")
-        print(f"  Target:   {args.target}")
+        print(f"  Target:   {target}")
         print(f"  Found:    0 device(s)")
         print(f"  Inserted: 0 new device(s)")
         print(f"  Updated:  0 existing device(s)")
@@ -423,7 +493,7 @@ def main() -> int:
 
     print("")
     print("Inventory discovery complete:")
-    print(f"  Target:   {args.target}")
+    print(f"  Target:   {target}")
     print(f"  Found:    {total} device(s)")
     print(f"  Inserted: {inserted} new device(s)")
     print(f"  Updated:  {updated} existing device(s)")
