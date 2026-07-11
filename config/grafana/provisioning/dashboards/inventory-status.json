@@ -116,7 +116,7 @@
     {
       "id": 4,
       "type": "stat",
-      "gridPos": {"x": 0, "y": 4, "w": 24, "h": 3},
+      "gridPos": {"x": 0, "y": 4, "w": 24, "h": 2},
       "datasource": {"type": "prometheus", "uid": "aiamsbs-prom"},
       "targets": [
         {
@@ -135,10 +135,7 @@
               {"color": "green", "value": 1}
             ]
           },
-          "noValue": "?",
-          "custom": {
-            "shape": "hexagon"
-          }
+          "noValue": "?"
         },
         "overrides": []
       },
@@ -152,7 +149,7 @@
       },
       "repeat": "instance",
       "repeatDirection": "h",
-      "maxPerRow": 8
+      "maxPerRow": 12
     }
   ],
   "refresh": "1m",
