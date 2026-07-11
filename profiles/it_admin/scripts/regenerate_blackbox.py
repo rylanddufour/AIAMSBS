@@ -79,19 +79,31 @@ def list_inventory_devices() -> list[dict]:
         content = result.get("content", [])
         msg = content[0].get("text", "<no content>") if content else "<no content>"
         raise SystemExit(f"list_devices tool error: {msg[:200]}")
-    # tool result text is JSON-encoded string per FastMCP convention.
-    # Empty inventory returns content: [] (no text payload) — treat as empty list.
-    # FastMCP has a quirk: a tool returning a 1-element list gets unwrapped to
-    # the single element in the wire response. So the parsed JSON is sometimes
-    # a list, sometimes a single dict. Normalize to always be a list.
+    # tool result is one content entry per device (not a single array).
+    # FastMCP returns N content entries when the tool returns N records,
+    # each with `type: "text"` and `text: "<JSON string of one record>"`.
+    # Empty inventory returns `content: []` (no text payloads). Empty
+    # text within a content entry is skipped (defensive).
     content = result.get("content", [])
     if not content:
         return []
-    text = content[0].get("text", "[]")
-    parsed = json.loads(text)
-    if isinstance(parsed, dict):
-        return [parsed]
-    return parsed
+    devices: list[dict] = []
+    for entry in content:
+        text = entry.get("text", "") if isinstance(entry, dict) else ""
+        if not text:
+            continue
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            devices.append(parsed)
+        elif isinstance(parsed, list):
+            # FastMCP 1-element-list unwrap fallback (defensive — shouldn't
+            # happen with the current list_devices implementation, but
+            # keeps the parser robust if FastMCP changes the format).
+            devices.extend(parsed)
+    return devices
 
 
 def build_target_groups(devices: list[dict]) -> list[dict]:
