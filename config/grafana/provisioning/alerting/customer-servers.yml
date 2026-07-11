@@ -1,0 +1,299 @@
+apiVersion: 1
+
+# ----------------------------------------------------------------------------
+# Per-customer-server alert rules (Phase 1 of BACKLOG #3).
+#
+# Sister to customer-network.yml. Same datasource (aiamsbs-prom), same rule
+# structure (A query -> B reduce -> C threshold, per the 2026-07-08 lesson
+# that Grafana 13's threshold step rejects time-series input even when the
+# upstream query is `instant: true`).
+#
+# Jobs targeted:
+#   - linux_exporter   (node_exporter on customer Linux hosts, port 9100)
+#   - windows_exporter (windows_exporter on customer Windows hosts, port 9182)
+#
+# Out of scope here (intentionally not in this file):
+#   - AIAMSBS host (job=integrations/unix) — per Ryland 2026-07-04,
+#     "not interested in alert rules for the components of aiamsbs."
+#   - Customer Windows disk metrics — windows_exporter emits
+#     `windows_logical_disk_*` (different metric name, different
+#     threshold semantics). Parked as a follow-up; Linux is the
+#     80/20 target.
+#   - Auth / login alerts — out per Ryland 2026-07-08: "Customer will
+#     have other tools for that."
+#   - SNMP-driven network gear — blocked on BACKLOG #37 (snmp_exporter).
+#
+# Notification: operator wires the contact point. The `source=customer-network`
+# and `category=servers` labels let a notification policy route these to a
+# Telegram / email / webhook destination per the shop's preference.
+# ----------------------------------------------------------------------------
+
+groups:
+  - orgId: 1
+    name: customer-servers
+    folder: customer-servers
+    interval: 1m
+    rules:
+
+      # ----------------------------------------------------------------------
+      # 1. CustomerServerDown (critical, for: 5m)
+      #    Any customer Linux or Windows host whose node/windows_exporter
+      #    has been unreachable for 5m. Returns 1 per down host, summed
+      #    so the alert value is the count. Open the AIAMSBS Linux/Windows
+      #    exporter dashboard to identify the specific host(s).
+      # ----------------------------------------------------------------------
+      - uid: cust-srv-host-down
+        title: CustomerServerDown
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: aiamsbs-prom
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: aiamsbs-prom
+              editorMode: code
+              instant: true
+              expr: |
+                up{job=~"linux_exporter|windows_exporter"} == 0
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - type: query
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: 'Customer server(s) unreachable for 5m'
+          description: |
+            {{ $value }} customer server(s) are unreachable (Prometheus up{}
+            == 0 for 5m). Hosts covered: Linux via `node_exporter` on
+            :9100, Windows via `windows_exporter` on :9182. Open the
+            AIAMSBS Linux Exporter or Windows Exporter dashboard
+            (filtered by $host) to identify the specific host(s) and
+            start triage: physical/VPN reachability, host power, agent
+            service status (`systemctl status node_exporter` /
+            `windows_exporter`).
+        labels:
+          severity: critical
+          category: servers
+          source: customer-network
+          aiamsbs_alert: 'true'
+
+      # ----------------------------------------------------------------------
+      # 2. CustomerServerDiskLow (warning, for: 10m)
+      #    Customer Linux host with < 10% free on the root filesystem for
+      #    10m. Threshold rationale: ext4 reserves 5% for root, so 10%
+      #    remaining is functionally full for non-root processes (writes
+      #    start failing). 10m floor prevents a short write burst from
+      #    paging.
+      #
+      #    Linux-only (job=linux_exporter). windows_exporter emits
+      #    `windows_logical_disk_*` (different metric); Windows disk
+      #    alerts are a follow-up.
+      # ----------------------------------------------------------------------
+      - uid: cust-srv-disk-low
+        title: CustomerServerDiskLow
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: aiamsbs-prom
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: aiamsbs-prom
+              editorMode: code
+              instant: true
+              expr: |
+                (
+                  node_filesystem_avail_bytes{mountpoint="/", job="linux_exporter"}
+                  /
+                  node_filesystem_size_bytes{mountpoint="/", job="linux_exporter"}
+                ) * 100 < 10
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - type: query
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: 'Customer Linux server with <10% free on /'
+          description: |
+            {{ $value }} customer Linux host(s) have less than 10% free
+            on the root filesystem for 10m. ext4 reserves 5% for root,
+            so this is the point where non-root writes start failing.
+            Triage: `df -h /` on the affected host, then
+            `du -sh /* 2>/dev/null | sort -h | tail` to find what's
+            growing. Likely culprits: `/var/log` (rotate/compress),
+            `/var/lib/docker` (`docker system prune -a`), or a runaway
+            process.
+        labels:
+          severity: warning
+          category: servers
+          source: customer-network
+          aiamsbs_alert: 'true'
+
+      # ----------------------------------------------------------------------
+      # 3. CustomerServerDiskFillSoon (warning, for: 30m)
+      #    predict_linear projects when each Linux host's root filesystem
+      #    will fill, based on the 6h growth rate. Fires if any host is
+      #    projected to fill within 7 days. 30m `for:` ensures we don't
+      #    page on a 10-minute write spike.
+      #
+      #    This is the higher-signal of the two disk rules — it pages
+      #    *before* the disk is full, giving the operator days to act
+      #    instead of minutes.
+      # ----------------------------------------------------------------------
+      - uid: cust-srv-disk-fill-soon
+        title: CustomerServerDiskFillSoon
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: aiamsbs-prom
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: aiamsbs-prom
+              editorMode: code
+              instant: true
+              expr: |
+                predict_linear(
+                  node_filesystem_avail_bytes{mountpoint="/", job="linux_exporter"}[6h],
+                  7 * 24 * 3600
+                ) < 0
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - type: query
+                  query:
+                    params: [B]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        annotations:
+          summary: 'Customer Linux server disk projected to fill within 7 days'
+          description: |
+            {{ $value }} customer Linux host(s) are projected to fill
+            their root filesystem within 7 days at the current 6h
+            growth rate. The 7-day horizon matches a typical weekly
+            ops-review cadence — you have days to act, not minutes.
+            Triage: open the AIAMSBS Linux Exporter dashboard and
+            filter by the affected $host; the Filesystem row shows
+            the per-mount free bytes trend that drives the projection.
+            Common fixes: rotate/compress logs, prune Docker,
+            archive old data, expand the volume.
+        labels:
+          severity: warning
+          category: servers
+          source: customer-network
+          aiamsbs_alert: 'true'
