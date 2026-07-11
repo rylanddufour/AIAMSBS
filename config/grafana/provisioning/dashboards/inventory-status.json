@@ -116,7 +116,6 @@
     {
       "id": 4,
       "type": "stat",
-      "title": "Inventory Status",
       "gridPos": {"x": 0, "y": 4, "w": 24, "h": 3},
       "datasource": {"type": "prometheus", "uid": "aiamsbs-prom"},
       "targets": [
@@ -136,15 +135,6 @@
               {"color": "green", "value": 1}
             ]
           },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {"text": "DOWN", "color": "red", "index": 0},
-                "1": {"text": "UP", "color": "green", "index": 1}
-              }
-            }
-          ],
           "noValue": "?",
           "custom": {
             "shape": "hexagon"
@@ -158,7 +148,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-        "textMode": "value_and_name"
+        "textMode": "none"
       },
       "repeat": "instance",
       "repeatDirection": "h",
