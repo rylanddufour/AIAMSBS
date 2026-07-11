@@ -121,6 +121,29 @@ def search_devices(query: str, device_type: str = "", tag: str = "", limit: int 
 
 
 @mcp.tool()
+def list_devices(device_type: str = "", limit: int = 500) -> list:
+    """Enumerate all devices, optionally filtered by exact device_type.
+
+    Use this for bulk operations (e.g. generating Prometheus target files)
+    where you need the full inventory, not a substring search. For free-text
+    lookup, use search_devices instead.
+
+    Args:
+        device_type: if non-empty, restrict to this exact device_type.
+        limit: maximum number of rows to return (default 500).
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    if device_type:
+        cur.execute("SELECT * FROM devices WHERE device_type = ? LIMIT ?", (device_type, limit))
+    else:
+        cur.execute("SELECT * FROM devices LIMIT ?", (limit,))
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+@mcp.tool()
 def create_device(device: dict) -> dict:
     """Create a new device record. `device_id` is required."""
     device_id = device.get("device_id")

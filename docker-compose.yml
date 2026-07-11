@@ -10,6 +10,7 @@ services:
       - "0.0.0.0:9090:9090"
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/targets/:/etc/prometheus/targets/:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -98,6 +99,7 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-polystat-panel
     networks:
       - monitoring
     restart: unless-stopped
@@ -109,6 +111,8 @@ services:
     image: prom/blackbox-exporter:latest
     container_name: blackbox_exporter
     network_mode: host
+    cap_add:
+      - NET_RAW    # BACKLOG #39.5: required for ICMP probing in the blackbox_inventory job
     ports:
       - "0.0.0.0:9115:9115"
     volumes:

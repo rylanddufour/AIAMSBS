@@ -179,4 +179,30 @@ scrape_configs:
       #     labels:
       #       host: <windows-hostname>
 
+  # Blackbox ICMP probes for inventory-discovered hosts.
+  # Targets are written to config/prometheus/targets/blackbox_inventory.json
+  # by profiles/it_admin/scripts/regenerate_blackbox.py (cron @ 02:00 daily
+  # + manual kickoff + bootstrap end-of-install kickoff). The bind mount in
+  # docker-compose.yml exposes the host dir to /etc/prometheus/targets/ in
+  # the container. file_sd_configs re-reads the file on every scrape, so
+  # the inventory-driven targets are picked up without a container restart.
+  # Note: do NOT hardcode the 192.168.0.220:9115 replacement — that value
+  # is correct for the canonical AIAMSBS .220 deployment; on other hosts,
+  # override via the BLACKBOX_EXPORTER_HOST env var on the prometheus
+  # container. (Out of scope for v1 — single-host deployment.)
+  - job_name: 'blackbox_inventory'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    scrape_interval: 60s
+    scrape_timeout: 10s
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/blackbox_inventory*.json']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.0.220:9115
 

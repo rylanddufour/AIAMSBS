@@ -1150,6 +1150,56 @@ install_dashboard_backup_hermes_cron() {
     fi
 }
 
+# BACKLOG #39.6 — register the daily inventory discovery cron.
+# install_inventory_discovery_hermes_cron [no args]
+# Registers the "AIAMSBS Inventory Discovery" cron job with Hermes
+# (profile=it_admin, daily 02:00). Idempotent — re-running is a no-op.
+# Idempotency + jobs.json edit live in
+# scripts/install_inventory_discovery_hermes_cron.py (mirror of the
+# install_dashboard_backup_hermes_cron pattern).
+install_inventory_discovery_hermes_cron() {
+    local helper="$HERMES_HOME/scripts/install_inventory_discovery_hermes_cron.py"
+    if [ ! -x "$helper" ]; then
+        log_warn "install_inventory_discovery_hermes_cron.py not found at $helper; skipping"
+        log_warn "(install_backup_scripts should have installed it; check that step)"
+        return 0
+    fi
+    log_info "Registering AIAMSBS Inventory Discovery as a Hermes cron job (profile=it_admin, daily 02:00)..."
+    if python3 "$helper" "$HERMES_HOME" it_admin; then
+        log_success "Hermes inventory discovery cron installed"
+    else
+        log_warn "Hermes inventory discovery cron install failed (exit $?); jobs.json may need manual edit"
+    fi
+}
+
+# BACKLOG #39.7 — end-of-bootstrap kickoff of inventory discovery.
+# kickoff_inventory_discovery [no args]
+# Runs the inventory discovery ONCE at end of bootstrap, so the customer
+# sees the discovered devices in their install summary and the
+# regenerate_blackbox + Prom reload chain runs end-to-end before they
+# start exploring. Manual kick post-bootstrap: `hermes cron run
+# inventory-discovery-it_admin` (the cron registered in #6 is the
+# source of truth for the same job).
+kickoff_inventory_discovery() {
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
+    local discover_script="$infra_dir/inventory-stack/inventory-discovery/scripts/discover.py"
+    if [ ! -x "$discover_script" ]; then
+        log_warn "discover.py not found at $discover_script; skipping kickoff discovery"
+        log_warn "(the cron will pick this up at 02:00; or run manually:)"
+        log_warn "  python3 $discover_script --auto-detect-subnet --timeout 300"
+        return 0
+    fi
+    log_info "Running kickoff inventory discovery (--auto-detect-subnet, 300s timeout)..."
+    # Capture output to install log via tee, but don't fail the bootstrap if
+    # the kickoff fails (e.g. nmap-discovery container is down, or the
+    # customer's network isn't yet reachable). Cron will retry next night.
+    if python3 "$discover_script" --auto-detect-subnet --timeout 300 2>&1 | tee -a /tmp/aiamsbs-kickoff-discovery.log; then
+        log_success "Kickoff inventory discovery complete (see /tmp/aiamsbs-kickoff-discovery.log for details)"
+    else
+        log_warn "Kickoff inventory discovery returned non-zero (exit ${PIPESTATUS[0]}); cron will retry at 02:00"
+    fi
+}
+
 # ============================================
 # Deploy MCP Stack (grafana-mcp)
 # ============================================
@@ -2060,6 +2110,12 @@ main() {
     install_backup_scripts
     install_dashboard_backup_hermes_cron
 
+    # Inventory discovery cron: daily 02:00, profile=it_admin, runs all 3
+    # steps (discover + regenerate_blackbox + Prom reload) in one tick.
+    # Wire after install_dashboard_backup_hermes_cron so the helper pattern
+    # is consistent.
+    install_inventory_discovery_hermes_cron
+
     deploy_mcp_stack
     deploy_inventory_stack
 
@@ -2090,6 +2146,11 @@ main() {
 
     # Print customer-facing access summary (URLs, credentials, ports, hints)
     print_access_summary
+
+    # Run the kickoff inventory discovery so the customer sees devices in
+    # their install summary and the blackbox + Prom chain runs end-to-end
+    # before they start exploring. Non-fatal — cron will retry at 02:00.
+    kickoff_inventory_discovery
 
     verify_installation
 }
