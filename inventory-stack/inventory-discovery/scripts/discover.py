@@ -18,6 +18,7 @@ Exits 0 on success (even if 0 devices were found), 1 on infrastructure failure
 
 import argparse
 import json
+import socket
 import subprocess
 import sys
 import urllib.error
@@ -176,6 +177,27 @@ def run_nmap(target: str, timeout: int = 300) -> str:
     return output
 
 
+def reverse_dns_lookup(ip: str) -> Optional[str]:
+    """Reverse-resolve an IP to its hostname via the host's configured DNS
+    resolvers. Returns the FQDN (or short hostname) from the PTR record,
+    or None on any failure (timeout, NXDOMAIN, no resolver, network
+    unreachable, invalid input).
+
+    Uses socket.gethostbyaddr which reads /etc/resolv.conf (and the glibc
+    resolver) automatically — no extra deps. Default timeout is the system
+    resolver's default (typically 5s). If a particular lookup hangs it'll
+    block the script for that long; if that's a problem in production we
+    can add a signal.alarm-based timeout in a follow-up.
+    """
+    if not ip:
+        return None
+    try:
+        hostname, _aliases, _addrs = socket.gethostbyaddr(ip)
+        return hostname or None
+    except (socket.herror, socket.gaierror, socket.timeout, OSError):
+        return None
+
+
 def parse_hosts(xml_text: str) -> list[dict]:
     """Parse nmap XML and return one dict per host with extracted fields."""
     hosts = []
@@ -198,6 +220,16 @@ def parse_hosts(xml_text: str) -> list[dict]:
             n = h.find("name")
             if n is not None:
                 hostname = n.get("name", "")
+        # nmap's -sn -PR ping scan does NOT perform reverse DNS by default
+        # (it only does ARP-ping to enumerate live hosts), so the
+        # <hostname> element is usually empty. Fall back to the system
+        # resolver's PTR lookup; on failure (NXDOMAIN, timeout, etc.)
+        # reverse_dns_lookup returns None and we leave hostname as "" —
+        # inventory-mcp's create_device/update_device handle the empty
+        # string fine, and the device still gets a record (with ip_address
+        # as the only identity).
+        if not hostname and ip:
+            hostname = reverse_dns_lookup(ip) or ""
         o = host.find("os/osmatch")
         if o is not None:
             os_name = o.get("name", "")
