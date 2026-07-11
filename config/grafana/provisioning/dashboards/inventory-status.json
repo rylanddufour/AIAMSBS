@@ -1,5 +1,7 @@
 {
-  "annotations": {"list": []},
+  "annotations": {
+    "list": []
+  },
   "editable": false,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -10,8 +12,16 @@
       "id": 1,
       "type": "stat",
       "title": "Total devices",
-      "gridPos": {"x": 0, "y": 0, "w": 8, "h": 4},
-      "datasource": {"type": "prometheus", "uid": "aiamsbs-prom"},
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
       "targets": [
         {
           "expr": "count(up{job=\"blackbox_inventory\"})",
@@ -20,11 +30,16 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "green", "value": null}
+              {
+                "color": "green",
+                "value": null
+              }
             ]
           },
           "mappings": [],
@@ -37,7 +52,13 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       }
     },
@@ -45,8 +66,16 @@
       "id": 2,
       "type": "stat",
       "title": "Up",
-      "gridPos": {"x": 8, "y": 0, "w": 8, "h": 4},
-      "datasource": {"type": "prometheus", "uid": "aiamsbs-prom"},
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 8,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
       "targets": [
         {
           "expr": "count(probe_success{job=\"blackbox_inventory\"} == 1)",
@@ -55,12 +84,20 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "red", "value": null},
-              {"color": "green", "value": 1}
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
             ]
           },
           "mappings": [],
@@ -73,7 +110,13 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       }
     },
@@ -81,8 +124,16 @@
       "id": 3,
       "type": "stat",
       "title": "Down",
-      "gridPos": {"x": 16, "y": 0, "w": 8, "h": 4},
-      "datasource": {"type": "prometheus", "uid": "aiamsbs-prom"},
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 8,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
       "targets": [
         {
           "expr": "count(probe_success{job=\"blackbox_inventory\"} == 0)",
@@ -91,12 +142,20 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "green", "value": null},
-              {"color": "red", "value": 1}
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
             ]
           },
           "mappings": [],
@@ -109,112 +168,121 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       }
     },
     {
       "id": 4,
-      "type": "polystat",
-      "title": "Device status",
-      "gridPos": {"x": 0, "y": 4, "w": 24, "h": 12},
-      "datasource": {"type": "prometheus", "uid": "aiamsbs-prom"},
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
       "targets": [
         {
           "expr": "probe_success{job=\"blackbox_inventory\", instance=~\"$instance\"}",
           "legendFormat": "{{host}}",
-          "refId": "A",
-          "instant": true
+          "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "mappings": []
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "?"
         },
         "overrides": []
       },
       "options": {
-        "globalShape": "hexagon_pointed_top",
-        "globalFillColor": "rgba(10, 85, 161, 1)",
-        "globalPolygonBorderColor": "rgba(0, 0, 0, 0)",
-        "globalPolygonBorderSize": 1,
-        "autoSizePolygons": true,
-        "globalPolygonSize": "50",
-        "autoSizeColumns": true,
-        "autoSizeRows": true,
-        "layoutNumColumns": 8,
-        "layoutNumRows": 8,
-        "layoutDisplayLimit": 100,
-        "compositeConfig": {
-          "composites": [],
-          "enabled": false,
-          "animationSpeed": ""
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "overrideConfig": {
-          "overrides": []
-        },
-        "globalTooltipsEnabled": true,
-        "globalTooltipsShowTimestampEnabled": true,
-        "globalTooltipsShowValueEnabled": true,
-        "globalShowTooltipColumnHeadersEnabled": true,
-        "globalDisplayMode": "all",
-        "globalDisplayTextTriggeredEmpty": "OK",
-        "globalShowValueEnabled": true,
-        "globalShowTimestampEnabled": false,
-        "globalShowTimestampFormat": "YYYY-MM-DD HH:mm:ss",
-        "globalShowTimestampPosition": "below_value",
-        "globalShowTimestampFontSize": 12,
-        "globalShowTimestampYOffset": 0,
-        "globalGradientsEnabled": false,
-        "globalThresholdsConfig": [
-          {"color": "red", "state": 2, "value": null},
-          {"color": "green", "state": 0, "value": 1}
-        ],
-        "globalUnitFormat": "short",
-        "globalOperator": "last",
-        "globalDecimals": 0,
-        "globalTextFontAutoColorEnabled": true,
-        "globalTextFontColor": "#000000",
-        "globalAutoScaleFonts": true,
-        "globalLabelFontSize": 12,
-        "globalValueFontSize": 14,
-        "globalCompositeValueFontSize": 14,
-        "globalTextFontFamily": "Inter",
-        "globalTooltipsFontFamily": "Inter",
-        "tooltipDisplayMode": "all",
-        "tooltipDisplayTextTriggeredEmpty": "OK",
-        "tooltipPrimarySortDirection": 1,
-        "tooltipPrimarySortByField": "thresholdLevel",
-        "tooltipSecondarySortDirection": 1,
-        "tooltipSecondarySortByField": "value",
-        "sortByDirection": 0,
-        "sortByField": "name"
-      }
+        "textMode": "name"
+      },
+      "repeat": "instance",
+      "repeatDirection": "h",
+      "maxPerRow": 12
     }
   ],
   "refresh": "1m",
   "schemaVersion": 38,
-  "tags": ["aiamsbs", "inventory", "blackbox"],
+  "tags": [
+    "aiamsbs",
+    "inventory",
+    "blackbox"
+  ],
   "templating": {
     "list": [
       {
         "name": "instance",
         "label": "Device",
         "type": "query",
-        "datasource": {"type": "prometheus", "uid": "aiamsbs-prom"},
-        "query": {"query": "label_values(probe_success{job=\"blackbox_inventory\"}, instance)", "refId": "PrometheusVariableQueryEditor-VariableQuery"},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "aiamsbs-prom"
+        },
+        "query": {
+          "query": "label_values(probe_success{job=\"blackbox_inventory\"}, instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
         "refresh": 2,
         "includeAll": true,
         "multi": true,
-        "current": {"selected": false, "text": ["All"], "value": ["$__all"]},
+        "current": {
+          "selected": false,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
         "options": []
       }
     ]
   },
-  "time": {"from": "now-5m", "to": "now"},
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "",
-  "title": "Inventory — Device Status",
+  "title": "Inventory \u2014 Device Status",
   "uid": "inventory-status",
   "version": 1,
   "weekStart": ""
