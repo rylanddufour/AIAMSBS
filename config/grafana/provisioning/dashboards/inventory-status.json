@@ -148,7 +148,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
-        "textMode": "none"
+        "textMode": "name"
       },
       "repeat": "instance",
       "repeatDirection": "h",
