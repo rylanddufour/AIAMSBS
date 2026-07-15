@@ -32,6 +32,11 @@ services:
     volumes:
       - ./config/loki.yml:/etc/loki/local-config.yml:ro
       - loki-data:/loki
+    # Override the image default (-config.file=/etc/loki/local-config.yaml,
+    # which is the image-bundled config with no retention/compactor/query
+    # limits) so loki reads our project-named loki.yml. Without this the
+    # mount is silently ignored — see BACKLOG #5.
+    command: -config.file=/etc/loki/local-config.yml
     networks:
       - monitoring
     restart: unless-stopped
