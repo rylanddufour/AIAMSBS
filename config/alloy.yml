@@ -6,9 +6,26 @@ prometheus.exporter.unix "self" { }
 // Scrape host metrics
 prometheus.scrape "host" {
     targets = prometheus.exporter.unix.self.targets
-    forward_to = [prometheus.remote_write.metrics.receiver]
+    forward_to = [prometheus.relabel.self_host.receiver]
     scrape_interval = "15s"
     scrape_timeout = "10s"
+}
+
+// Stamp the AIAMSBS host's hostname onto every metric so the per-host dashboard
+// dropdown has a stable, accurate `host` label. Mirrors the pattern in
+// config/alloy/customer-linux.river so the AIAMSBS-host and customer-host
+// alloys label themselves the same way. On Docker this resolves to the
+// container hostname (set automatically by dockerd to /etc/hostname of the
+// host — `aiamsbs-host` on .220). On bare-metal customer installs it picks
+// up whatever HOSTNAME is set to (often FQDN). To override, pass
+// `- HOSTNAME=<name>` on the alloy container's environment block.
+prometheus.relabel "self_host" {
+    rule {
+        target_label = "host"
+        replacement  = sys.env("HOSTNAME")
+    }
+
+    forward_to = [prometheus.remote_write.metrics.receiver]
 }
 
 // Remote write to Prometheus

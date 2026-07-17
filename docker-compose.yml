@@ -45,6 +45,15 @@ services:
   alloy:
     image: grafana/alloy:latest
     container_name: alloy
+    # Pin the container's hostname to "aiamsbs-host" so that alloy's
+    # `sys.env("HOSTNAME")` (used in the `self_host` relabel) returns the
+    # canonical AIAMSBS host label. Without this, Docker defaults the
+    # container hostname to the container ID, which would surface in every
+    # metric's `host` label and break dashboard templating. The VM's actual
+    # OS hostname (e.g. `gstack-iac` on .220 today) is a different concern;
+    # the dashboards and per-host relabel contract use `aiamsbs-host` as
+    # the AIAMSBS host's role-based label.
+    hostname: aiamsbs-host
     ports:
       - "0.0.0.0:12345:12345"
     volumes:
@@ -98,10 +107,15 @@ services:
   # River config, at which point this container is removed). Runs ALONGSIDE
   # the AIAMSBS-side alloy so both paths produce metrics + logs simultaneously
   # for parity verification (Step 4). Different UI port (12346) to avoid
-  # colliding with the existing alloy container on 12345.
+  # colliding with the existing alloy container on 12345. Pin the
+  # container hostname to `aiamsbs-host` so the pilot's labels match the
+  # AIAMSBS-side alloy in the per-host dashboard (both end up with
+  # `host="aiamsbs-host"`). For real customer Docker installs, drop this
+  # override and let Docker resolve from the OS hostname.
   alloy-customer:
     image: grafana/alloy:latest
     container_name: alloy-customer
+    hostname: aiamsbs-host
     ports:
       - "0.0.0.0:12346:12345"
     volumes:
@@ -116,10 +130,13 @@ services:
       - alloy-customer-data:/etc/alloy
     privileged: true
     environment:
-      # Pin the host label so this pilot's metrics share a hostname with
-      # the AIAMSBS-side alloy data on the same box. Real customer hosts
-      # will have their own HOSTNAME (e.g. "customer-lin-01").
-      - HOSTNAME=aiamsbs-host
+      # The container's `host` label resolves to whatever HOSTNAME is set to
+      # via alloy's `sys.env("HOSTNAME")` (see config/alloy/customer-linux.river).
+      # On .220 the docker daemon auto-sets HOSTNAME to /etc/hostname of the
+      # host (`aiamsbs-host`), so the pilot parity box picks up the same label
+      # as the AIAMSBS-side alloy without an explicit override. For a real
+      # customer install, set `- HOSTNAME=<customer-hostname>` (or let Docker
+      # resolve it from the OS hostname on bare-metal).
       # Default URLs match the in-network targets (config/alloy/customer-linux.river
       # uses coalesce() to honor these env vars if set).
       - ALLOY_REMOTE_WRITE_URL=http://prometheus:9090/api/v1/write
