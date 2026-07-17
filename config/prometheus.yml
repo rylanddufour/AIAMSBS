@@ -21,28 +21,26 @@ scrape_configs:
         labels:
           service: 'alloy'
     # BACKLOG #10 / #B: Alloy runs prometheus.exporter.unix "self" inside the container
-    # and remote_writes the AIAMSBS host metrics to this Prometheus. The exporter does
-    # not emit a `host` label, so the per-host dashboard (aiamsbs-node-exporter) cannot
-    # filter on it. Relabel a stable hostname onto every Alloy-sourced metric so the
-    # dropdown selector in the node_exporter dashboard has at least one entry to find.
-    relabel_configs:
-      - target_label: host
-        replacement: 'aiamsbs-host'
+    # and remote_writes the AIAMSBS host metrics to this Prometheus. The exporter
+    # does not emit a `host` label on its own, but Alloy stamps one on via
+    # `prometheus.relabel "self_host"` in config/alloy.yml (using
+    # `sys.env("HOSTNAME")` — resolves to the Docker container hostname, which
+    # Docker auto-sets from /etc/hostname of the host). Real customer hosts
+    # have their own hostnames picked up the same way.
 
   # Customer-host Alloy (BACKLOG #44 Step 3) — runs config/alloy/customer-linux.river.
   # In dual-collect mode, this container runs ALONGSIDE the AIAMSBS-side alloy so
   # we can verify parity before cutting customer hosts over to Alloy. The container
   # exposes the same Alloy self-metrics on port 12345; we scrape them on the
-  # `monitoring` docker network. Relabel host so the per-host dashboard sees this
-  # as `aiamsbs-host` (real customer hosts will have their own hostnames).
+  # `monitoring` docker network. The customer-side alloy itself sets the `host`
+  # label via the same `prometheus.relabel "customer_host"` block in
+  # config/alloy/customer-linux.river (resolving to that customer host's
+  # `sys.env("HOSTNAME")`), so no Prometheus-side relabel is needed here.
   - job_name: 'alloy-customer'
     static_configs:
       - targets: ['alloy-customer:12345']
         labels:
           service: 'alloy-customer'
-    relabel_configs:
-      - target_label: host
-        replacement: 'aiamsbs-host'
 
   - job_name: 'grafana'
     static_configs:
