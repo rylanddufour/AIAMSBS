@@ -29,6 +29,21 @@ scrape_configs:
       - target_label: host
         replacement: 'aiamsbs-host'
 
+  # Customer-host Alloy (BACKLOG #44 Step 3) — runs config/alloy/customer-linux.river.
+  # In dual-collect mode, this container runs ALONGSIDE the AIAMSBS-side alloy so
+  # we can verify parity before cutting customer hosts over to Alloy. The container
+  # exposes the same Alloy self-metrics on port 12345; we scrape them on the
+  # `monitoring` docker network. Relabel host so the per-host dashboard sees this
+  # as `aiamsbs-host` (real customer hosts will have their own hostnames).
+  - job_name: 'alloy-customer'
+    static_configs:
+      - targets: ['alloy-customer:12345']
+        labels:
+          service: 'alloy-customer'
+    relabel_configs:
+      - target_label: host
+        replacement: 'aiamsbs-host'
+
   - job_name: 'grafana'
     static_configs:
       - targets: ['grafana:3000']

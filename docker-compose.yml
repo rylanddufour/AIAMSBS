@@ -91,6 +91,44 @@ services:
       - monitoring
     restart: unless-stopped
 
+  # Customer-host Alloy (BACKLOG #44 Step 3) — simulates a customer Linux host
+  # running Alloy with config/alloy/customer-linux.river. Reads from the
+  # AIAMSBS host's /proc, /sys, and /var/log/journal (the AIAMSBS host itself
+  # is the pilot — Steps 6/7 will cut real customer hosts over to this same
+  # River config, at which point this container is removed). Runs ALONGSIDE
+  # the AIAMSBS-side alloy so both paths produce metrics + logs simultaneously
+  # for parity verification (Step 4). Different UI port (12346) to avoid
+  # colliding with the existing alloy container on 12345.
+  alloy-customer:
+    image: grafana/alloy:latest
+    container_name: alloy-customer
+    ports:
+      - "0.0.0.0:12346:12345"
+    volumes:
+      # Required for prometheus.exporter.unix to read host metrics
+      - /proc:/proc:ro
+      - /sys:/sys:ro
+      # Required for loki.source.journal
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      # The customer River config from Step 1
+      - ./config/alloy/customer-linux.river:/etc/alloy/config.river:ro
+      - alloy-customer-data:/etc/alloy
+    privileged: true
+    environment:
+      # Pin the host label so this pilot's metrics share a hostname with
+      # the AIAMSBS-side alloy data on the same box. Real customer hosts
+      # will have their own HOSTNAME (e.g. "customer-lin-01").
+      - HOSTNAME=aiamsbs-host
+      # Default URLs match the in-network targets (config/alloy/customer-linux.river
+      # uses coalesce() to honor these env vars if set).
+      - ALLOY_REMOTE_WRITE_URL=http://prometheus:9090/api/v1/write
+      - ALLOY_LOKI_URL=http://loki:3100/loki/api/v1/push
+    command: run --server.http.listen-addr=:12345 --storage.path=/etc/alloy /etc/alloy/config.river
+    networks:
+      - monitoring
+    restart: unless-stopped
+
   # Dashboards and Visualization
   grafana:
     image: grafana/grafana:13.0.1
@@ -139,4 +177,5 @@ volumes:
   prometheus-data:
   loki-data:
   alloy-data:
+  alloy-customer-data:
   grafana-data:
