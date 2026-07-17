@@ -1,5 +1,13 @@
 # Loki Configuration for AIAMSBS Monitoring Stack
 # Local configuration (no auth, no persistence)
+#
+# BACKLOG #45: loki 3.x's compiled-in default is multi-tenant mode when this
+# field is absent — every writer (alloy / promtail / Grafana) would need to
+# send X-Scope-OrgID or get a 401. AIAMSBS is single-tenant (one VM, one
+# stack), so disable auth at the source. Any writer can push with no
+# tenant header; queries run against the single default tenant.
+
+auth_enabled: false
 
 server:
   http_listen_port: 3100
