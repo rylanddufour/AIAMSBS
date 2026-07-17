@@ -24,7 +24,7 @@
           "type": "prometheus",
           "uid": "aiamsbs-prom"
         },
-        "query": "label_values(up{job=\"linux_exporter\"}, host)",
+        "query": "label_values(up{job=\"integrations/unix\"}, host)",
         "refresh": 1,
         "includeAll": false,
         "multi": false,
@@ -1197,7 +1197,7 @@
       },
       "targets": [
         {
-          "expr": "{host=\"$host\", job=~\"customer_host_linux|customer_host_windows\"}",
+          "expr": "{host=\"$host\", job=~\"systemd\"}",
           "refId": "A",
           "datasource": {
             "type": "loki",
@@ -1216,5 +1216,6 @@
       }
     }
   ],
-  "revision": 1
+  "revision": 1,
+  "description": "Per-OS host metrics + logs via Grafana Alloy. The AIAMSBS host itself is tracked on aiamsbs-health."
 }

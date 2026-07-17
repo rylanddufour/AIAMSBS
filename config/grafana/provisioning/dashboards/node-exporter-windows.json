@@ -24,7 +24,7 @@
           "type": "prometheus",
           "uid": "aiamsbs-prom"
         },
-        "query": "label_values(up{job=\"windows_exporter\"}, host)",
+        "query": "label_values(up{job=\"integrations/windows\"}, host)",
         "refresh": 1,
         "includeAll": false,
         "multi": false,
@@ -610,7 +610,7 @@
       },
       "targets": [
         {
-          "expr": "{job=\"customer_host_windows\", host=\"$host\"}",
+          "expr": "{job=\"windows_eventlog\", host=\"$host\"}",
           "refId": "A"
         }
       ],
@@ -810,5 +810,6 @@
         "overrides": []
       }
     }
-  ]
+  ],
+  "description": "Per-OS host metrics + logs via Grafana Alloy. The AIAMSBS host itself is tracked on aiamsbs-health."
 }
