@@ -1,0 +1,108 @@
+// Customer Windows host observability.
+// Set ALLOY_REMOTE_WRITE_URL and ALLOY_LOKI_URL when the AIAMSBS endpoints
+// are not reachable by their defaults from inside the customer host network.
+//
+// Service-account requirements:
+//   Alloy must run as LocalSystem (or an account with equivalent rights) so
+//   that loki.source.windowsevent can read the Application / System / Security
+//   channels, and so that prometheus.exporter.windows can enumerate services,
+//   disks, and the WMI counters behind the cpu / memory / logical_disk / net
+//   / os / service / system / process collectors. A plain user account will
+//   fail the Event Log reads and most WMI queries. Granting the `Event Log
+//   Readers` group membership alone is sufficient for the event-log side
+//   only; metrics still need LocalSystem or an equivalent WMI grant.
+
+// Embed windows_exporter-equivalent Windows host metrics. The default set is
+// cpu / logical_disk / net / os / service / system; we extend it with memory
+// and process so the host-overview panels and ad-hoc queries work without an
+// extra collector round-trip.
+prometheus.exporter.windows "self" {
+	enabled_collectors = [
+		"cpu",
+		"memory",
+		"logical_disk",
+		"net",
+		"os",
+		"service",
+		"system",
+		"process",
+	]
+}
+
+// Scrape the embedded exporter every 15 seconds and add the customer hostname.
+prometheus.scrape "self" {
+	targets         = prometheus.exporter.windows.self.targets
+	scrape_interval = "15s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.customer_host.receiver]
+}
+
+prometheus.relabel "customer_host" {
+	rule {
+		target_label = "host"
+		replacement  = coalesce(sys.env("COMPUTERNAME"), sys.env("HOSTNAME"))
+	}
+
+	forward_to = [prometheus.remote_write.metrics.receiver]
+}
+
+// Default URL works when this config runs inside the AIAMSBS network.
+// For a customer-side Alloy process, set ALLOY_REMOTE_WRITE_URL to
+// http://<AIAMSBS>:9090/api/v1/write.
+prometheus.remote_write "metrics" {
+	endpoint {
+		url = coalesce(
+			sys.env("ALLOY_REMOTE_WRITE_URL"),
+			"http://prometheus:9090/api/v1/write",
+		)
+	}
+}
+
+// Read the three default Windows Event Log channels and apply stable
+// customer-host labels. One loki.source.windowsevent per channel keeps the
+// eventlog_name explicit and lets Grafana / Loki filter by it downstream.
+loki.source.windowsevent "application" {
+	eventlog_name = "Application"
+	labels        = {
+		job           = "windows_eventlog",
+		source        = "customer_host_windows",
+		eventlog_name = "Application",
+		host          = coalesce(sys.env("COMPUTERNAME"), sys.env("HOSTNAME")),
+	}
+
+	forward_to = [loki.write.eventlog.receiver]
+}
+
+loki.source.windowsevent "system" {
+	eventlog_name = "System"
+	labels        = {
+		job           = "windows_eventlog",
+		source        = "customer_host_windows",
+		eventlog_name = "System",
+		host          = coalesce(sys.env("COMPUTERNAME"), sys.env("HOSTNAME")),
+	}
+
+	forward_to = [loki.write.eventlog.receiver]
+}
+
+loki.source.windowsevent "security" {
+	eventlog_name = "Security"
+	labels        = {
+		job           = "windows_eventlog",
+		source        = "customer_host_windows",
+		eventlog_name = "Security",
+		host          = coalesce(sys.env("COMPUTERNAME"), sys.env("HOSTNAME")),
+	}
+
+	forward_to = [loki.write.eventlog.receiver]
+}
+
+// Default URL works when Loki is the AIAMSBS service on the local network.
+loki.write "eventlog" {
+	endpoint {
+		url = coalesce(
+			sys.env("ALLOY_LOKI_URL"),
+			"http://loki:3100/loki/api/v1/push",
+		)
+	}
+}
