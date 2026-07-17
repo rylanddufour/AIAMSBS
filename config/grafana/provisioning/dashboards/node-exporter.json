@@ -30,8 +30,8 @@
         "multi": false,
         "current": {
           "selected": false,
-          "text": "aiamsbs-host",
-          "value": "aiamsbs-host"
+          "text": "",
+          "value": ""
         },
         "options": [],
         "sort": 1
