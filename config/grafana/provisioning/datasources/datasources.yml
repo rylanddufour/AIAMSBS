@@ -22,6 +22,15 @@ datasources:
     editable: true
     jsonData:
       httpMethod: POST
+      # Loki is running in multi-tenant mode (BACKLOG #45: loki config comment
+      # claims single-tenant but auth_enabled is never set, so Loki uses its
+      # compiled-in multi-tenant default). Every query path through this
+      # datasource must send X-Scope-OrgID or Loki rejects with HTTP 401.
+      # Tenant "tenant-a" matches what alloy/promtail on .220 use today; once
+      # BACKLOG #45 is resolved (auth_enabled: false) this header can be removed.
+      httpHeaderName1: X-Scope-OrgID
+    secureJsonData:
+      httpHeaderValue1: tenant-a
 
   # Required for Grafana 13 Unified Alerting file-provisioned rules.
   # The threshold/reduce expression engine (UID "__expr") is not auto-registered
