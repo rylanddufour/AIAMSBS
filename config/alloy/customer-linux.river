@@ -1,0 +1,119 @@
+// Customer Linux host observability.
+// Set ALLOY_REMOTE_WRITE_URL and ALLOY_LOKI_URL when the AIAMSBS endpoints
+// are not reachable by their defaults from inside the customer host network.
+
+// Embed node_exporter-equivalent Unix host metrics.
+prometheus.exporter.unix "self" { }
+
+// Scrape the embedded exporter every 15 seconds and add the customer hostname.
+prometheus.scrape "self" {
+	targets         = prometheus.exporter.unix.self.targets
+	scrape_interval = "15s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.customer_host.receiver]
+}
+
+prometheus.relabel "customer_host" {
+	rule {
+		target_label = "host"
+		replacement  = sys.env("HOSTNAME")
+	}
+
+	forward_to = [prometheus.remote_write.metrics.receiver]
+}
+
+// Default URL works when this config runs inside the AIAMSBS network.
+// For a customer-side Alloy process, set ALLOY_REMOTE_WRITE_URL to
+// http://<AIAMSBS>:9090/api/v1/write.
+prometheus.remote_write "metrics" {
+	endpoint {
+		url = coalesce(
+			sys.env("ALLOY_REMOTE_WRITE_URL"),
+			"http://prometheus:9090/api/v1/write",
+		)
+	}
+}
+
+// Read the systemd journal and apply stable customer-host labels.
+loki.source.journal "systemd" {
+	labels = {
+		job    = "systemd",
+		source = "customer_host_linux",
+		host   = sys.env("HOSTNAME"),
+	}
+
+	forward_to = [loki.write.systemd.receiver]
+}
+
+// Traditional Linux authentication log locations.
+local.file_match "auth" {
+	path_targets = [
+		{
+			__path__ = "/var/log/auth.log",
+			job      = "systemd",
+			source   = "customer_host_linux",
+			host     = sys.env("HOSTNAME"),
+		},
+		{
+			__path__ = "/var/log/secure",
+			job      = "systemd",
+			source   = "customer_host_linux",
+			host     = sys.env("HOSTNAME"),
+		},
+	]
+}
+
+loki.source.file "auth" {
+	targets    = local.file_match.auth.targets
+	forward_to = [loki.write.systemd.receiver]
+}
+
+// Linux kernel log location.
+local.file_match "kernel" {
+	path_targets = [
+		{
+			__path__ = "/var/log/kern.log",
+			job      = "systemd",
+			source   = "customer_host_linux",
+			host     = sys.env("HOSTNAME"),
+		},
+	]
+}
+
+loki.source.file "kernel" {
+	targets    = local.file_match.kernel.targets
+	forward_to = [loki.write.systemd.receiver]
+}
+
+// Traditional Linux system log locations.
+local.file_match "syslog" {
+	path_targets = [
+		{
+			__path__ = "/var/log/syslog",
+			job      = "systemd",
+			source   = "customer_host_linux",
+			host     = sys.env("HOSTNAME"),
+		},
+		{
+			__path__ = "/var/log/messages",
+			job      = "systemd",
+			source   = "customer_host_linux",
+			host     = sys.env("HOSTNAME"),
+		},
+	]
+}
+
+loki.source.file "syslog" {
+	targets    = local.file_match.syslog.targets
+	forward_to = [loki.write.systemd.receiver]
+}
+
+// Default URL works when Loki is the AIAMSBS service on the local network.
+loki.write "systemd" {
+	endpoint {
+		url = coalesce(
+			sys.env("ALLOY_LOKI_URL"),
+			"http://loki:3100/loki/api/v1/push",
+		)
+	}
+}
