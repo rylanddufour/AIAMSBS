@@ -1,0 +1,1689 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "hermes-agent",
+  "elements": [
+    {
+      "type": "text",
+      "id": "t1",
+      "x": 540,
+      "y": 10,
+      "text": "AIAMSBS \u2014 Prometheus & Loki Architecture  (post-Alloy-migration view, BACKLOG #44)",
+      "originalText": "AIAMSBS \u2014 Prometheus & Loki Architecture  (post-Alloy-migration view, BACKLOG #44)",
+      "fontSize": 36,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t2",
+      "x": 680,
+      "y": 60,
+      "text": "Day-2 Operations Reference  \u2022  Ports, Purposes, Labels, Data Flow",
+      "originalText": "Day-2 Operations Reference  \u2022  Ports, Purposes, Labels, Data Flow",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "strokeColor": "#757575",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "z3",
+      "x": 30,
+      "y": 100,
+      "width": 1010,
+      "height": 1180,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#1971c2",
+      "fillStyle": "solid",
+      "opacity": 8,
+      "strokeColor": "#1971c2",
+      "strokeStyle": "dashed",
+      "strokeWidth": 1.5
+    },
+    {
+      "type": "text",
+      "id": "t4",
+      "x": 45,
+      "y": 108,
+      "text": "PROMETHEUS  \u2014  METRICS",
+      "originalText": "PROMETHEUS  \u2014  METRICS",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "strokeColor": "#1971c2",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "z5",
+      "x": 1060,
+      "y": 100,
+      "width": 1110,
+      "height": 1180,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#7048e8",
+      "fillStyle": "solid",
+      "opacity": 8,
+      "strokeColor": "#7048e8",
+      "strokeStyle": "dashed",
+      "strokeWidth": 1.5
+    },
+    {
+      "type": "text",
+      "id": "t6",
+      "x": 1075,
+      "y": 108,
+      "text": "AIAMSBS \u2014 Prometheus & Loki Architecture  (post-Alloy-migration view, BACKLOG #44)",
+      "originalText": "AIAMSBS \u2014 Prometheus & Loki Architecture  (post-Alloy-migration view, BACKLOG #44)",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "strokeColor": "#7048e8",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b7",
+      "x": 60,
+      "y": 150,
+      "width": 950,
+      "height": 130,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#a5d8ff",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t8",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t8",
+      "x": 68,
+      "y": 158,
+      "width": 934,
+      "height": 114,
+      "text": "Prometheus  \u2022  v2.54.1\nListens on  :9090   \u2022   scrape_interval 15s   \u2022   evaluation_interval 15s\nexternal_labels:  cluster=aiamsbs  \u2022  environment=production\nStorage: /prometheus volume  \u2022  TSDB  \u2022  config: config/prometheus.yml",
+      "originalText": "Prometheus  \u2022  v2.54.1\nListens on  :9090   \u2022   scrape_interval 15s   \u2022   evaluation_interval 15s\nexternal_labels:  cluster=aiamsbs  \u2022  environment=production\nStorage: /prometheus volume  \u2022  TSDB  \u2022  config: config/prometheus.yml",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b7",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b9",
+      "x": 60,
+      "y": 310,
+      "width": 230,
+      "height": 80,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#b2f2bb",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t10",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t10",
+      "x": 68,
+      "y": 318,
+      "width": 214,
+      "height": 64,
+      "text": ":9090\nWeb UI + PromQL\n/-/reload (config)",
+      "originalText": ":9090\nWeb UI + PromQL\n/-/reload (config)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b9",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t11",
+      "x": 320,
+      "y": 325,
+      "text": "Scrape Jobs  \u2193",
+      "originalText": "Scrape Jobs  \u2193",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "strokeColor": "#1971c2",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t12",
+      "x": 60,
+      "y": 410,
+      "text": "SELF-MONITORING",
+      "originalText": "SELF-MONITORING",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t13",
+      "x": 60,
+      "y": 580,
+      "text": "BLACKBOX PROBES  (via blackbox_exporter :9115)",
+      "originalText": "BLACKBOX PROBES  (via blackbox_exporter :9115)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t14",
+      "x": 60,
+      "y": 810,
+      "text": "CUSTOMER HOSTS  (add to enable)",
+      "originalText": "CUSTOMER HOSTS  (add to enable)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b15",
+      "x": 60,
+      "y": 440,
+      "width": 180,
+      "height": 130,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t16",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t16",
+      "x": 68,
+      "y": 448,
+      "width": 164,
+      "height": 114,
+      "text": "prometheus\n:9090\nself",
+      "originalText": "prometheus\n:9090\nself",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b15",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b17",
+      "x": 250,
+      "y": 440,
+      "width": 180,
+      "height": 130,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t18",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t18",
+      "x": 258,
+      "y": 448,
+      "width": 164,
+      "height": 114,
+      "text": "alloy\n:12345\nself + host=aiamsbs-host",
+      "originalText": "alloy\n:12345\nself + host=aiamsbs-host",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b17",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b19",
+      "x": 440,
+      "y": 440,
+      "width": 180,
+      "height": 130,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t20",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t20",
+      "x": 448,
+      "y": 448,
+      "width": 164,
+      "height": 114,
+      "text": "grafana\n:3000\nself",
+      "originalText": "grafana\n:3000\nself",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b19",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b21",
+      "x": 630,
+      "y": 440,
+      "width": 180,
+      "height": 130,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t22",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t22",
+      "x": 638,
+      "y": 448,
+      "width": 164,
+      "height": 114,
+      "text": "loki\n:3100\nself",
+      "originalText": "loki\n:3100\nself",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b21",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b23",
+      "x": 820,
+      "y": 440,
+      "width": 180,
+      "height": 130,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t24",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t24",
+      "x": 828,
+      "y": 448,
+      "width": 164,
+      "height": 114,
+      "text": "blackbox_exporter\n:9115\nself",
+      "originalText": "blackbox_exporter\n:9115\nself",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b23",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b25",
+      "x": 60,
+      "y": 610,
+      "width": 180,
+      "height": 190,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffc9c9",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t26",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t26",
+      "x": 68,
+      "y": 618,
+      "width": 164,
+      "height": 174,
+      "text": "blackbox\nHTTP 2xx\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ntargets:\n/ready, /health",
+      "originalText": "blackbox\nHTTP 2xx\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ntargets:\n/ready, /health",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b25",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b27",
+      "x": 250,
+      "y": 610,
+      "width": 180,
+      "height": 190,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffc9c9",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t28",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t28",
+      "x": 258,
+      "y": 618,
+      "width": 164,
+      "height": 174,
+      "text": "blackbox_mcp\nHTTP+404\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ntargets:\nMCP servers",
+      "originalText": "blackbox_mcp\nHTTP+404\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ntargets:\nMCP servers",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b27",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b29",
+      "x": 440,
+      "y": 610,
+      "width": 180,
+      "height": 190,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffc9c9",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t30",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t30",
+      "x": 448,
+      "y": 618,
+      "width": 164,
+      "height": 174,
+      "text": "blackbox_login\nHTTP+3xx\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ntargets:\nHermes /login 302",
+      "originalText": "blackbox_login\nHTTP+3xx\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ntargets:\nHermes /login 302",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b29",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b31",
+      "x": 630,
+      "y": 610,
+      "width": 180,
+      "height": 190,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffc9c9",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t32",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t32",
+      "x": 638,
+      "y": 618,
+      "width": 164,
+      "height": 174,
+      "text": "blackbox_tcp\nTCP\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ntargets:\nPromtail :514",
+      "originalText": "blackbox_tcp\nTCP\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ntargets:\nPromtail :514",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b31",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b33",
+      "x": 820,
+      "y": 610,
+      "width": 180,
+      "height": 190,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffc9c9",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t34",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t34",
+      "x": 828,
+      "y": 618,
+      "width": 164,
+      "height": 174,
+      "text": "blackbox_inventory\nICMP\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ntargets:\nfile_sd from inventory",
+      "originalText": "blackbox_inventory\nICMP\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\ntargets:\nfile_sd from inventory",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b33",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b35",
+      "x": 60,
+      "y": 815,
+      "width": 950,
+      "height": 80,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffc9c9",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t36",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t36",
+      "x": 68,
+      "y": 823,
+      "width": 934,
+      "height": 64,
+      "text": "blackbox_exporter  (prom/blackbox-exporter:latest)  \u2022  port :9115  \u2022  network_mode: host  \u2022  modules: http_2xx, http_2xx_or_404, http_2xx_login, tcp_connect, icmp",
+      "originalText": "blackbox_exporter  (prom/blackbox-exporter:latest)  \u2022  port :9115  \u2022  network_mode: host  \u2022  modules: http_2xx, http_2xx_or_404, http_2xx_login, tcp_connect, icmp",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b35",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b37",
+      "x": 60,
+      "y": 915,
+      "width": 470,
+      "height": 130,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t38",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t38",
+      "x": 68,
+      "y": 923,
+      "width": 454,
+      "height": 114,
+      "text": "linux_exporter  (node_exporter)\ncustomer Linux hosts  \u2022  port :9100\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAdd: 'add linux_exporter target <ip:9100> with hostname <name>'\nShips empty out of the box",
+      "originalText": "linux_exporter  (node_exporter)\ncustomer Linux hosts  \u2022  port :9100\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAdd: 'add linux_exporter target <ip:9100> with hostname <name>'\nShips empty out of the box",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b37",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b39",
+      "x": 540,
+      "y": 915,
+      "width": 470,
+      "height": 130,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t40",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t40",
+      "x": 548,
+      "y": 923,
+      "width": 454,
+      "height": 114,
+      "text": "windows_exporter\ncustomer Windows hosts  \u2022  port :9182\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAdd: 'add windows_exporter target <ip:9182> with hostname <name>'\nShips empty out of the box",
+      "originalText": "windows_exporter\ncustomer Windows hosts  \u2022  port :9182\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAdd: 'add windows_exporter target <ip:9182> with hostname <name>'\nShips empty out of the box",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b39",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t41",
+      "x": 60,
+      "y": 1070,
+      "text": "Global labels (every metric):",
+      "originalText": "Global labels (every metric):",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b42",
+      "x": 60,
+      "y": 1095,
+      "width": 950,
+      "height": 70,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#f1f3f5",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t43",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t43",
+      "x": 68,
+      "y": 1103,
+      "width": 934,
+      "height": 54,
+      "text": "cluster=aiamsbs  \u2022  environment=production  \u2022  job=<scrape_job_name>  \u2022  instance=<target>  \u2022  host=<per-target label>",
+      "originalText": "cluster=aiamsbs  \u2022  environment=production  \u2022  job=<scrape_job_name>  \u2022  instance=<target>  \u2022  host=<per-target label>",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b42",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b44",
+      "x": 1090,
+      "y": 150,
+      "width": 1050,
+      "height": 130,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#d0bfff",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t45",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t45",
+      "x": 1098,
+      "y": 158,
+      "width": 1034,
+      "height": 114,
+      "text": "Loki  \u2022  v3.2.0\nListens on  :3100 (HTTP)  \u2022  :9096 (gRPC)\nretention_period  2160h (90d)  \u2022  compactor  in-process  \u2022  compaction_interval 10m  \u2022  reject_old_samples 168h\nStorage: /loki volume  \u2022  filesystem chunks + boltdb-shipper index  \u2022  config: config/loki.yml",
+      "originalText": "Loki  \u2022  v3.2.0\nListens on  :3100 (HTTP)  \u2022  :9096 (gRPC)\nretention_period  2160h (90d)  \u2022  compactor  in-process  \u2022  compaction_interval 10m  \u2022  reject_old_samples 168h\nStorage: /loki volume  \u2022  filesystem chunks + boltdb-shipper index  \u2022  config: config/loki.yml",
+      "fontSize": 16,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b44",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b46",
+      "x": 1090,
+      "y": 310,
+      "width": 510,
+      "height": 80,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#b2f2bb",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t47",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t47",
+      "x": 1098,
+      "y": 318,
+      "width": 494,
+      "height": 64,
+      "text": ":3100  HTTP\n/api/v1/push  \u2022  /api/v1/query  \u2022  /ready\nUsed by Alloy + Promtail (writes) and Grafana (queries)",
+      "originalText": ":3100  HTTP\n/api/v1/push  \u2022  /api/v1/query  \u2022  /ready\nUsed by Alloy + Promtail (writes) and Grafana (queries)",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b46",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b48",
+      "x": 1610,
+      "y": 310,
+      "width": 530,
+      "height": 80,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#b2f2bb",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t49",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t49",
+      "x": 1618,
+      "y": 318,
+      "width": 514,
+      "height": 64,
+      "text": ":9096  gRPC\nInter-Loki traffic\n(Single-node today; ready for scale-out / HA)",
+      "originalText": ":9096  gRPC\nInter-Loki traffic\n(Single-node today; ready for scale-out / HA)",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b48",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t50",
+      "x": 1090,
+      "y": 410,
+      "text": "LOG SOURCES  \u2193",
+      "originalText": "LOG SOURCES  \u2193",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "strokeColor": "#7048e8",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t51",
+      "x": 1090,
+      "y": 430,
+      "text": "PROMTAIL  (syslog receiver, per-port)",
+      "originalText": "PROMTAIL  (syslog receiver, per-port)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t52",
+      "x": 1090,
+      "y": 720,
+      "text": "ALLOY  (agent, host-side collectors)",
+      "originalText": "ALLOY  (agent, host-side collectors)",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b53",
+      "x": 1090,
+      "y": 460,
+      "width": 350,
+      "height": 240,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#b2f2bb",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t54",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t54",
+      "x": 1098,
+      "y": 468,
+      "width": 334,
+      "height": 224,
+      "text": "Port :514  \u2022  TCP + UDP\nNetwork devices\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nCisco / UniFi / Aruba / OPNsense\nlabels:\n  job=network_syslog\n  source=network_device\n  + host, severity, app, facility",
+      "originalText": "Port :514  \u2022  TCP + UDP\nNetwork devices\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nCisco / UniFi / Aruba / OPNsense\nlabels:\n  job=network_syslog\n  source=network_device\n  + host, severity, app, facility",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b53",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b59",
+      "x": 1090,
+      "y": 740,
+      "width": 530,
+      "height": 230,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#b2f2bb",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t60",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t60",
+      "x": 1098,
+      "y": 748,
+      "width": 514,
+      "height": 214,
+      "text": "Alloy  \u2022  loki.source.docker  (containers)\nDocker socket (mounted)\nfor each running container\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nlabels:\n  job=docker\n  source=aiamsbs_host",
+      "originalText": "Alloy  \u2022  loki.source.docker  (containers)\nDocker socket (mounted)\nfor each running container\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nlabels:\n  job=docker\n  source=aiamsbs_host",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b59",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b61",
+      "x": 1630,
+      "y": 740,
+      "width": 530,
+      "height": 230,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#b2f2bb",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t62",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t62",
+      "x": 1638,
+      "y": 748,
+      "width": 514,
+      "height": 214,
+      "text": "Alloy  \u2022  loki.source.journal  (systemd)\n/var/log/journal (mounted)\nsystemd services on AIAMSBS host\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nlabels:\n  job=systemd\n  source=aiamsbs_host",
+      "originalText": "Alloy  \u2022  loki.source.journal  (systemd)\n/var/log/journal (mounted)\nsystemd services on AIAMSBS host\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nlabels:\n  job=systemd\n  source=aiamsbs_host",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b61",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t63",
+      "x": 1090,
+      "y": 990,
+      "text": "Stream labels (added to every log line):",
+      "originalText": "Stream labels (added to every log line):",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b64",
+      "x": 1090,
+      "y": 1015,
+      "width": 1050,
+      "height": 70,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#f1f3f5",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t65",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t65",
+      "x": 1098,
+      "y": 1023,
+      "width": 1034,
+      "height": 54,
+      "text": "job=<log_source_job>  \u2022  source=<stream>  \u2022  host=<hostname>  \u2022  severity  \u2022  app  \u2022  facility",
+      "originalText": "job=<log_source_job>  \u2022  source=<stream>  \u2022  host=<hostname>  \u2022  severity  \u2022  app  \u2022  facility",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b64",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t66",
+      "x": 30,
+      "y": 1200,
+      "text": "CUSTOMER HOSTS  \u2014  what they connect to",
+      "originalText": "CUSTOMER HOSTS  \u2014  what they connect to",
+      "fontSize": 20,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b67",
+      "x": 30,
+      "y": 1240,
+      "width": 720,
+      "height": 130,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t68",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t68",
+      "x": 38,
+      "y": 1248,
+      "width": 704,
+      "height": 114,
+      "text": "Network Device  (switch / AP / firewall / OPNsense)\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nSends:  syslog \u2192  :514  (UDP or TCP)  to AIAMSBS host\nReturns:  none (syslog is one-way)\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nTo monitor interfaces / counters:  add to snmp_exporter (BACKLOG #37)",
+      "originalText": "Network Device  (switch / AP / firewall / OPNsense)\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nSends:  syslog \u2192  :514  (UDP or TCP)  to AIAMSBS host\nReturns:  none (syslog is one-way)\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nTo monitor interfaces / counters:  add to snmp_exporter (BACKLOG #37)",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b67",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b69",
+      "x": 760,
+      "y": 1240,
+      "width": 720,
+      "height": 280,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t70",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t70",
+      "x": 768,
+      "y": 1248,
+      "width": 704,
+      "height": 114,
+      "text": "Customer Linux Host\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAlloy runs here (single binary, single config)\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nMetrics:  prometheus.exporter.unix  (embeds node_exporter)\n            \u2192  Prometheus :9090/api/v1/write  via  ALLOY_REMOTE_WRITE_URL\nLogs:       loki.source.journal  (systemd)\n            loki.source.file       (/var/log/auth.log, kern.log, syslog, secure, messages)\n            \u2192  Loki :3100/loki/api/v1/push  via  ALLOY_LOKI_URL\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nhost label:  env(\"HOSTNAME\")           (solves BACKLOG #10)\nConfig file: config/alloy/customer-linux.river       (Step 1)\nInstall:       scripts/install_alloy.sh                 (Step 8, via bootstrap.sh --customer-host)",
+      "originalText": "Customer Linux Host\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAlloy runs here (single binary, single config)\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nMetrics:  prometheus.exporter.unix  (embeds node_exporter)\n            \u2192  Prometheus :9090/api/v1/write  via  ALLOY_REMOTE_WRITE_URL\nLogs:       loki.source.journal  (systemd)\n            loki.source.file       (/var/log/auth.log, kern.log, syslog, secure, messages)\n            \u2192  Loki :3100/loki/api/v1/push  via  ALLOY_LOKI_URL\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nhost label:  env(\"HOSTNAME\")           (solves BACKLOG #10)\nConfig file: config/alloy/customer-linux.river       (Step 1)\nInstall:       scripts/install_alloy.sh                 (Step 8, via bootstrap.sh --customer-host)",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b69",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b71",
+      "x": 1490,
+      "y": 1240,
+      "width": 680,
+      "height": 280,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#ffd8a8",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t72",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t72",
+      "x": 1498,
+      "y": 1248,
+      "width": 664,
+      "height": 114,
+      "text": "Customer Windows Host\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAlloy runs here (single binary, single service)\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nMetrics:  prometheus.exporter.windows  (embeds windows_exporter)\n             \u2192  Prometheus :9090/api/v1/write  via  ALLOY_REMOTE_WRITE_URL\nLogs:       loki.source.windows  (Event Log: Application / System / Security)\n             \u2192  Loki :3100/loki/api/v1/push  via  ALLOY_LOKI_URL\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nhost label:  env(\"COMPUTERNAME\")      (solves BACKLOG #10)\nConfig file: config/alloy/customer-windows.river     (Step 2)\nInstall:       scripts/install_alloy.ps1                (Step 8, via bootstrap.sh --customer-host)",
+      "originalText": "Customer Windows Host\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAlloy runs here (single binary, single service)\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nMetrics:  prometheus.exporter.windows  (embeds windows_exporter)\n             \u2192  Prometheus :9090/api/v1/write  via  ALLOY_REMOTE_WRITE_URL\nLogs:       loki.source.windows  (Event Log: Application / System / Security)\n             \u2192  Loki :3100/loki/api/v1/push  via  ALLOY_LOKI_URL\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nhost label:  env(\"COMPUTERNAME\")      (solves BACKLOG #10)\nConfig file: config/alloy/customer-windows.river     (Step 2)\nInstall:       scripts/install_alloy.ps1                (Step 8, via bootstrap.sh --customer-host)",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b71",
+      "autoResize": true
+    },
+    {
+      "type": "rectangle",
+      "id": "b73",
+      "x": 30,
+      "y": 1400,
+      "width": 2140,
+      "height": 90,
+      "roundness": {
+        "type": 3
+      },
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeColor": "#1e1e1e",
+      "boundElements": [
+        {
+          "id": "t74",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "t74",
+      "x": 38,
+      "y": 1408,
+      "width": 2124,
+      "height": 74,
+      "text": "Grafana  \u2022  v13.0.1  \u2022  port :3000  \u2022  http://<host>:3000   (admin / GRAFANA_PASSWORD)\nQueries PromQL  \u2192  Prometheus  \u2022  Queries LogQL  \u2192  Loki   \u2022  Dashboards auto-provisioned from config/grafana/provisioning/dashboards/",
+      "originalText": "Grafana  \u2022  v13.0.1  \u2022  port :3000  \u2022  http://<host>:3000   (admin / GRAFANA_PASSWORD)\nQueries PromQL  \u2192  Prometheus  \u2022  Queries LogQL  \u2192  Loki   \u2022  Dashboards auto-provisioned from config/grafana/provisioning/dashboards/",
+      "fontSize": 15,
+      "fontFamily": 1,
+      "strokeColor": "#1e1e1e",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "b73",
+      "autoResize": true
+    },
+    {
+      "type": "arrow",
+      "id": "arr75",
+      "x": 1440,
+      "y": 460,
+      "width": -100,
+      "height": -70,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -100,
+          -70
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#495057",
+      "strokeWidth": 2,
+      "strokeStyle": "dashed"
+    },
+    {
+      "type": "text",
+      "id": "t76",
+      "x": 1340.0,
+      "y": 415.0,
+      "text": "syslog \u2192",
+      "originalText": "syslog \u2192",
+      "fontSize": 12,
+      "fontFamily": 1,
+      "strokeColor": "#757575",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t78",
+      "x": 1485.0,
+      "y": 415.0,
+      "text": "syslog \u2192",
+      "originalText": "syslog \u2192",
+      "fontSize": 12,
+      "fontFamily": 1,
+      "strokeColor": "#757575",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t80",
+      "x": 1630.0,
+      "y": 415.0,
+      "text": "syslog \u2192",
+      "originalText": "syslog \u2192",
+      "fontSize": 12,
+      "fontFamily": 1,
+      "strokeColor": "#757575",
+      "autoResize": true
+    },
+    {
+      "type": "arrow",
+      "id": "arr81",
+      "x": 1300,
+      "y": 740,
+      "width": 40,
+      "height": -350,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          40,
+          -350
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#495057",
+      "strokeWidth": 2,
+      "strokeStyle": "dashed"
+    },
+    {
+      "type": "text",
+      "id": "t82",
+      "x": 1270.0,
+      "y": 555.0,
+      "text": "docker logs \u2192",
+      "originalText": "docker logs \u2192",
+      "fontSize": 12,
+      "fontFamily": 1,
+      "strokeColor": "#757575",
+      "autoResize": true
+    },
+    {
+      "type": "arrow",
+      "id": "arr83",
+      "x": 1840,
+      "y": 740,
+      "width": -390,
+      "height": -350,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -390,
+          -350
+        ]
+      ],
+      "endArrowhead": "arrow",
+      "strokeColor": "#495057",
+      "strokeWidth": 2,
+      "strokeStyle": "dashed"
+    },
+    {
+      "type": "text",
+      "id": "t84",
+      "x": 1595.0,
+      "y": 555.0,
+      "text": "systemd \u2192",
+      "originalText": "systemd \u2192",
+      "fontSize": 12,
+      "fontFamily": 1,
+      "strokeColor": "#757575",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t85",
+      "x": 60,
+      "y": 1180,
+      "text": "Alloy  \u2192  Prometheus :9090/api/v1/write  (host metrics, job=integrations/unix, host=aiamsbs-host)",
+      "originalText": "Alloy  \u2192  Prometheus :9090/api/v1/write  (host metrics, job=integrations/unix, host=aiamsbs-host)",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "autoResize": true
+    },
+    {
+      "type": "text",
+      "id": "t86",
+      "x": 60,
+      "y": 1495,
+      "text": "Grafana  \u2192  Prometheus :9090  (PromQL queries)  +  Loki :3100  (LogQL queries)",
+      "originalText": "Grafana  \u2192  Prometheus :9090  (PromQL queries)  +  Loki :3100  (LogQL queries)",
+      "fontSize": 13,
+      "fontFamily": 1,
+      "strokeColor": "#495057",
+      "autoResize": true
+    },
+    {
+      "type": "arrow",
+      "id": "arr_cl_prom",
+      "x": 900,
+      "y": 1240,
+      "width": 350,
+      "height": 240,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 1939244898,
+      "version": 1,
+      "versionNonce": 714699316,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -350,
+          -240
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": "arrow"
+    },
+    {
+      "type": "text",
+      "id": "t_arr_cl_prom",
+      "x": 720,
+      "y": 1080,
+      "width": 200,
+      "height": 22,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": null,
+      "roundness": null,
+      "seed": 831340478,
+      "version": 1,
+      "versionNonce": 712757917,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "metrics  :9090/api/v1/write",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "originalText": "metrics  :9090/api/v1/write",
+      "lineHeight": 1.25,
+      "autoResize": true,
+      "containerId": null
+    },
+    {
+      "type": "arrow",
+      "id": "arr_cl_loki",
+      "x": 1180,
+      "y": 1240,
+      "width": 100,
+      "height": 240,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 1584728160,
+      "version": 1,
+      "versionNonce": 83339398,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          100,
+          -240
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": "arrow"
+    },
+    {
+      "type": "text",
+      "id": "t_arr_cl_loki",
+      "x": 1220,
+      "y": 1080,
+      "width": 220,
+      "height": 22,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": null,
+      "roundness": null,
+      "seed": 1358302905,
+      "version": 1,
+      "versionNonce": 794836331,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "logs  :3100/loki/api/v1/push",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "originalText": "logs  :3100/loki/api/v1/push",
+      "lineHeight": 1.25,
+      "autoResize": true,
+      "containerId": null
+    },
+    {
+      "type": "arrow",
+      "id": "arr_cw_prom",
+      "x": 1700,
+      "y": 1240,
+      "width": 800,
+      "height": 240,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 1139241378,
+      "version": 1,
+      "versionNonce": 1798639811,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -800,
+          -240
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": "arrow"
+    },
+    {
+      "type": "text",
+      "id": "t_arr_cw_prom",
+      "x": 1280,
+      "y": 1080,
+      "width": 200,
+      "height": 22,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": null,
+      "roundness": null,
+      "seed": 521723455,
+      "version": 1,
+      "versionNonce": 1220690697,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "metrics  :9090/api/v1/write",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "originalText": "metrics  :9090/api/v1/write",
+      "lineHeight": 1.25,
+      "autoResize": true,
+      "containerId": null
+    },
+    {
+      "type": "arrow",
+      "id": "arr_cw_loki",
+      "x": 1830,
+      "y": 1240,
+      "width": 0,
+      "height": 240,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 1843743081,
+      "version": 1,
+      "versionNonce": 1962430312,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          -240
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": null,
+      "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": "arrow"
+    },
+    {
+      "type": "text",
+      "id": "t_arr_cw_loki",
+      "x": 1750,
+      "y": 1080,
+      "width": 200,
+      "height": 22,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": null,
+      "roundness": null,
+      "seed": 2095473182,
+      "version": 1,
+      "versionNonce": 900284621,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "logs  :3100/loki/api/v1/push",
+      "fontSize": 14,
+      "fontFamily": 1,
+      "textAlign": "center",
+      "verticalAlign": "top",
+      "originalText": "logs  :3100/loki/api/v1/push",
+      "lineHeight": 1.25,
+      "autoResize": true,
+      "containerId": null
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  }
+}
