@@ -825,7 +825,7 @@
       },
       "targets": [
         {
-          "expr": "{source=\"aiamsbs_host\"}",
+          "expr": "{source=\"aiamsbs_host\"} != \"icmp.go:178\"",
           "refId": "A",
           "datasource": {
             "type": "loki",
