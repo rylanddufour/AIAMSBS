@@ -30,7 +30,7 @@ end-to-end smoke test that confirms the entire stack is healthy.
 | Build Dashboard UI | `build_dashboard_ui` |
 | Generate Dashboard credentials (basic auth) | `generate_dashboard_credentials` |
 | Install + start Dashboard (systemd) | `install_hermes_dashboard_service`, `start_hermes_dashboard` |
-| Deploy main observability stack (Prometheus, Loki, Alloy, Promtail, Grafana) | `auto_deploy_stack` |
+| Deploy main observability stack (Prometheus, Loki, Alloy, Grafana; Promtail for `:514` network devices only) | `auto_deploy_stack` |
 | Install Grafana skills | `install_grafana_skills` |
 | Create Grafana service account for MCP | `create_grafana_mcp_service_account` |
 | Deploy Grafana MCP server | `deploy_mcp_stack` |
