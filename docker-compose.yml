@@ -77,11 +77,13 @@ services:
       - monitoring
     restart: unless-stopped
 
-  # Syslog Receiver for Network Devices + Customer Hosts
+  # Syslog Receiver for Network Devices
   # Port mapping convention (matches config/promtail.yml scrape_configs):
-  #   host:514  -> container:514   (network_syslog        - network devices, UDP+TCP)
-  #   host:1514 -> container:1514  (customer_host_linux  - rsyslog from Linux hosts)
-  #   host:2514 -> container:2514  (customer_host_windows - NxLog/Snare from Windows hosts)
+  #   host:514  -> container:514   (network_syslog - network devices, UDP+TCP)
+  # Note: 1514 (customer_host_linux, rsyslog) and 2514 (customer_host_windows,
+  # NxLog/Snare) were removed 2026-07-19 per BACKLOG #44 Step 10.
+  # Customer hosts now push metrics + logs via Grafana Alloy to Prom :9090
+  # and Loki :3100 directly. See docs/multi-host-monitoring.md.
   promtail:
     image: grafana/promtail:latest
     container_name: promtail
@@ -89,10 +91,6 @@ services:
       # Network devices: TCP + UDP. Many switches/APs/firewalls default to UDP syslog.
       - "0.0.0.0:514:514/tcp"
       - "0.0.0.0:514:514/udp"
-      # Customer Linux hosts: TCP only (rsyslog commonly uses TCP for reliability).
-      - "0.0.0.0:1514:1514/tcp"
-      # Customer Windows hosts: TCP only (NxLog uses TCP+TLS by default).
-      - "0.0.0.0:2514:2514/tcp"
     volumes:
       - ./config/promtail.yml:/etc/promtail/config.yml:ro
     command: -config.file=/etc/promtail/config.yml
