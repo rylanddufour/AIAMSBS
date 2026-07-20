@@ -1106,19 +1106,21 @@ install_backup_scripts() {
 # removes on first run).
 #
 # Why Hermes cron over system cron:
-#   - Profile-scoped, runs in the right Hermes context with the right MCP tools
-#     (e.g. the it_admin profile has grafana-mcp for any future "restore dashboard"
-#     workflow)
 #   - Session history + last_status / last_error live in jobs.json; visible via
 #     `hermes cron list` instead of having to tail a log file
 #   - Optional Telegram delivery when the user configures a messaging service
 #     (per Telegram 2026-07-03 — no deliver target set in this installer; user
 #     adds it later)
+#   - The cron's stored ``profile`` field is metadata only (the scheduler
+#     itself runs under the default profile regardless). Future expansion
+#     (e.g. a restore-dashboard workflow) can still register additional
+#     it_admin-scoped cron jobs as needed.
 #
 # The shell script (scripts/aiamsbs-backup.sh) is the workhorse and is
 # unchanged. The agent's prompt is a thin wrapper that invokes the script
-# and reports the result. See skills/aiamsbs-backup.md (in the it_admin
-# profile) for what the agent sees.
+# and reports the result. See skills/aiamsbs-backup.md (installed to
+# both the it_admin profile AND the default profile by bootstrap) for
+# what the agent sees.
 #
 # Must run AFTER install_backup_scripts (which installs both the shell
 # script and the Python helper). The Python helper lives at
@@ -1141,9 +1143,11 @@ install_dashboard_backup_hermes_cron() {
         fi
     fi
 
-    log_info "Registering AIAMSBS Dashboard Backup as a Hermes cron job (profile=it_admin, daily 01:00)..."
+    log_info "Registering AIAMSBS Dashboard Backup as a Hermes cron job (profile=default, daily 01:00)..."
     # The helper handles the jobs.json edit + idempotency + legacy removal.
-    if python3 "$helper" "$HERMES_HOME" it_admin; then
+    # Second arg "default" is legacy/ignored — the helper hardcodes "default"
+    # because the cron scheduler runs under the default profile regardless.
+    if python3 "$helper" "$HERMES_HOME" default; then
         log_success "Hermes dashboard backup cron installed"
     else
         log_warn "Hermes dashboard backup cron install failed (exit $?); jobs.json may need manual edit"
@@ -1153,7 +1157,8 @@ install_dashboard_backup_hermes_cron() {
 # BACKLOG #39.6 — register the daily inventory discovery cron.
 # install_inventory_discovery_hermes_cron [no args]
 # Registers the "AIAMSBS Inventory Discovery" cron job with Hermes
-# (profile=it_admin, daily 02:00). Idempotent — re-running is a no-op.
+# (profile=default, daily 02:00). Idempotent — re-running updates the
+# existing job in place (matches by name, not id).
 # Idempotency + jobs.json edit live in
 # scripts/install_inventory_discovery_hermes_cron.py (mirror of the
 # install_dashboard_backup_hermes_cron pattern).
@@ -1164,8 +1169,10 @@ install_inventory_discovery_hermes_cron() {
         log_warn "(install_backup_scripts should have installed it; check that step)"
         return 0
     fi
-    log_info "Registering AIAMSBS Inventory Discovery as a Hermes cron job (profile=it_admin, daily 02:00)..."
-    if python3 "$helper" "$HERMES_HOME" it_admin; then
+    log_info "Registering AIAMSBS Inventory Discovery as a Hermes cron job (profile=default, daily 02:00)..."
+    # Second arg "default" is legacy/ignored — the helper hardcodes "default"
+    # because the cron scheduler runs under the default profile regardless.
+    if python3 "$helper" "$HERMES_HOME" default; then
         log_success "Hermes inventory discovery cron installed"
     else
         log_warn "Hermes inventory discovery cron install failed (exit $?); jobs.json may need manual edit"
@@ -1502,6 +1509,51 @@ install_inventory_discovery_skill() {
     chmod -R u+rwX,go-rwx "$dst"
 
     log_success "inventory-discovery skill installed (trigger: 'inventory the subnet ...')"
+}
+
+# install_default_profile_cron_skills
+# Copies profile-scoped skills that are referenced by crons (which run
+# under the default profile) into the default profile's skills tree.
+#
+# Background: the Hermes cron scheduler runs as the default-profile
+# process (HERMES_HOME=~/.hermes), so any skill referenced by a cron
+# job's ``skills:`` field must be resolvable from the default profile.
+# The AIAMSBS crons (backup, inventory-discovery) currently reference
+# their skills by bare name (no profile prefix). The inventory-discovery
+# skill is already installed to ~/.hermes/skills/ by
+# install_inventory_discovery_skill() above. This function handles the
+# backup skill, which lives only at the it_admin profile path.
+#
+# Idempotent. Skips silently if the source skill or destination tree
+# is missing.
+install_default_profile_cron_skills() {
+    local src_dir="$INFRA_DIR/profiles/it_admin/skills"
+    local dst_dir="$HERMES_HOME/skills"
+
+    if [ ! -d "$src_dir" ]; then
+        log_warn "it_admin skills source not found at $src_dir; skipping"
+        return 0
+    fi
+    if [ ! -d "$dst_dir" ]; then
+        log_warn "default skills dir not found at $dst_dir; skipping"
+        return 0
+    fi
+
+    local copied=0
+    # aiamsbs-backup is referenced by the backup cron (default profile).
+    # Source lives at profiles/it_admin/skills/aiamsbs-backup.md in the
+    # repo; bootstrap's install_it_admin_profile_soul() copies it to
+    # ~/.hermes/profiles/it_admin/skills/ but not to ~/.hermes/skills/.
+    if [ -f "$src_dir/aiamsbs-backup.md" ]; then
+        cp "$src_dir/aiamsbs-backup.md" "$dst_dir/aiamsbs-backup.md"
+        chmod u+rwX,go-rwx "$dst_dir/aiamsbs-backup.md"
+        log_success "Default-profile cron skill installed: aiamsbs-backup"
+        copied=$((copied + 1))
+    fi
+
+    if [ "$copied" -eq 0 ]; then
+        log_info "No default-profile cron skills to install (source missing or already in place)"
+    fi
 }
 
 # install_inventory_mcp_skill
@@ -2108,9 +2160,14 @@ main() {
     # dashboard backup cron depends on the script being installed. Wire them
     # in order right after create_grafana_mcp_service_account.
     install_backup_scripts
+    # Cron skills live in the default profile tree (HERMES_HOME/skills/)
+    # because the cron scheduler runs as the default profile. Install
+    # them BEFORE registering the cron jobs so the skill references in
+    # jobs.json resolve cleanly.
+    install_default_profile_cron_skills
     install_dashboard_backup_hermes_cron
 
-    # Inventory discovery cron: daily 02:00, profile=it_admin, runs all 3
+    # Inventory discovery cron: daily 02:00, profile=default, runs all 3
     # steps (discover + regenerate_blackbox + Prom reload) in one tick.
     # Wire after install_dashboard_backup_hermes_cron so the helper pattern
     # is consistent.
