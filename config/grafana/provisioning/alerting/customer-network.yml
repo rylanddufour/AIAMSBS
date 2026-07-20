@@ -866,3 +866,153 @@ groups:
           category: servers
           source: customer-network
           aiamsbs_alert: 'true'
+
+      # ----------------------------------------------------------------------
+      # 3b. CustomerServerDiskLowWindows (warning, for: 10m)
+      #    Windows host with < 10% free on the system drive (C:) for 10m.
+      #    Mirrors CustomerServerDiskLow for the Linux side. Threshold
+      #    rationale matches: 10% is the practical "writes will fail soon"
+      #    point once NTFS reserve + pagefile growth are accounted for.
+      #
+      #    Metric source: alloy's prometheus.exporter.windows (in
+      #    customer-windows.river). Volume label is the drive letter;
+      #    C: is the system drive on every Windows SKU AIAMSBS supports.
+      #    Job label is "integrations/windows" in the alloy era.
+      #
+      #    Will not fire until alloy-customer is deployed to Windows hosts.
+      # ----------------------------------------------------------------------
+      - uid: cust-srv-disk-low-windows
+        title: CustomerServerDiskLowWindows
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: aiamsbs-prom
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: aiamsbs-prom
+              editorMode: code
+              instant: true
+              expr: |
+                (
+                  windows_logical_disk_free_bytes{volume="C:", job="integrations/windows"}
+                  /
+                  clamp_min(windows_logical_disk_size_bytes{volume="C:", job="integrations/windows"}, 1)
+                ) * 100
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: lt
+                    params: [10]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: 'Customer Windows host {{ $labels.host }} C: drive <10% free'
+          description: |
+            Customer Windows host `{{ $labels.host }}` has less than 10%
+            free on its system drive (C:) for 10m. NTFS reserves space
+            for the MFT and pagefile growth, so this is the point where
+            non-system writes start failing. Triage: open File Explorer
+            on the affected host, right-click C: → Properties → Disk
+            Cleanup, or run `cleanmgr /d C` to identify reclaimable space.
+            Common culprits: Windows Update cache (C:\Windows\SoftwareDistribution\Download),
+            temp files (C:\Users\*\AppData\Local\Temp), hibernation file
+            (powercfg /h off), or a runaway log directory. The Windows
+            Hosts dashboard shows the per-volume free-bytes trend for
+            this host.
+
+      # ----------------------------------------------------------------------
+      # 3c. CustomerServerDiskFillSoonWindows (warning, for: 30m)
+      #    predict_linear projects when each Windows host's C: drive will
+      #    fill, based on the 6h growth rate. Fires if any host is projected
+      #    to fill within 7 days. 30m `for:` ensures we don't page on a
+      #    10-minute write spike. Mirrors CustomerServerDiskFillSoon.
+      # ----------------------------------------------------------------------
+      - uid: cust-srv-disk-fill-soon-windows
+        title: CustomerServerDiskFillSoonWindows
+        condition: C
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: aiamsbs-prom
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: aiamsbs-prom
+              editorMode: code
+              instant: true
+              expr: |
+                predict_linear(
+                  windows_logical_disk_free_bytes{volume="C:", job="integrations/windows"}[6h],
+                  7 * 24 * 3600
+                )
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              datasource:
+                type: __expr__
+                uid: __expr__
+              type: threshold
+              expression: A
+              conditions:
+                - type: query
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+                  evaluator:
+                    type: lt
+                    params: [0]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        annotations:
+          summary: 'Customer Windows host {{ $labels.host }} C: drive projected to fill within 7 days'
+          description: |
+            Customer Windows host `{{ $labels.host }}` is projected to
+            fill its system drive (C:) within 7 days at the current 6h
+            growth rate. The 7-day horizon matches a typical weekly
+            ops-review cadence — you have days to act, not minutes.
+            Triage: open the Windows Hosts dashboard filtered by this
+            host; the Logical Disk row shows the per-volume free-bytes
+            trend driving the projection. Common fixes: cleanmgr,
+            expand the volume in Disk Management, or move user data /
+            pagefile to a second volume.
