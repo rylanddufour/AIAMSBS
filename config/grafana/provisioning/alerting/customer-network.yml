@@ -639,17 +639,16 @@ groups:
           aiamsbs_alert: 'true'
 
       # ----------------------------------------------------------------------
-      # 1. CustomerServerDown (critical, for: 5m)
+      # 1. CustomerDeviceUnreachable (critical, for: 5m)
       #    Any customer host whose blackbox_inventory ICMP probe has been
       #    failing for 5m. probe_success{job="blackbox_inventory"} == 0 is
       #    the authoritative per-host reachability signal (covers Linux,
-      #    Windows, and any other discovered customer device — no alloy
-      #    required). Each failing series propagates the `host` label so
-      #    Grafana fires one alert per down host. Threshold references A
-      #    directly to preserve per-host labels.
+      #    Windows, switches, APs — no alloy required). Each failing series
+      #    propagates the `host` label so Grafana fires one alert per down
+      #    host. Threshold references A directly to preserve per-host labels.
       # ----------------------------------------------------------------------
       - uid: cust-srv-host-down
-        title: CustomerServerDown
+        title: CustomerDeviceUnreachable
         condition: C
         data:
           - refId: A
