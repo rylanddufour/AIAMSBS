@@ -11,7 +11,10 @@ def nmap_discovery(target: str, scan_type: str = "ping") -> subprocess.Completed
     """Run an nmap scan against the target.
 
     scan_type="ping" (default): host-discovery only (`-sn -PR`), no port scan.
-        Fast, no root required inside the container, ~1-2s per /24.
+        Fast, no root required inside the container, ~25s per /24. The
+        `--max-rate 10` cap prevents parallel-ARP congestion from dropping
+        slow-responding hosts (WiFi clients, sleepy NICs, busy switches)
+        on a full /24 sweep — see the 2026-07-20 fix.
 
     scan_type="deep": TCP SYN scan on common management ports + OS fingerprint.
         Slower, requires NET_RAW (which the container has via --cap-add).
@@ -20,7 +23,7 @@ def nmap_discovery(target: str, scan_type: str = "ping") -> subprocess.Completed
     cleanly instead of a silent default.
     """
     if scan_type == "ping":
-        cmd = ["nmap", "-sn", "-PR", "-oX", "-", target]
+        cmd = ["nmap", "-sn", "-PR", "--max-rate", "10", "-oX", "-", target]
     elif scan_type == "deep":
         cmd = [
             "nmap",
