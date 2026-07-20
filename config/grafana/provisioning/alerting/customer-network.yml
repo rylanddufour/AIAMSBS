@@ -716,9 +716,9 @@ groups:
       #    start failing). 10m floor prevents a short write burst from
       #    paging.
       #
-      #    Linux-only (job=linux_exporter). windows_exporter emits
-      #    `windows_logical_disk_*` (different metric); Windows disk
-      #    alerts are a follow-up.
+      #    Linux-only: alloy's prometheus.exporter.unix emits the same
+      #    node_filesystem_* metric names; job is "integrations/unix" in
+      #    the alloy era. windows_logical_disk_* (Windows) is a follow-up.
       # ----------------------------------------------------------------------
       - uid: cust-srv-disk-low
         title: CustomerServerDiskLow
@@ -739,24 +739,10 @@ groups:
               instant: true
               expr: |
                 (
-                  node_filesystem_avail_bytes{mountpoint="/", job="linux_exporter"}
+                  node_filesystem_avail_bytes{mountpoint="/", job="integrations/unix"}
                   /
-                  node_filesystem_size_bytes{mountpoint="/", job="linux_exporter"}
-                ) * 100 < 10
-          - refId: B
-            queryType: ''
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: __expr__
-            model:
-              refId: B
-              datasource:
-                type: __expr__
-                uid: __expr__
-              type: reduce
-              expression: A
-              reducer: last
+                  node_filesystem_size_bytes{mountpoint="/", job="integrations/unix"}
+                ) * 100
           - refId: C
             queryType: ''
             relativeTimeRange:
@@ -765,34 +751,38 @@ groups:
             datasourceUid: __expr__
             model:
               refId: C
+              datasource:
+                type: __expr__
+                uid: __expr__
               type: threshold
-              expression: B
+              expression: A
               conditions:
                 - type: query
                   query:
-                    params: [B]
+                    params: [A]
                   reducer:
                     type: last
                     params: []
                   evaluator:
-                    type: gt
-                    params: [0]
+                    type: lt
+                    params: [10]
                   operator:
                     type: and
         noDataState: OK
         execErrState: Error
         for: 10m
         annotations:
-          summary: 'Customer Linux server with <10% free on /'
+          summary: 'Customer Linux host {{ $labels.host }} root filesystem <10% free'
           description: |
-            {{ $value }} customer Linux host(s) have less than 10% free
-            on the root filesystem for 10m. ext4 reserves 5% for root,
-            so this is the point where non-root writes start failing.
+            Customer Linux host `{{ $labels.host }}` has less than 10% free
+            on its root filesystem for 10m. ext4 reserves 5% for root, so
+            this is the point where non-root writes start failing.
             Triage: `df -h /` on the affected host, then
             `du -sh /* 2>/dev/null | sort -h | tail` to find what's
             growing. Likely culprits: `/var/log` (rotate/compress),
             `/var/lib/docker` (`docker system prune -a`), or a runaway
-            process.
+            process. The Linux Hosts dashboard shows the per-mount
+            free-bytes trend for this host.
         labels:
           severity: warning
           category: servers
@@ -829,23 +819,9 @@ groups:
               instant: true
               expr: |
                 predict_linear(
-                  node_filesystem_avail_bytes{mountpoint="/", job="linux_exporter"}[6h],
+                  node_filesystem_avail_bytes{mountpoint="/", job="integrations/unix"}[6h],
                   7 * 24 * 3600
-                ) < 0
-          - refId: B
-            queryType: ''
-            relativeTimeRange:
-              from: 21600
-              to: 0
-            datasourceUid: __expr__
-            model:
-              refId: B
-              datasource:
-                type: __expr__
-                uid: __expr__
-              type: reduce
-              expression: A
-              reducer: last
+                )
           - refId: C
             queryType: ''
             relativeTimeRange:
@@ -854,17 +830,20 @@ groups:
             datasourceUid: __expr__
             model:
               refId: C
+              datasource:
+                type: __expr__
+                uid: __expr__
               type: threshold
-              expression: B
+              expression: A
               conditions:
                 - type: query
                   query:
-                    params: [B]
+                    params: [A]
                   reducer:
                     type: last
                     params: []
                   evaluator:
-                    type: gt
+                    type: lt
                     params: [0]
                   operator:
                     type: and
@@ -872,17 +851,16 @@ groups:
         execErrState: Error
         for: 30m
         annotations:
-          summary: 'Customer Linux server disk projected to fill within 7 days'
+          summary: 'Customer Linux host {{ $labels.host }} disk projected to fill within 7 days'
           description: |
-            {{ $value }} customer Linux host(s) are projected to fill
-            their root filesystem within 7 days at the current 6h
-            growth rate. The 7-day horizon matches a typical weekly
-            ops-review cadence — you have days to act, not minutes.
-            Triage: open the AIAMSBS Linux Exporter dashboard and
-            filter by the affected $host; the Filesystem row shows
-            the per-mount free bytes trend that drives the projection.
-            Common fixes: rotate/compress logs, prune Docker,
-            archive old data, expand the volume.
+            Customer Linux host `{{ $labels.host }}` is projected to fill
+            its root filesystem within 7 days at the current 6h growth
+            rate. The 7-day horizon matches a typical weekly ops-review
+            cadence — you have days to act, not minutes. Triage: open the
+            Linux Hosts dashboard filtered by this host; the Filesystem
+            row shows the per-mount free-bytes trend driving the
+            projection. Common fixes: rotate/compress logs, prune
+            Docker, archive old data, expand the volume.
         labels:
           severity: warning
           category: servers
