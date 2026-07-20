@@ -145,52 +145,17 @@ scrape_configs:
         labels:
           service: 'blackbox_exporter'
 
-  # Multi-host node_exporter scrape. Customers add their own entries here as
-  # they install node_exporter on each managed host.
-  #
-  # Architectural decision (Ryland 2026-07-06): the AIAMSBS host itself is NOT
-  # scraped via this job. Its host metrics come through Alloy's
-  # `prometheus.exporter.unix "self"` (see job `alloy` above), which
-  # remote_writes to this Prometheus under job="integrations/unix". Adding a
-  # node_exporter to the AIAMSBS host is intentionally out of scope — the
-  # Alloy path is the canonical way to monitor the AIAMSBS host and ships
-  # to customer VMs out of the box.
-  #
-  # The Linux dashboard's $host variable filters on `up{job="node_exporter"}`
-  # and therefore only lists Linux hosts that have an actual node_exporter
-  # installed (i.e. customer Linux machines). Windows hosts use a separate
-  # `windows_exporter` job (see BACKLOG #35).
-  # Customer Linux hosts (node_exporter binary on port 9100).
-  # This job ships EMPTY out of the box — no customer targets are pre-configured.
-  # To add a host, prompt the AIAMSBS agent:
-  #     "add linux_exporter target <ip:9100> with hostname <name>"
-  # The agent will add a `static_configs` entry below and trigger a Prometheus
-  # reload (POST /-/reload). One block per host.
-  - job_name: 'linux_exporter'
-    honor_labels: true
-    scrape_interval: 30s
-    scrape_timeout: 10s
-    static_configs:
-      # Example (uncomment + edit, or prompt the agent to add):
-      #   - targets: ['<linux-host-ip>:9100']
-      #     labels:
-      #       host: <linux-hostname>
-
-  # Customer Windows hosts (windows_exporter on port 9182).
-  # This job ships EMPTY out of the box — no customer targets are pre-configured.
-  # To add a host, prompt the AIAMSBS agent:
-  #     "add windows_exporter target <ip:9182> with hostname <name>"
-  # The agent will add a `static_configs` entry below and trigger a Prometheus
-  # reload (POST /-/reload). One block per host.
-  - job_name: 'windows_exporter'
-    honor_labels: true
-    scrape_interval: 30s
-    scrape_timeout: 10s
-    static_configs:
-      # Example (uncomment + edit, or prompt the agent to add):
-      #   - targets: ['<windows-host-ip>:9182']
-      #     labels:
-      #       host: <windows-hostname>
+  # NOTE: legacy linux_exporter / windows_exporter jobs were removed on 2026-07-19
+  # after BACKLOG #44 Steps 6 + 7 (alloy cutover). Customer-host metrics now flow
+  # through alloy's prometheus.remote_write under job="integrations/unix" /
+  # job="integrations/windows" (see alloy / alloy-customer scrape jobs above).
+  # The Linux / Windows Grafana dashboards use those alloy labels too
+  # (verified: dashboards node-exporter.json + node-exporter-windows.json
+  # $host variable queries use label_values(up{job="integrations/unix"}, host)
+  # and label_values(up{job="integrations/windows"}, host) respectively).
+  # If a customer host is later installed with raw node_exporter / windows_exporter
+  # instead of alloy, add the target directly to the integrations/unix or
+  # integrations/windows job (alloy's labels are the canonical scheme).
 
   # Blackbox ICMP probes for inventory-discovered hosts.
   # Targets are written to config/prometheus/targets/blackbox_inventory.json
