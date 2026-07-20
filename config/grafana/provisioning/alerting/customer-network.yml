@@ -640,10 +640,13 @@ groups:
 
       # ----------------------------------------------------------------------
       # 1. CustomerServerDown (critical, for: 5m)
-      #    Any customer Linux or Windows host whose node/windows_exporter
-      #    has been unreachable for 5m. Returns 1 per down host, summed
-      #    so the alert value is the count. Open the AIAMSBS Linux/Windows
-      #    exporter dashboard to identify the specific host(s).
+      #    Any customer host whose blackbox_inventory ICMP probe has been
+      #    failing for 5m. probe_success{job="blackbox_inventory"} == 0 is
+      #    the authoritative per-host reachability signal (covers Linux,
+      #    Windows, and any other discovered customer device — no alloy
+      #    required). Each failing series propagates the `host` label so
+      #    Grafana fires one alert per down host. Threshold references A
+      #    directly to preserve per-host labels.
       # ----------------------------------------------------------------------
       - uid: cust-srv-host-down
         title: CustomerServerDown
@@ -663,21 +666,7 @@ groups:
               editorMode: code
               instant: true
               expr: |
-                up{job=~"linux_exporter|windows_exporter"} == 0
-          - refId: B
-            queryType: ''
-            relativeTimeRange:
-              from: 300
-              to: 0
-            datasourceUid: __expr__
-            model:
-              refId: B
-              datasource:
-                type: __expr__
-                uid: __expr__
-              type: reduce
-              expression: A
-              reducer: last
+                probe_success{job="blackbox_inventory"} == 0
           - refId: C
             queryType: ''
             relativeTimeRange:
@@ -686,34 +675,34 @@ groups:
             datasourceUid: __expr__
             model:
               refId: C
+              datasource:
+                type: __expr__
+                uid: __expr__
               type: threshold
-              expression: B
+              expression: A
               conditions:
                 - type: query
                   query:
-                    params: [B]
+                    params: [A]
                   reducer:
                     type: last
                     params: []
                   evaluator:
-                    type: gt
-                    params: [0]
+                    type: lt
+                    params: [1]
                   operator:
                     type: and
         noDataState: OK
         execErrState: Error
         for: 5m
         annotations:
-          summary: 'Customer server(s) unreachable for 5m'
+          summary: 'Customer host {{ $labels.host }} unreachable for 5m'
           description: |
-            {{ $value }} customer server(s) are unreachable (Prometheus up{}
-            == 0 for 5m). Hosts covered: Linux via `node_exporter` on
-            :9100, Windows via `windows_exporter` on :9182. Open the
-            AIAMSBS Linux Exporter or Windows Exporter dashboard
-            (filtered by $host) to identify the specific host(s) and
-            start triage: physical/VPN reachability, host power, agent
-            service status (`systemctl status node_exporter` /
-            `windows_exporter`).
+            Customer host `{{ $labels.host }}` has been unreachable from
+            AIAMSBS for 5m (blackbox_inventory probe_success == 0).
+            Triage: physical/VPN reachability, host power, network path
+            (.220 → gateway → host). The AIAMSBS Health dashboard surfaces
+            the full set of failed probes if more than one host is down.
         labels:
           severity: critical
           category: servers
