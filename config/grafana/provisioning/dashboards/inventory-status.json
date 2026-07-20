@@ -282,7 +282,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Inventory \u2014 Device Status",
+  "title": "All Discovered Devices-Up/Down",
   "uid": "inventory-status",
   "version": 1,
   "weekStart": ""

@@ -1,6 +1,6 @@
 {
   "uid": "aiamsbs-node-exporter",
-  "title": "AIAMSBS Node Exporter (per-host)",
+  "title": "Linux Hosts",
   "tags": [
     "aiamsbs",
     "node-exporter",

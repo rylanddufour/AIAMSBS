@@ -1,6 +1,6 @@
 {
   "uid": "aiamsbs-node-exporter-windows",
-  "title": "AIAMSBS Windows Exporter (per-host)",
+  "title": "Windows Hosts",
   "tags": [
     "aiamsbs",
     "windows-exporter",
