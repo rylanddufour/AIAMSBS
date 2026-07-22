@@ -1676,6 +1676,27 @@ deploy_kb_stack() {
         return 0
     fi
 
+    # BACKLOG #47 (sub-item of #30): install SMB/CIFS + NFS client tooling on
+    # the AIAMSBS host so the agent can mount Windows file shares (CIFS) and
+    # NFS exports for KB ingestion. cifs-utils provides mount.cifs, nfs-common
+    # provides mount.nfs, smbclient is the command-line SMB browser used for
+    # share discovery and quick reads. Check via dpkg rather than command -v
+    # because mount.{cifs,nfs} live in /sbin and may be off the user's PATH.
+    local kb_mount_pkgs=(cifs-utils nfs-common smbclient)
+    local missing_mount_pkgs=()
+    for pkg in "${kb_mount_pkgs[@]}"; do
+        if ! dpkg -s "$pkg" &> /dev/null; then
+            missing_mount_pkgs+=("$pkg")
+        fi
+    done
+    if [ ${#missing_mount_pkgs[@]} -ne 0 ]; then
+        log_info "Installing KB mount dependencies: ${missing_mount_pkgs[*]}"
+        sudo apt-get update -qq
+        sudo apt-get install -y "${missing_mount_pkgs[@]}"
+    else
+        log_success "KB mount dependencies present: ${kb_mount_pkgs[*]}"
+    fi
+
     log_info "Deploying kb stack..."
 
     if sg docker -c "docker compose -f '$kb_compose' up -d" 2>&1 | tail -10; then
