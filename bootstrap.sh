@@ -1847,6 +1847,171 @@ PYEOF
 }
 
 # ============================================
+# Vault Stack (vaultwarden + bitwarden/mcp-server)
+# ============================================
+# BACKLOG #48 + #49. Self-hosted password/secret vault for the AIAMSBS host.
+# vaultwarden = customer-facing web vault (admin panel + day-to-day UI).
+# bitwarden-mcp = the official Bitwarden MCP server, exposed to the agent
+# over stdio (Hermes invokes it via `docker exec -i bitwarden-mcp ...`).
+
+deploy_vaultwarden_stack() {
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
+    local vault_dir="$infra_dir/vaultwarden-stack"
+    local vault_compose="$vault_dir/docker-compose.yml"
+
+    if [ ! -f "$vault_compose" ]; then
+        log_warn "vaultwarden-stack/docker-compose.yml not found at $vault_compose; skipping"
+        return 0
+    fi
+
+    log_info "Deploying vault stack (vaultwarden + bitwarden-mcp)..."
+
+    # Generate the vaultwarden admin token on first deploy, idempotent on
+    # re-runs (preserves existing token). The token file is bind-mounted into
+    # the vaultwarden container as /etc/admin-token, which the container reads
+    # via ADMIN_TOKEN_FILE (see docker-compose.yml).
+    if [ -x "$vault_dir/generate-admin-token.sh" ]; then
+        "$vault_dir/generate-admin-token.sh"
+    else
+        log_warn "$vault_dir/generate-admin-token.sh not executable; skipping token gen"
+    fi
+
+    # Scaffold /etc/bitwarden-mcp.env with placeholders so the container can
+    # start. Customer populates BW_USER + BW_PASSWORD after creating the first
+    # user via the vaultwarden admin panel. Idempotent.
+    write_bitwarden_mcp_env
+
+    # Pull the bitwarden-mcp image's base layers (node:22-bookworm-slim +
+    # @bitwarden/cli + @bitwarden/mcp-server via npm), then build the local
+    # Dockerfile and bring both services up. Re-running is a no-op for the
+    # already-up vaultwarden container but rebuilds/recreates bitwarden-mcp
+    # only if its image or compose changed.
+    if sg docker -c "docker compose -f '$vault_compose' up -d --build" 2>&1 | tail -15; then
+        log_success "vault stack deployed (vaultwarden on :8003, bitwarden-mcp stdio)"
+    else
+        log_warn "vault stack deployment failed; continuing"
+        return 0
+    fi
+}
+
+# write_bitwarden_mcp_env
+# Idempotent. Creates /etc/bitwarden-mcp.env with the four env vars bitwarden-mcp
+# needs (BW_USER, BW_PASSWORD, BW_API_BASE_URL, BW_IDENTITY_URL). Customer fills
+# in BW_USER and BW_PASSWORD after creating the first user via the vaultwarden
+# admin panel; the bitwarden-mcp launch wrapper exits with a clear error if the
+# values are missing, so this file is the single source of truth.
+write_bitwarden_mcp_env() {
+    local env_file="${BITWARDEN_MCP_ENV:-/etc/bitwarden-mcp.env}"
+    if [ -f "${env_file}" ]; then
+        log_success "Bitwarden-mcp env file already exists at ${env_file} (preserving)"
+        return 0
+    fi
+
+    log_info "Scaffolding bitwarden-mcp env file at ${env_file}..."
+    mkdir -p "$(dirname "${env_file}")"
+    chmod 700 "$(dirname "${env_file}")"
+
+    cat > "${env_file}" << 'ENVEOF'
+# /etc/bitwarden-mcp.env - credentials for bitwarden/mcp-server.
+# BACKLOG #49: AUTH CHOICE A (username/password). To migrate to client-credentials
+# (choice B) see the follow-up BACKLOG row.
+#
+# Populate BW_USER and BW_PASSWORD after creating the first vaultwarden user via
+# the admin panel at http://<host>:8003/admin (token in the "Bootstrap Complete!"
+# output of the bootstrap run that provisioned vaultwarden).
+#
+# Then restart the container: `docker compose -f ~/AIAMSBS/vaultwarden-stack/docker-compose.yml restart bitwarden-mcp`
+BW_API_BASE_URL=http://127.0.0.1:8003
+BW_IDENTITY_URL=http://127.0.0.1:8003
+BW_USER=
+BW_PASSWORD=
+ENVEOF
+    chmod 600 "${env_file}"
+    log_success "Scaffolded ${env_file} (BW_USER and BW_PASSWORD are empty - populate them after creating the first vaultwarden user)"
+}
+
+# register_bitwarden_mcp [profile_name]
+# Registers the bitwarden-mcp server in a Hermes profile's config.yaml so the
+# agent can reach it via `docker exec -i bitwarden-mcp mcp-server-bitwarden --stdio`.
+# Same dual-profile pattern as register_kb_mcp / register_inventory_mcp / register_grafana_mcp.
+# Idempotent — skips if already registered.
+register_bitwarden_mcp() {
+    local profile="${1:-default}"
+    local config_path
+    local stale_default_config="$HOME/.hermes/profiles/default/config.yaml"
+
+    if [ "$profile" = "default" ]; then
+        config_path="$HOME/.hermes/config.yaml"
+    elif [ -d "$HOME/.hermes/profiles" ]; then
+        config_path="$HOME/.hermes/profiles/${profile}/config.yaml"
+    elif [ -f "$HOME/.hermes/config.yaml" ] || [ -d "$HOME/.hermes" ]; then
+        config_path="$HOME/.hermes/config.yaml"
+        profile="default"
+    else
+        log_error "No Hermes config found at ~/.hermes/ — run bootstrap.sh first?"
+        return 1
+    fi
+
+    log_info "Registering bitwarden-mcp in profile '$profile' (config: $config_path)..."
+
+    if [ ! -d "$(dirname "$config_path")" ]; then
+        mkdir -p "$(dirname "$config_path")"
+    fi
+    if [ ! -f "$config_path" ]; then
+        touch "$config_path"
+        chmod 600 "$config_path"
+    fi
+
+    # Idempotent: skip if already registered.
+    if grep -q '^  bitwarden-mcp:' "$config_path" 2>/dev/null; then
+        log_success "bitwarden-mcp already registered in profile '$profile'"
+    else
+        # bitwarden/mcp-server is stdio-only (uses StdioServerTransport — verified
+        # in src/index.ts). Hermes launches it via `docker exec -i`, hence the
+        # `command:` + `args:` form instead of `url:` + `transport:`.
+        if grep -q '^mcp_servers:' "$config_path" 2>/dev/null; then
+            cp "$config_path" "${config_path}.bak"
+            python3 - "$config_path" << 'PYEOF'
+import sys
+path = sys.argv[1]
+with open(path) as f:
+    content = f.read()
+new_block = """  bitwarden-mcp:
+    command: docker
+    args: ["exec", "-i", "bitwarden-mcp", "mcp-server-bitwarden", "--stdio"]
+"""
+# Insert after the line containing "mcp_servers:" (which already exists).
+lines = content.split('\n')
+out = []
+inserted = False
+for i, line in enumerate(lines):
+    out.append(line)
+    if line.strip() == 'mcp_servers:' and not inserted:
+        # The block lives under mcp_servers: at 2-space indent. Insert our entry
+        # right after the mcp_servers: header line.
+        for b in new_block.rstrip('\n').split('\n'):
+            out.append(b)
+        inserted = True
+with open(path, 'w') as f:
+    f.write('\n'.join(out))
+PYEOF
+            log_success "bitwarden-mcp registered in profile '$profile' (merged into existing mcp_servers: block)"
+        else
+            cp "$config_path" "${config_path}.bak"
+            cat >> "$config_path" << 'EOF'
+
+mcp_servers:
+  bitwarden-mcp:
+    command: docker
+    args: ["exec", "-i", "bitwarden-mcp", "mcp-server-bitwarden", "--stdio"]
+EOF
+            chmod 600 "$config_path"
+            log_success "bitwarden-mcp registered in profile '$profile'"
+        fi
+    fi
+}
+
+# ============================================
 # Auto-Deploy Stack
 # ============================================
 
@@ -1967,7 +2132,8 @@ list_listening_ports() {
 # Reads dashboard creds from /var/log/hermes-bootstrap-credentials.log
 # and Grafana creds from $INFRA_DIR/.env (falls back to defaults).
 print_access_summary() {
-    local host_ip dash_user dash_pass grafana_user grafana_pass gp
+    local mode="${1:-final}"
+    local host_ip dash_user dash_pass grafana_user grafana_pass gp vault_token
     host_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
     [ -z "$host_ip" ] && host_ip="localhost"
 
@@ -1983,6 +2149,19 @@ print_access_summary() {
     if [ -n "$INFRA_DIR" ] && [ -f "$INFRA_DIR/.env" ]; then
         gp=$(grep '^GRAFANA_PASSWORD=' "$INFRA_DIR/.env" 2>/dev/null | cut -d= -f2-)
         [ -n "$gp" ] && grafana_pass="$gp"
+    fi
+
+    vault_token=""
+    if [ -f "/etc/vaultwarden/admin-token" ]; then
+        vault_token=$(cat "/etc/vaultwarden/admin-token" 2>/dev/null)
+    fi
+
+    # Skip the full banner in "preview" mode — that runs mid-bootstrap
+    # before kickoff_inventory_discovery. Only the "final" call (after
+    # verify_installation) prints the canonical banner.
+    if [ "$mode" != "final" ]; then
+        log_info "Bootstrap preview: services up so far — final banner appears at end"
+        return 0
     fi
 
     echo ""
@@ -2002,6 +2181,11 @@ print_access_summary() {
     echo "     Username: ${dash_user:-admin}"
     echo "     Password: ${dash_pass:-<not generated yet>}"
     echo ""
+    echo "  🔐 Vault (vaultwarden — BACKLOG #48)"
+    echo "     URL:      http://$host_ip:8003"
+    echo "     Admin token: ${vault_token:-<not generated>}"
+    echo "     First-run:  open the admin panel, paste the token, create your first user."
+    echo ""
     echo "  📈 Monitoring (no auth required)"
     echo "     Prometheus:    http://$host_ip:9090"
     echo "     Loki:          http://$host_ip:3100"
@@ -2011,6 +2195,14 @@ print_access_summary() {
     echo "     Inventory MCP: http://localhost:8001/mcp"
     echo "     KB MCP:        http://localhost:8002/mcp"
     echo "     Grafana MCP:   http://localhost:8000/mcp"
+    echo "     Vault MCP:     docker exec -i bitwarden-mcp mcp-server-bitwarden --stdio"
+    echo ""
+    echo "  ⚠ NEXT STEP for the vault:"
+    echo "     1. Open http://$host_ip:8003/admin in your browser."
+    echo "     2. Paste the admin token above to unlock the admin panel."
+    echo "     3. Create your first user (email + master password)."
+    echo "     4. Populate /etc/bitwarden-mcp.env with BW_USER + BW_PASSWORD."
+    echo "     5. Restart: docker compose -f ~/AIAMSBS/vaultwarden-stack/docker-compose.yml restart bitwarden-mcp"
     echo ""
     echo "  📝 Verify the LLM is working:"
     echo "     hermes chat -q \"hello!\""
@@ -2021,6 +2213,7 @@ print_access_summary() {
     echo "============================================"
     echo ""
 }
+
 
 verify_installation() {
     log_info "Verifying installation..."
@@ -2222,8 +2415,23 @@ main() {
     register_kb_mcp "it_admin"
     install_kb_mcp_skill
 
-    # Print customer-facing access summary (URLs, credentials, ports, hints)
-    print_access_summary
+    # BACKLOG #48 + #49: deploy the vault stack (vaultwarden + bitwarden/mcp).
+    # vaultwarden is the customer-facing vault; bitwarden-mcp is the agent-side
+    # interface. Deploys unconditionally (not gated on KB) so the customer can
+    # use the vault UI from day one. The /etc/bitwarden-mcp.env file is
+    # scaffolded here but needs the customer to populate BW_USER/BW_PASSWORD
+    # after creating their first user via the admin panel — bootstrap output
+    # tells them how.
+    deploy_vaultwarden_stack
+    register_bitwarden_mcp "default"
+    register_bitwarden_mcp "it_admin"
+
+    # Print customer-facing access summary (URLs, credentials, ports, hints).
+    # NOTE: print_access_summary is invoked AGAIN at the end of main() so it
+    # is the last thing the customer sees. The first call (here) is a
+    # pre-kickoff preview; the second call (after verify_installation) is
+    # the canonical "Bootstrap Complete!" banner. See the call site below.
+    print_access_summary "preview"
 
     # Run the kickoff inventory discovery so the customer sees devices in
     # their install summary and the blackbox + Prom chain runs end-to-end
@@ -2231,6 +2439,10 @@ main() {
     kickoff_inventory_discovery
 
     verify_installation
+
+    # FINAL "Bootstrap Complete!" banner — invoked last so it is the last
+    # thing the customer reads in stdout, no scrolling required.
+    print_access_summary "final"
 }
 
 main "$@"
