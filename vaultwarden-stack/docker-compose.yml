@@ -1,0 +1,57 @@
+# AIAMSBS Runtime Vault — vaultwarden (runtime secret/credential vault).
+#
+# BACKLOG #48. Self-hosted password/secret vault for the AIAMSBS host.
+# vaultwarden provides the customer-facing web vault (admin panel
+# + day-to-day UI) and the Bitwarden-API-compatible backend that
+# `bitwarden/mcp-server` (BACKLOG #49, HOST-LOCAL install) talks to.
+#
+# Network: joins the `monitoring` external docker network so the host-local
+# bitwarden/mcp-server (installed via install-bitwarden-mcp-host.sh, NOT a
+# container) can reach vaultwarden by service name or loopback port.
+#
+# Why bind on 0.0.0.0: customers reach the vault from their workstation
+# browser (`http://<aiamsbs-host>:8003`). Bind to 127.0.0.1 broke this.
+# Admin token + future 2FA + reverse-proxy + TLS are the security gate;
+# the bind change trades "LAN-reachable" for "customer can actually use it".
+# Follow-up BACKLOG row: reverse proxy + cert.
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:1.36.0
+    container_name: vaultwarden
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:8003:80"               # web vault UI, LAN-reachable
+    volumes:
+      - vaultwarden-data:/data          # SQLite/attachments
+      - /etc/vaultwarden/admin-token:/etc/admin-token:ro  # admin token from bootstrap
+    environment:
+      # Bootstrap-generated admin token (see generate-admin-token.sh).
+      # vaultwarden reads this on every startup; rotate by regenerating
+      # the host file and restarting the container.
+      - ADMIN_TOKEN_FILE=/etc/admin-token
+
+      # Customer-creates-first-user UX. Disable signups; customer uses
+      # the admin token to create the first user via /admin. See README.
+      - SIGNUPS_ALLOWED=false
+      - INVITATIONS_ALLOWED=false
+
+      # Reasonable defaults for an unattended small-shop install.
+      - LOG_LEVEL=info
+      - DOMAIN=http://localhost:8003
+    networks:
+      - monitoring
+    healthcheck:
+      # /alive is vaultwarden's documented unauthenticated healthcheck
+      # endpoint — returns 200 OK with body "alive\n".
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80/alive"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  vaultwarden-data:
+
+networks:
+  monitoring:
+    external: true
