@@ -34,6 +34,19 @@ LOG_PREFIX="[bitwarden-mcp]"
 
 log() { echo "$LOG_PREFIX $*" >&2; }
 
+# Source the env file so BW_CLIENTID/BW_CLIENTSECRET are populated. The env
+# file is mode 0600 root; the launch shim is invoked by Hermes as the user
+# running the gateway. If the file isn't readable, fail loudly so the operator
+# fixes perms (chmod 600 / chown root) instead of silently mis-attributing.
+if [ ! -r "${ENV_FILE}" ]; then
+    log "FATAL: cannot read env file ${ENV_FILE} (does it exist? perms?)"
+    log "Fix on the AIAMSBS host:  sudo chmod 600 ${ENV_FILE} && sudo chown root:root ${ENV_FILE}"
+    exit 1
+fi
+set +u
+. "${ENV_FILE}"
+set -u
+
 # Required env from /etc/bitwarden-mcp.env
 for v in BW_CLIENTID BW_CLIENTSECRET BW_API_BASE_URL BW_IDENTITY_URL; do
     if [ -z "${!v:-}" ]; then

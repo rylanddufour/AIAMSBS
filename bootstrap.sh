@@ -1968,8 +1968,24 @@ BW_IDENTITY_URL=http://127.0.0.1:8003
 BW_CLIENTID=
 BW_CLIENTSECRET=
 ENVEOF
-    chmod 600 "${env_file}"
-    log_success "Scaffolded ${env_file} (BW_CLIENTID and BW_CLIENTSECRET are empty — populate after creating an org-scoped machine account in the vault UI)"
+    chmod 640 "${env_file}"
+    # Make group-readable for the user/group that will run Hermes (typically
+    # the same user that ran bootstrap.sh). 0640 + root:OPERATOR_GROUP = the
+    # env file is owned by root (only root can edit) but the operator's group
+    # can read it. This is the perms Hermes's launch shim expects; a strict
+    # 0600 root:root would force a systemd LoadCredential refactor — out of
+    # scope for v1.
+    chown_root_group_quietly() {
+        local target_group
+        target_group="$(id -gn 2>/dev/null || echo root)"
+        if chown "root:${target_group}" "${env_file}" 2>/dev/null; then
+            :
+        else
+            log_warn "could not chown ${env_file} to root:${target_group} — leaving as-is"
+        fi
+    }
+    chown_root_group_quietly
+    log_success "Scaffolded ${env_file} (mode 0640 root:$(id -gn 2>/dev/null || echo root))  — populate BW_CLIENTID and BW_CLIENTSECRET after creating an org-scoped machine account in the vault UI"
 }
 
 # register_bitwarden_mcp [profile_name]
