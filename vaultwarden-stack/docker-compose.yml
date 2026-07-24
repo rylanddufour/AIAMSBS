@@ -43,8 +43,10 @@ services:
       - monitoring
     healthcheck:
       # /alive is vaultwarden's documented unauthenticated healthcheck
-      # endpoint — returns 200 OK with body "alive\n".
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80/alive"]
+      # endpoint — returns 200 OK with body "alive\n". The vaultwarden image
+      # is Alpine-based and ships curl but NOT wget, so we use curl here.
+      # curl -fs: fail silently + exit non-zero on HTTP errors (= unhealthy).
+      test: ["CMD", "sh", "-c", "curl -fsS -o /dev/null http://127.0.0.1:80/alive || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
