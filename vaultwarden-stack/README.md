@@ -2,80 +2,148 @@
 
 AIAMSBS Runtime Vault — BACKLOG #48 + #49.
 
-Self-hosted password/secret vault (vaultwarden) + Bitwarden MCP server
-(`bitwarden/mcp-server`) in one Docker Compose project. Provides credential
-storage for `kb_ingest_share` (BACKLOG #50) and customer-facing secret
-management for the AIAMSBS host.
+Self-hosted password/secret vault (`vaultwarden`) + the official Bitwarden
+MCP server (`bitwarden/mcp-server`, **installed host-local per its README
+warning**) on the AIAMSBS host. Provides credential storage for
+`kb_ingest_share` (BACKLOG #50) and customer-facing secret management.
 
-## What it does
-
-| service | role |
-|---|---|
-| **vaultwarden** | Self-hosted Bitwarden-compatible server. Customer's web vault UI lives here (admin panel for first-user creation, then the regular vault UI for day-to-day use). |
-| **bitwarden-mcp** | Official Bitwarden MCP server (`@bitwarden/mcp-server`), exposes the Bitwarden CLI as MCP tools (`get_item`, `list_items`, `create_item`, etc.) for the agent. Talks to vaultwarden over `BW_API_BASE_URL`/`BW_IDENTITY_URL`. |
+| service | role | where |
+|---|---|---|
+| **vaultwarden** | Self-hosted Bitwarden-compatible server. Customer's web vault UI (admin panel + day-to-day use). | `vaultwarden-stack/docker-compose.yml` (container) |
+| **bitwarden-mcp** | Official Bitwarden MCP server (`@bitwarden/mcp-server`). Exposes Bitwarden CLI as MCP tools (`get_item`, `list_items`, `create_item`, …) for the agent. Talks to vaultwarden over `BW_API_BASE_URL`/`BW_IDENTITY_URL`. | `vaultwarden-stack/install-bitwarden-mcp-host.sh` — **host-local** (not a container, per upstream README warning) |
 
 ## Layout
 
-    vaultwarden-stack/
-    ├── docker-compose.yml          # vaultwarden + bitwarden-mcp services
-    ├── bitwarden-mcp/
-    │   ├── Dockerfile              # node:22-bookworm-slim + npm i -g @bitwarden/cli @bitwarden/mcp-server
-    │   ├── launch-bitwarden-mcp.sh # Login/unlock wrapper, persists BW_SESSION to a volume
-    │   └── .dockerignore
-    ├── generate-admin-token.sh     # bootstrap calls this; writes /etc/vaultwarden/admin-token mode 0600
-    ├── README.md                   # this file
-    └── .gitignore
+```
+vaultwarden-stack/
+├── docker-compose.yml                       # vaultwarden ONLY (no bitwarden-mcp container)
+├── bitwarden-mcp/
+│   └── launch-bitwarden-mcp.sh              # host-local shim: bw login --apikey + exec mcp-server-bitwarden
+├── install-bitwarden-mcp-host.sh            # idempotent: npm install -g @bitwarden/cli @bitwarden/mcp-server
+├── generate-admin-token.sh                  # bootstrap calls this; writes /etc/vaultwarden/admin-token mode 0600
+├── README.md                                # this file
+└── .gitignore
+```
 
-## Run it
+## Run it (the bootstrap does this for you)
 
-    cd vaultwarden-stack
-    docker compose up -d --build
+```bash
+cd vaultwarden-stack
+sudo ./generate-admin-token.sh       # one-time, idempotent (preserves existing token)
+sg docker -c "docker compose up -d"  # pulls + starts vaultwarden
+curl -s http://localhost:8003/alive  # sanity check — vaultwarden healthcheck endpoint
+./install-bitwarden-mcp-host.sh      # host-local npm install for bw + mcp-server-bitwarden
+```
 
-The `bitwarden-mcp` image is built locally on first run (no pre-built image
-on Docker Hub). Subsequent runs reuse the cached build.
+## Customer onboarding (client_credentials model)
 
-## First-run UX
+The customer (small IT shop) owns the vault entirely. The agent never
+sees the customer's master password — only an **org-scoped machine account
+API key** (Bitwarden's API-key flow with `client_id` + `client_secret`).
+This is BACKLOG #49, the model the customer explicitly approved in the
+2026-07-23 Telegram thread (rejected the older `BW_USER`+`BW_PASSWORD`
+design because it gave the agent full vault blast radius).
 
-1. Customer runs `bootstrap.sh` on the AIAMSBS host.
-2. Bootstrap generates `/etc/vaultwarden/admin-token` (mode 0600) and prints
-   it in the "Bootstrap Complete!" output.
-3. Customer browses to `http://<aiamsbs-host>:8003/admin`, pastes the admin
-   token, and creates the first regular user.
-4. Customer populates `/etc/bitwarden-mcp.env` with `BW_USER` and
-   `BW_PASSWORD` (or `BW_CLIENTID`/`BW_CLIENTSECRET` for client-credentials
-   auth — BACKLOG follow-up).
-5. Customer runs `docker compose restart bitwarden-mcp`. The launch wrapper
-   logs in with the credentials, unlocks the vault, and persists `BW_SESSION`
-   to a named volume so subsequent restarts don't need a fresh unlock.
+### Step 1 — open the vault + create the first user
 
-## Auth model (BACKLOG #49, choice A)
+```
+http://<aiamsbs-host>:8003                  # main vault UI
+http://<aiamsbs-host>:8003/admin            # admin panel (token in bootstrap output)
+```
 
-`bitwarden/mcp-server` is **stdio-only** (uses `StdioServerTransport` from
-`@modelcontextprotocol/sdk`). Hermes reaches it via `docker exec -i
-bitwarden-mcp mcp-server-bitwarden --stdio` — registered in both `default`
-and `it_admin` profiles' `~/.hermes/config.yaml`. The container has no
-network ports; all communication is over stdin/stdout.
+Paste the bootstrap-printed admin token at the admin panel. Create the
+first user (email + master password). After the first user exists,
+**disable the admin token** for safety — the customer can re-enable if
+they lose access.
 
-The README warning ("never deploy this server to cloud hosting, containers,
-or public servers") is about EXPOSURE, not containerization — we run
-vaultwarden on `127.0.0.1:8003` and bitwarden-mcp with no published ports,
-so the vault is not reachable from off-host.
+### Step 2 — create an org-scoped machine account
+
+1. Sign in to the vault UI with the user from step 1.
+2. Click **Organizations → New Organization**. Name it e.g.
+   `AIAMSBS-agents`. This is the **only** org the agent can see.
+3. Click **Organizations → AIAMSBS-agents → Settings → Machine Accounts**.
+4. Click **New Machine Account** → name it `bitwarden-mcp`.
+5. The org creates a `client_id` + `client_secret` pair for that
+   machine account. **Copy both** — the secret is shown only once.
+
+### Step 3 — give the agent the scoped credential
+
+On the AIAMSBS host (the only place the env file exists):
+
+```bash
+sudo tee /etc/bitwarden-mcp.env >/dev/null <<'EOF'
+BW_API_BASE_URL=http://127.0.0.1:8003
+BW_IDENTITY_URL=http://127.0.0.1:8003
+BW_CLIENTID=<paste from step 2>
+BW_CLIENTSECRET=<paste from step 2>
+EOF
+sudo chmod 600 /etc/bitwarden-mcp.env
+```
+
+### Step 4 — add items the agent needs
+
+In the vault UI, under the `AIAMSBS-agents` org (not your personal
+org/collection), add the items the agent will need: SMB/NFS share
+credentials for `kb_ingest_share` (BACKLOG #50), Proxmox/Grafana/etc.
+API tokens, whatever.
+
+Items in your **personal** vault collection are **not** visible to the
+machine account. This is the blast-radius gate.
+
+### Step 5 — test the agent
+
+```bash
+hermes chat -q "List the items in the AIAMSBS-agents vault org"
+```
+
+The agent authenticates via `bw login --apikey` using the env vars from
+step 3, persists `BW_SESSION` to `$HOME/.local/share/bitwarden-cli/`,
+and any subsequent agent calls reuse the session.
+
+## Auth model (BACKLOG #49, choice B — approved 2026-07-23)
+
+`bitwarden/mcp-server` is **stdio-only** (uses `StdioServerTransport`
+from `@modelcontextprotocol/sdk`). Hermes reaches it via:
+
+```yaml
+mcp_servers:
+  bitwarden-mcp:
+    command: /home/ansible/AIAMSBS/vaultwarden-stack/bitwarden-mcp/launch-bitwarden-mcp.sh
+    args: ["--stdio"]
+```
+
+The launch shim does `bw login --apikey` (using `BW_CLIENTID`/
+`BW_CLIENTSECRET` from `/etc/bitwarden-mcp.env`), caches `BW_SESSION`
+under `$HOME/.local/share/bitwarden-cli/`, then `exec mcp-server-bitwarden`.
+NO published network port; ALL communication is over stdin/stdout.
+
+### Why client_credentials (not username/password)
+
+| concern | mitigation |
+|---|---|
+| Master password on disk → agent has full vault blast radius | Eliminated — there is no master password on disk. The `client_secret` is org-scoped; can only see items the customer put in `AIAMSBS-agents` org. |
+| `BW_PASSWORD` in env file = anyone with shell on .220 owns the vault | Eliminated — `BW_CLIENTSECRET` only grants access to the org the customer defined. |
+| Compromise of the machine-account credential | Customer revokes the machine account in the vault UI; existing device passwords do NOT need to be rotated. |
 
 ## What this stack is NOT
 
 - **No password sync to Bitwarden cloud.** Vaultwarden is self-hosted; the
   customer's data never leaves the AIAMSBS host.
-- **No HSM / TPM-backed key storage.** The vault encryption key is held in
-  the vaultwarden container's process memory, like any other vaultwarden
-  install. For higher-security deployments, see vaultwarden's YubiKey /
-  WebAuthn 2FA options (env vars in the compose).
-- **No org / machine-account onboarding automation.** Auth choice A
-  (username/password) covers the MVP. Client-credentials API key auth
-  (choice B) is a follow-up row.
+- **No HSM / TPM-backed key storage.** The vault encryption key is held
+  in vaultwarden container memory, like any vaultwarden install. For
+  higher-security deployments, see vaultwarden's YubiKey / WebAuthn 2FA
+  options.
+- **No TLS / reverse proxy yet.** Vault UI is plain HTTP on port 8003.
+  BACKLOG row for `caddy` or `traefik` + Let's Encrypt coming.
+- **Bitwarden CLI plugins not in scope.** `bw send`, `bw config`,
+  `bw import` all work for the customer but the agent only uses
+  `bw list items` / `bw get item` / `bw create` / `bw edit` / `bw delete`.
 
 ## Card status
 
-- BACKLOG #48: Deploy vaultwarden as sibling docker-compose service.
-- BACKLOG #49: Wire bitwarden/mcp-server against vaultwarden.
-- BACKLOG #50: `kb_ingest_share` MCP tool (consumer of this stack).
-- BACKLOG #51: Documentation + diagram cards (deferred).
+| Card | Status | Notes |
+|---|---|---|
+| BACKLOG #48: Deploy vaultwarden as sibling docker-compose service | Built (compose, admin-token script) | Bind = `0.0.0.0:8003` (LAN-reachable); admin token in `/etc/vaultwarden/admin-token` mode 0600 |
+| BACKLOG #49: Wire `bitwarden/mcp-server` against vaultwarden | Refactored | Was container; now **host-local** install per upstream README warning. Auth = `bw login --apikey` (client_credentials) per 2026-07-23 customer approval. |
+| BACKLOG #50: `kb_ingest_share` MCP tool | Not built | Consumer of this stack; depends on a working machine-account flow. |
+| BACKLOG #51: Documentation + diagram cards | Deferred per BACKLOG row | After #48/#49 work end-to-end. |

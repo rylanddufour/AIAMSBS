@@ -1,14 +1,19 @@
-# AIAMSBS Runtime Vault — vaultwarden + bitwarden/mcp-server.
+# AIAMSBS Runtime Vault — vaultwarden (runtime secret/credential vault).
 #
-# BACKLOG #48 + #49. Self-hosted password/secret vault for the AIAMSBS
-# host. vaultwarden provides the customer-facing web vault (admin panel
-# + day-to-day UI). bitwarden-mcp provides MCP-protocol access for
-# the agent (used by kb_ingest_share, BACKLOG #50).
+# BACKLOG #48. Self-hosted password/secret vault for the AIAMSBS host.
+# vaultwarden provides the customer-facing web vault (admin panel
+# + day-to-day UI) and the Bitwarden-API-compatible backend that
+# `bitwarden/mcp-server` (BACKLOG #49, HOST-LOCAL install) talks to.
 #
-# Network: joins the `monitoring` external docker network so the
-# bitwarden-mcp container can reach vaultwarden by service name. No
-# ports are published for bitwarden-mcp (stdio only); vaultwarden is
-# published on 127.0.0.1:8003 for the customer's browser.
+# Network: joins the `monitoring` external docker network so the host-local
+# bitwarden/mcp-server (installed via install-bitwarden-mcp-host.sh, NOT a
+# container) can reach vaultwarden by service name or loopback port.
+#
+# Why bind on 0.0.0.0: customers reach the vault from their workstation
+# browser (`http://<aiamsbs-host>:8003`). Bind to 127.0.0.1 broke this.
+# Admin token + future 2FA + reverse-proxy + TLS are the security gate;
+# the bind change trades "LAN-reachable" for "customer can actually use it".
+# Follow-up BACKLOG row: reverse proxy + cert.
 
 services:
   vaultwarden:
@@ -16,7 +21,7 @@ services:
     container_name: vaultwarden
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8003:80"             # web vault UI, host-local only
+      - "0.0.0.0:8003:80"               # web vault UI, LAN-reachable
     volumes:
       - vaultwarden-data:/data          # SQLite/attachments
       - /etc/vaultwarden/admin-token:/etc/admin-token:ro  # admin token from bootstrap
@@ -44,31 +49,8 @@ services:
       timeout: 5s
       retries: 3
 
-  bitwarden-mcp:
-    build:
-      context: ./bitwarden-mcp
-      dockerfile: Dockerfile
-    image: aiamsbs_bitwarden-mcp
-    container_name: bitwarden-mcp
-    restart: unless-stopped
-    depends_on:
-      - vaultwarden
-    env_file:
-      - /etc/bitwarden-mcp.env         # BW_USER, BW_PASSWORD, BW_API_BASE_URL, BW_IDENTITY_URL
-    volumes:
-      - bitwarden-cli-config:/var/lib/bitwarden-cli  # persistent BW_SESSION cache
-    networks:
-      - monitoring
-
-    # stdio MCP server — Hermes reaches it via `docker exec -i bitwarden-mcp
-    # mcp-server-bitwarden --stdio`. NO published ports.
-    stdin_open: true
-    tty: true
-    # No `ports:` key — by design.
-
 volumes:
   vaultwarden-data:
-  bitwarden-cli-config:
 
 networks:
   monitoring:
