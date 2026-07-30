@@ -392,6 +392,7 @@ INDEX_HTML = """<!DOCTYPE html>
   body { font-family: -apple-system, system-ui, sans-serif; max-width: 900px;
          margin: 2em auto; padding: 0 1em; color: #222; }
   h1 { font-size: 1.4em; }
+  h2 { font-size: 1.15em; margin-top: 1em; }
   .entry { padding: 0.6em 0; border-bottom: 1px solid #eee; }
   .entry a { color: #06c; text-decoration: none; }
   .entry a:hover { text-decoration: underline; }
@@ -400,19 +401,62 @@ INDEX_HTML = """<!DOCTYPE html>
   .badge.pending { background: #ffd; }
   .badge.approved { background: #dfd; }
   .badge.rejected { background: #fdd; }
-  #detail { margin-top: 1.5em; padding: 1em; background: #f8f8f8;
-            border-radius: 4px; }
+  #detail, #addForm { margin-top: 1.5em; padding: 1em;
+                       background: #f8f8f8; border-radius: 4px; }
   pre { white-space: pre-wrap; word-wrap: break-word; }
-  textarea { width: 100%; min-height: 8em; font-family: inherit; }
-  button { padding: 0.5em 1em; margin-right: 0.5em; }
+  textarea { width: 100%; min-height: 8em; font-family: inherit; box-sizing: border-box; }
+  input[type=text] { width: 100%; padding: 0.4em; box-sizing: border-box; }
+  select { padding: 0.3em; }
+  button { padding: 0.5em 1em; margin-right: 0.5em; cursor: pointer; }
+  button.danger { background: #fee; border: 1px solid #c00; color: #c00; }
+  button.primary { background: #06c; border: 1px solid #06c; color: #fff; }
   .msg { color: #080; font-weight: bold; }
   .err { color: #c00; font-weight: bold; }
+  .topbar { display: flex; align-items: center; gap: 1em; margin-bottom: 1em; }
+  .topbar button { margin-right: 0; }
 </style>
 </head>
 <body>
 <h1>AIAMSBS KB Viewer</h1>
-<p><a href="#" id="back">&larr; Back to list</a></p>
+
+<div class="topbar">
+  <a href="#" id="back">&larr; Back to list</a>
+  <span style="flex:1"></span>
+  <button class="primary" id="addBtn">+ Add new entry</button>
+</div>
+
 <div id="list"></div>
+<div id="addForm" style="display:none;">
+  <h2>New KB entry</h2>
+  <p>
+    <label><strong>Entry type:</strong></label><br>
+    <select id="addType">
+      <option value="runbook">runbook</option>
+      <option value="fact" selected>fact</option>
+      <option value="gotcha">gotcha</option>
+    </select>
+  </p>
+  <p>
+    <label><strong>Content:</strong></label>
+    <textarea id="addContent" placeholder="The runbook / fact / gotcha text..."></textarea>
+  </p>
+  <p>
+    <label><strong>Tags (comma-separated, optional):</strong></label>
+    <input type="text" id="addTags" placeholder="e.g. onboarding, phase-a, network">
+  </p>
+  <p>
+    <label><strong>Created by:</strong></label>
+    <select id="addCreatedBy">
+      <option value="agent">agent</option>
+      <option value="customer" selected>customer</option>
+    </select>
+  </p>
+  <p>
+    <button class="primary" id="addSubmit">Create</button>
+    <button id="addCancel">Cancel</button>
+    <span id="addStatus"></span>
+  </p>
+</div>
 <div id="detail" style="display:none;"></div>
 
 <script>
@@ -420,7 +464,8 @@ const STATUS_BADGE = {pending:'pending', approved:'approved', rejected:'rejected
 
 async function fetchJSON(url, opts) {
   const r = await fetch(url, opts);
-  const body = await r.json();
+  let body;
+  try { body = await r.json(); } catch { body = {}; }
   if (!r.ok || body.error) {
     throw new Error(body.error || ('HTTP ' + r.status));
   }
@@ -431,6 +476,7 @@ async function loadList() {
   const el = document.getElementById('list');
   el.innerHTML = 'Loading…';
   document.getElementById('detail').style.display = 'none';
+  hideAddForm();
   try {
     const {data} = await fetchJSON('/api/kb/list');
     if (!data || data.length === 0) {
@@ -457,13 +503,17 @@ async function loadList() {
   }
 }
 
+let currentEntry = null;
+
 async function loadDetail(id, cachedList) {
   document.getElementById('list').style.display = 'none';
+  hideAddForm();
   const det = document.getElementById('detail');
   det.style.display = 'block';
   det.innerHTML = 'Loading…';
   try {
     const {data} = await fetchJSON('/api/kb/entries/' + id);
+    currentEntry = data;
     det.innerHTML = `
       <h2>Entry #${data.id}: ${escape(data.title || '(no title)')}</h2>
       <p>
@@ -474,9 +524,10 @@ async function loadDetail(id, cachedList) {
       <label for="content"><strong>Content:</strong></label>
       <textarea id="content">${escape(data.content || '')}</textarea>
       <p style="margin-top:1em">
-        <button id="save">Save</button>
+        <button class="primary" id="save">Save</button>
         <button id="approve">Approve (pending &rarr; approved)</button>
         <button id="reject">Reject (pending &rarr; rejected)</button>
+        <button class="danger" id="delete">Delete</button>
       </p>
       <p id="status"></p>
       <p style="font-size:0.8em;color:#666">
@@ -486,6 +537,7 @@ async function loadDetail(id, cachedList) {
     document.getElementById('save').onclick = () => saveEntry(data.id, {content: document.getElementById('content').value});
     document.getElementById('approve').onclick = () => saveEntry(data.id, {status: 'approved'});
     document.getElementById('reject').onclick = () => saveEntry(data.id, {status: 'rejected'});
+    document.getElementById('delete').onclick = deleteCurrent;
   } catch (err) {
     det.innerHTML = `<p class="err">Error loading entry: ${escape(err.message)}</p>`;
   }
@@ -507,6 +559,77 @@ async function saveEntry(id, patch) {
   }
 }
 
+async function deleteCurrent() {
+  if (!currentEntry) return;
+  const id = currentEntry.id;
+  const label = currentEntry.title || ('entry #' + id);
+  if (!confirm('Delete ' + label + '? This cannot be undone.')) return;
+  try {
+    await fetchJSON('/api/kb/entries/' + id, {method: 'DELETE'});
+    history.pushState({}, '', location.pathname);
+    currentEntry = null;
+    loadList();
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+function showAddForm() {
+  document.getElementById('list').style.display = 'none';
+  document.getElementById('detail').style.display = 'none';
+  document.getElementById('addForm').style.display = 'block';
+  document.getElementById('addContent').focus();
+}
+
+function hideAddForm() {
+  const f = document.getElementById('addForm');
+  if (f) f.style.display = 'none';
+  const statusEl = document.getElementById('addStatus');
+  if (statusEl) statusEl.textContent = '';
+}
+
+document.getElementById('addBtn').onclick = showAddForm;
+
+document.getElementById('addCancel').onclick = () => {
+  document.getElementById('addContent').value = '';
+  document.getElementById('addTags').value = '';
+  hideAddForm();
+  loadList();
+};
+
+document.getElementById('addSubmit').onclick = async () => {
+  const statusEl = document.getElementById('addStatus');
+  const content = document.getElementById('addContent').value.trim();
+  if (!content) {
+    statusEl.innerHTML = '<span class="err">Content is required.</span>';
+    return;
+  }
+  const tagsRaw = document.getElementById('addTags').value.trim();
+  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(t => t.length > 0) : null;
+  statusEl.textContent = 'Creating…';
+  try {
+    await fetchJSON('/api/kb/entries', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        content: content,
+        entry_type: document.getElementById('addType').value,
+        tags: tags,
+        created_by: document.getElementById('addCreatedBy').value,
+      }),
+    });
+    statusEl.innerHTML = '<span class="msg">Created.</span>';
+    document.getElementById('addContent').value = '';
+    document.getElementById('addTags').value = '';
+    setTimeout(() => {
+      hideAddForm();
+      loadList();
+    }, 600);
+  } catch (err) {
+    statusEl.innerHTML = '<span class="err">Create failed: ' + escape(err.message) + '</span>';
+  }
+};
+
 function escape(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 }
@@ -516,6 +639,7 @@ document.getElementById('back').onclick = (e) => {
   history.pushState({}, '', location.pathname);
   document.getElementById('list').style.display = 'block';
   document.getElementById('detail').style.display = 'none';
+  hideAddForm();
 };
 window.addEventListener('hashchange', () => {
   if (location.hash.startsWith('#id=')) {
@@ -524,6 +648,8 @@ window.addEventListener('hashchange', () => {
   } else {
     document.getElementById('list').style.display = 'block';
     document.getElementById('detail').style.display = 'none';
+    hideAddForm();
+    currentEntry = null;
   }
 });
 
@@ -617,6 +743,102 @@ async def api_kb_update(request: Request) -> JSONResponse:
         )
     try:
         result = kb_update(entry_id=entry_id, **body)
+        if isinstance(result, dict) and "error" in result:
+            return JSONResponse(result, status_code=400)
+        return JSONResponse({"data": result})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@mcp.custom_route("/api/kb/entries", methods=["POST"])
+async def api_kb_create(request: Request) -> JSONResponse:
+    """JSON wrapper around the kb_add MCP tool. No direct DB access.
+
+    Body JSON keys mirror kb_add kwargs:
+      content       (required, non-empty string)
+      entry_type    (required; one of 'runbook'|'fact'|'gotcha')
+      tags          (optional list of strings)
+      source_id     (optional int)
+      created_by    (optional; one of 'agent'|'customer'; default 'agent')
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid JSON body"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "body must be a JSON object"},
+                            status_code=400)
+
+    allowed = {"content", "entry_type", "tags", "source_id", "created_by"}
+    unknown = set(body) - allowed
+    if unknown:
+        return JSONResponse(
+            {"error": f"unknown fields: {sorted(unknown)}; allowed: {sorted(allowed)}"},
+            status_code=400,
+        )
+
+    content = body.get("content")
+    if not isinstance(content, str) or not content.strip():
+        return JSONResponse(
+            {"error": "content is required and must be a non-empty string"},
+            status_code=400,
+        )
+
+    entry_type = body.get("entry_type")
+    if entry_type not in VALID_ENTRY_TYPES:
+        return JSONResponse(
+            {"error": f"entry_type must be one of {list(VALID_ENTRY_TYPES)}"},
+            status_code=400,
+        )
+
+    tags = body.get("tags")
+    if tags is not None and not (isinstance(tags, list) and all(isinstance(t, str) for t in tags)):
+        return JSONResponse(
+            {"error": "tags must be a list of strings if provided"},
+            status_code=400,
+        )
+
+    source_id = body.get("source_id")
+    if source_id is not None and not isinstance(source_id, int):
+        return JSONResponse(
+            {"error": "source_id must be an integer if provided"},
+            status_code=400,
+        )
+
+    created_by = body.get("created_by", "agent")
+    if created_by not in VALID_CREATED_BY:
+        return JSONResponse(
+            {"error": f"created_by must be one of {list(VALID_CREATED_BY)}"},
+            status_code=400,
+        )
+
+    try:
+        result = kb_add(
+            content=content,
+            entry_type=entry_type,
+            tags=tags,
+            source_id=source_id,
+            created_by=created_by,
+        )
+        if isinstance(result, dict) and "error" in result:
+            return JSONResponse(result, status_code=400)
+        return JSONResponse({"data": result}, status_code=201)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@mcp.custom_route("/api/kb/entries/{entry_id:int}", methods=["DELETE"])
+async def api_kb_delete(request: Request) -> JSONResponse:
+    """JSON wrapper around the kb_delete MCP tool. DESTRUCTIVE.
+
+    Note: per kb_delete's own spec ("Callers should always confirm
+    with the user before invoking this"), the UI does an explicit
+    JS confirm() before sending this request. No server-side
+    re-confirmation here — same trust model as kb_delete itself.
+    """
+    entry_id = request.path_params["entry_id"]
+    try:
+        result = kb_delete(entry_id=entry_id)
         if isinstance(result, dict) and "error" in result:
             return JSONResponse(result, status_code=400)
         return JSONResponse({"data": result})
