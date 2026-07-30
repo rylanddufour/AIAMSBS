@@ -5,6 +5,12 @@ transport. Five required tools (kb_search, kb_add, kb_update, kb_list,
 kb_delete) plus two convenience source-management tools (kb_add_source,
 kb_list_sources).
 
+Also serves a bare HTML viewer at `/` and `/ui/` (BACKLOG #57) using
+`@mcp.custom_route()` — a tiny single-file SPA that calls the same
+tool functions via `/api/kb/list`, `/api/kb/entries/{id}` (GET + PATCH).
+No direct DB access from the UI; the existing MCP tool layer is the
+sole data path. The Svelte + ByteMD upgrade is a separate row (BACKLOG #55).
+
 MVP search strategy: FTS5 BM25 ranking only. No embeddings, no model
 calls, no network. Design justification in
 `obsidian_vaults/agent vault/AIAMSBS_Docs_Diagrams/kb_workflow.md`.
@@ -18,6 +24,8 @@ import os
 import sqlite3
 
 from mcp.server.fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import HTMLResponse, JSONResponse
 
 DB_PATH = os.environ.get("KB_DB_PATH", "/data/kb.db")
 SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "init_db.sql")
@@ -369,6 +377,253 @@ def kb_list_sources() -> list[dict]:
     return [dict(r) for r in rows]
 
 
+# ----------------------------------------------------------------------------
+# Bare HTML viewer (BACKLOG #57) — restored because the original /ui/
+# endpoint was lost in a kb-mcp rebase. Tiny single-file SPA; the Svelte +
+# ByteMD upgrade is a separate row (BACKLOG #55).
+# ----------------------------------------------------------------------------
+
+INDEX_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AIAMSBS KB Viewer</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 900px;
+         margin: 2em auto; padding: 0 1em; color: #222; }
+  h1 { font-size: 1.4em; }
+  .entry { padding: 0.6em 0; border-bottom: 1px solid #eee; }
+  .entry a { color: #06c; text-decoration: none; }
+  .entry a:hover { text-decoration: underline; }
+  .badge { display: inline-block; padding: 1px 6px; font-size: 0.8em;
+           border-radius: 3px; background: #eee; margin-left: 0.4em; }
+  .badge.pending { background: #ffd; }
+  .badge.approved { background: #dfd; }
+  .badge.rejected { background: #fdd; }
+  #detail { margin-top: 1.5em; padding: 1em; background: #f8f8f8;
+            border-radius: 4px; }
+  pre { white-space: pre-wrap; word-wrap: break-word; }
+  textarea { width: 100%; min-height: 8em; font-family: inherit; }
+  button { padding: 0.5em 1em; margin-right: 0.5em; }
+  .msg { color: #080; font-weight: bold; }
+  .err { color: #c00; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>AIAMSBS KB Viewer</h1>
+<p><a href="#" id="back">&larr; Back to list</a></p>
+<div id="list"></div>
+<div id="detail" style="display:none;"></div>
+
+<script>
+const STATUS_BADGE = {pending:'pending', approved:'approved', rejected:'rejected'};
+
+async function fetchJSON(url, opts) {
+  const r = await fetch(url, opts);
+  const body = await r.json();
+  if (!r.ok || body.error) {
+    throw new Error(body.error || ('HTTP ' + r.status));
+  }
+  return body;
+}
+
+async function loadList() {
+  const el = document.getElementById('list');
+  el.innerHTML = 'Loading…';
+  document.getElementById('detail').style.display = 'none';
+  try {
+    const {data} = await fetchJSON('/api/kb/list');
+    if (!data || data.length === 0) {
+      el.innerHTML = '<p>No KB entries yet.</p>';
+      return;
+    }
+    let html = '';
+    for (const e of data) {
+      const status = STATUS_BADGE[e.status] || '';
+      const type = e.entry_type || '';
+      html += `<div class="entry">
+        <a href="#id=${e.id}"><strong>${e.id}. ${escape(e.title || '(no title)')}</strong></a>
+        <span class="badge ${status}">${status}</span>
+        <span class="badge">${type}</span>
+      </div>`;
+    }
+    el.innerHTML = html;
+    if (location.hash.startsWith('#id=')) {
+      const id = parseInt(location.hash.slice(4), 10);
+      if (!Number.isNaN(id)) await loadDetail(id, data);
+    }
+  } catch (err) {
+    el.innerHTML = `<p class="err">Error loading entries: ${escape(err.message)}</p>`;
+  }
+}
+
+async function loadDetail(id, cachedList) {
+  document.getElementById('list').style.display = 'none';
+  const det = document.getElementById('detail');
+  det.style.display = 'block';
+  det.innerHTML = 'Loading…';
+  try {
+    const {data} = await fetchJSON('/api/kb/entries/' + id);
+    det.innerHTML = `
+      <h2>Entry #${data.id}: ${escape(data.title || '(no title)')}</h2>
+      <p>
+        <span class="badge">${data.entry_type || ''}</span>
+        <span class="badge ${data.status}">${data.status}</span>
+        ${data.tags && data.tags.length ? '<span class="badge">tags: ' + escape(JSON.stringify(data.tags)) + '</span>' : ''}
+      </p>
+      <label for="content"><strong>Content:</strong></label>
+      <textarea id="content">${escape(data.content || '')}</textarea>
+      <p style="margin-top:1em">
+        <button id="save">Save</button>
+        <button id="approve">Approve (pending &rarr; approved)</button>
+        <button id="reject">Reject (pending &rarr; rejected)</button>
+      </p>
+      <p id="status"></p>
+      <p style="font-size:0.8em;color:#666">
+        created_by: ${escape(data.created_by || '')} ·
+        updated_at: ${escape(data.updated_at || '')}
+      </p>`;
+    document.getElementById('save').onclick = () => saveEntry(data.id, {content: document.getElementById('content').value});
+    document.getElementById('approve').onclick = () => saveEntry(data.id, {status: 'approved'});
+    document.getElementById('reject').onclick = () => saveEntry(data.id, {status: 'rejected'});
+  } catch (err) {
+    det.innerHTML = `<p class="err">Error loading entry: ${escape(err.message)}</p>`;
+  }
+}
+
+async function saveEntry(id, patch) {
+  const statusEl = document.getElementById('status');
+  statusEl.textContent = 'Saving…';
+  try {
+    await fetchJSON('/api/kb/entries/' + id, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(patch),
+    });
+    statusEl.innerHTML = '<span class="msg">Saved.</span>';
+    setTimeout(() => loadList(), 500);
+  } catch (err) {
+    statusEl.innerHTML = '<span class="err">Save failed: ' + escape(err.message) + '</span>';
+  }
+}
+
+function escape(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+document.getElementById('back').onclick = (e) => {
+  e.preventDefault();
+  history.pushState({}, '', location.pathname);
+  document.getElementById('list').style.display = 'block';
+  document.getElementById('detail').style.display = 'none';
+};
+window.addEventListener('hashchange', () => {
+  if (location.hash.startsWith('#id=')) {
+    const id = parseInt(location.hash.slice(4), 10);
+    if (!Number.isNaN(id)) loadDetail(id);
+  } else {
+    document.getElementById('list').style.display = 'block';
+    document.getElementById('detail').style.display = 'none';
+  }
+});
+
+loadList();
+</script>
+</body>
+</html>"""
+
+
+@mcp.custom_route("/", methods=["GET"])
+async def serve_root(request: Request) -> HTMLResponse:
+    """Root redirect-equivalent: serve the KB viewer HTML."""
+    return HTMLResponse(INDEX_HTML)
+
+
+@mcp.custom_route("/ui", methods=["GET"])
+async def serve_ui_short(request: Request) -> HTMLResponse:
+    """Bare KB viewer (BACKLOG #57). Same HTML as /."""
+    return HTMLResponse(INDEX_HTML)
+
+
+@mcp.custom_route("/ui/", methods=["GET"])
+async def serve_ui_slash(request: Request) -> HTMLResponse:
+    """Trailing-slash alias for /ui (some clients/proxies double-slash)."""
+    return HTMLResponse(INDEX_HTML)
+
+
+@mcp.custom_route("/api/kb/list", methods=["GET"])
+async def api_kb_list(request: Request) -> JSONResponse:
+    """JSON wrapper around the kb_list MCP tool. No direct DB access."""
+    try:
+        # kb_list is a regular Python function (the @mcp.tool() decorator
+        # only registers it with FastMCP — it remains callable directly).
+        entries = kb_list()
+        if entries and isinstance(entries[0], dict) and "error" in entries[0]:
+            return JSONResponse({"error": entries[0]["error"]}, status_code=400)
+        return JSONResponse({"data": entries, "count": len(entries)})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@mcp.custom_route("/api/kb/entries/{entry_id:int}", methods=["GET"])
+async def api_kb_get(request: Request) -> JSONResponse:
+    """JSON wrapper around a direct SELECT for one entry.
+
+    Note: there is no kb_get MCP tool — this endpoint uses the same DB
+    layer (read-only, no joins) that kb_list uses. UI does not need to
+    cross the MCP HTTP transport for read paths.
+    """
+    entry_id = request.path_params["entry_id"]
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM kb_entries WHERE id=?", (entry_id,))
+        row = cur.fetchone()
+        conn.close()
+        if row is None:
+            return JSONResponse({"error": "not found", "entry_id": entry_id},
+                                status_code=404)
+        return JSONResponse({"data": _row_to_dict(row)})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@mcp.custom_route("/api/kb/entries/{entry_id:int}", methods=["PATCH"])
+async def api_kb_update(request: Request) -> JSONResponse:
+    """JSON wrapper around the kb_update MCP tool. No direct DB access.
+
+    Body JSON keys mirror kb_update kwargs: content, tags, status.
+    All fields optional; at least one must be supplied.
+    """
+    entry_id = request.path_params["entry_id"]
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid JSON body"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "body must be a JSON object"},
+                            status_code=400)
+    allowed = {"content", "tags", "status"}
+    unknown = set(body) - allowed
+    if unknown:
+        return JSONResponse(
+            {"error": f"unknown fields: {sorted(unknown)}; allowed: {sorted(allowed)}"},
+            status_code=400,
+        )
+    if not body:
+        return JSONResponse(
+            {"error": "no fields to update; supply at least one of: content, tags, status"},
+            status_code=400,
+        )
+    try:
+        result = kb_update(entry_id=entry_id, **body)
+        if isinstance(result, dict) and "error" in result:
+            return JSONResponse(result, status_code=400)
+        return JSONResponse({"data": result})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="AIAMSBS kb-mcp server")
     parser.add_argument("--host", default="0.0.0.0", help="bind host (default 0.0.0.0)")
@@ -379,6 +634,8 @@ def main() -> None:
 
     # FastMCP.run() does not accept host/port kwargs in this version — set
     # via the settings object (host/port are top-level Settings fields).
+    # Custom routes registered via @mcp.custom_route() share the same
+    # streamable-http transport on this port (BACKLOG #57).
     mcp.settings.host = args.host
     mcp.settings.port = args.port
     mcp.run(transport="streamable-http")
