@@ -45,7 +45,16 @@ def _connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Load schema from init_db.sql and apply it to the database."""
+    """Load schema from init_db.sql and apply it to the database.
+
+    Migrations (idempotent — safe to run on every startup):
+      1. Add `title` column to kb_entries if missing (BACKLOG #57 follow-up).
+         Backfill existing rows with substr(content, 1, 80); customer can
+         edit titles later via the UI or kb_update.
+      2. Rebuild the kb_fts FTS5 virtual table to include the `title`
+         column. SQLAlchemy-style migrations are overkill for this scope;
+         we detect the old FTS shape (no `title` column) and rebuild.
+    """
     db_dir = os.path.dirname(DB_PATH)
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
@@ -53,6 +62,46 @@ def init_db() -> None:
         schema_sql = f.read()
     conn = _connect()
     conn.executescript(schema_sql)
+
+    # ---- Migration 1: ensure kb_entries.title exists and is populated ----
+    cols = [row[1] for row in conn.execute(
+        "PRAGMA table_info(kb_entries)"
+    ).fetchall()]
+    if "title" not in cols:
+        # Existing DB predates the title column. Add it NOT NULL with a
+        # default, then backfill from the first line of content. The
+        # CHECK constraint is added AFTER backfill so the NOT NULL
+        # default doesn't reject the ALTER TABLE on the existing rows.
+        conn.executescript("""
+            ALTER TABLE kb_entries ADD COLUMN title TEXT NOT NULL DEFAULT '';
+            UPDATE kb_entries
+            SET title = CASE
+                WHEN instr(content, char(10)) > 0
+                THEN rtrim(substr(content, 1, instr(content, char(10)) - 1))
+                ELSE substr(content, 1, 80)
+            END
+            WHERE title = '' OR title IS NULL;
+        """)
+
+    # ---- Migration 2: ensure kb_fts includes the title column ----
+    fts_cols = [row[1] for row in conn.execute(
+        "PRAGMA table_info(kb_fts)"
+    ).fetchall()]
+    if "title" not in fts_cols:
+        # Old FTS5 table doesn't have title. Drop and rebuild; repopulate
+        # from current kb_entries. The triggers (CREATE TRIGGER IF NOT
+        # EXISTS) are unchanged in init_db.sql, so they still apply.
+        conn.executescript("""
+            DROP TABLE kb_fts;
+            CREATE VIRTUAL TABLE kb_fts USING fts5(
+                title, content, tags,
+                content='kb_entries',
+                content_rowid='id'
+            );
+            INSERT INTO kb_fts(rowid, title, content, tags)
+            SELECT id, title, content, tags FROM kb_entries;
+        """)
+
     conn.commit()
     conn.close()
 
@@ -134,6 +183,7 @@ def kb_search(
 
 @mcp.tool()
 def kb_add(
+    title: str,
     content: str,
     entry_type: str,
     tags: list[str] | None = None,
@@ -147,12 +197,18 @@ def kb_add(
     status='approved' (Level 3 trust — they wrote it, they own it).
 
     Args:
+        title: REQUIRED. Short human-readable title for the entry
+            (enforced by schema CHECK constraint + this function's
+            validation). Agents and customers must both provide one.
         content: the runbook/fact/gotcha text.
         entry_type: one of 'runbook', 'fact', 'gotcha'.
         tags: optional list of tag strings; stored as a JSON array.
         source_id: optional FK to kb_sources.id.
         created_by: 'agent' (default) or 'customer'.
     """
+    if not isinstance(title, str) or not title.strip():
+        return {"error": "title is required and must be a non-empty string"}
+    title = title.strip()
     if entry_type not in VALID_ENTRY_TYPES:
         return {"error": f"entry_type must be one of {VALID_ENTRY_TYPES}"}
     if created_by not in VALID_CREATED_BY:
@@ -173,19 +229,19 @@ def kb_add(
         cur.execute(
             """
             INSERT INTO kb_entries
-                (source_id, entry_type, content, tags, created_by, status, trust_level_at_creation)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (source_id, entry_type, title, content, tags, created_by, status, trust_level_at_creation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (source_id, entry_type, content, tags_json, created_by, initial_status, initial_trust),
+            (source_id, entry_type, title, content, tags_json, created_by, initial_status, initial_trust),
         )
     else:
         cur.execute(
             """
             INSERT INTO kb_entries
-                (entry_type, content, tags, created_by, status, trust_level_at_creation)
-            VALUES (?, ?, ?, ?, ?, ?)
+                (entry_type, title, content, tags, created_by, status, trust_level_at_creation)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (entry_type, content, tags_json, created_by, initial_status, initial_trust),
+            (entry_type, title, content, tags_json, created_by, initial_status, initial_trust),
         )
     new_id = cur.lastrowid
     conn.commit()
@@ -198,6 +254,7 @@ def kb_add(
 @mcp.tool()
 def kb_update(
     entry_id: int,
+    title: str | None = None,
     content: str | None = None,
     tags: list[str] | None = None,
     status: str | None = None,
@@ -206,6 +263,8 @@ def kb_update(
 
     Args:
         entry_id: required. The id of the entry to update.
+        title: new title (if changing). Must be non-empty when supplied;
+            the schema CHECK constraint enforces non-empty at the DB level.
         content: new content (if changing).
         tags: new tags list (replaces existing).
         status: new status. Customer flips pending -> approved/rejected.
@@ -215,6 +274,8 @@ def kb_update(
     """
     if status is not None and status not in VALID_STATUSES:
         return {"error": f"status must be one of {VALID_STATUSES}"}
+    if title is not None and (not isinstance(title, str) or not title.strip()):
+        return {"error": "title must be a non-empty string"}
 
     conn = _connect()
     cur = conn.cursor()
@@ -224,6 +285,8 @@ def kb_update(
         return {"error": "not found", "entry_id": entry_id}
 
     updates: dict = {}
+    if title is not None:
+        updates["title"] = title.strip()
     if content is not None:
         updates["content"] = content
     if tags is not None:
@@ -396,13 +459,18 @@ INDEX_HTML = """<!DOCTYPE html>
   .entry { padding: 0.6em 0; border-bottom: 1px solid #eee; }
   .entry a { color: #06c; text-decoration: none; }
   .entry a:hover { text-decoration: underline; }
+  .entry .title { font-weight: bold; }
+  .entry .snippet { color: #666; font-size: 0.85em; margin-top: 2px; }
   .badge { display: inline-block; padding: 1px 6px; font-size: 0.8em;
            border-radius: 3px; background: #eee; margin-left: 0.4em; }
   .badge.pending { background: #ffd; }
   .badge.approved { background: #dfd; }
   .badge.rejected { background: #fdd; }
-  #detail, #addForm { margin-top: 1.5em; padding: 1em;
-                       background: #f8f8f8; border-radius: 4px; }
+  #detail, #addForm, #searchResults { margin-top: 1.5em; padding: 1em;
+                                       background: #f8f8f8; border-radius: 4px; }
+  #searchResults { padding: 0.5em 1em; }
+  #searchResults .entry { padding: 0.4em 0; border-bottom: 1px solid #e0e0e0; }
+  #searchResults .entry:last-child { border-bottom: none; }
   pre { white-space: pre-wrap; word-wrap: break-word; }
   textarea { width: 100%; min-height: 8em; font-family: inherit; box-sizing: border-box; }
   input[type=text] { width: 100%; padding: 0.4em; box-sizing: border-box; }
@@ -412,8 +480,14 @@ INDEX_HTML = """<!DOCTYPE html>
   button.primary { background: #06c; border: 1px solid #06c; color: #fff; }
   .msg { color: #080; font-weight: bold; }
   .err { color: #c00; font-weight: bold; }
-  .topbar { display: flex; align-items: center; gap: 1em; margin-bottom: 1em; }
+  .topbar { display: flex; align-items: center; gap: 1em; margin-bottom: 1em; flex-wrap: wrap; }
   .topbar button { margin-right: 0; }
+  .searchwrap { flex: 1; display: flex; gap: 0.5em; align-items: center; }
+  .searchwrap input { flex: 1; }
+  .searchwrap .clear { display: none; }
+  .searchwrap.hasq .clear { display: inline-block; }
+  .field-label { font-weight: bold; display: block; margin-top: 0.6em; }
+  .field-label .req { color: #c00; }
 </style>
 </head>
 <body>
@@ -421,13 +495,21 @@ INDEX_HTML = """<!DOCTYPE html>
 
 <div class="topbar">
   <a href="#" id="back">&larr; Back to list</a>
-  <span style="flex:1"></span>
+  <span class="searchwrap" id="searchWrap">
+    <input type="text" id="searchInput" placeholder="Search title, content, tags… (empty = all entries)">
+    <button class="clear" id="clearBtn" title="Clear search">×</button>
+  </span>
   <button class="primary" id="addBtn">+ Add new entry</button>
 </div>
 
+<div id="searchResults" style="display:none;"></div>
 <div id="list"></div>
 <div id="addForm" style="display:none;">
   <h2>New KB entry</h2>
+  <p>
+    <label class="field-label" for="addTitle">Title <span class="req">*</span></label>
+    <input type="text" id="addTitle" placeholder="A short, descriptive title (required)">
+  </p>
   <p>
     <label><strong>Entry type:</strong></label><br>
     <select id="addType">
@@ -437,11 +519,11 @@ INDEX_HTML = """<!DOCTYPE html>
     </select>
   </p>
   <p>
-    <label><strong>Content:</strong></label>
+    <label class="field-label" for="addContent">Content <span class="req">*</span></label>
     <textarea id="addContent" placeholder="The runbook / fact / gotcha text..."></textarea>
   </p>
   <p>
-    <label><strong>Tags (comma-separated, optional):</strong></label>
+    <label class="field-label" for="addTags">Tags <span style="font-weight:normal;color:#666">(comma-separated, optional)</span></label>
     <input type="text" id="addTags" placeholder="e.g. onboarding, phase-a, network">
   </p>
   <p>
@@ -472,8 +554,34 @@ async function fetchJSON(url, opts) {
   return body;
 }
 
+function stripSnippet(s) {
+  // FTS5 snippet markers are \u001e; strip them for clean display.
+  return (s || '').replace(/\u001e/g, '');
+}
+
+function renderEntry(e, opts) {
+  opts = opts || {};
+  const status = STATUS_BADGE[e.status] || '';
+  const type = e.entry_type || '';
+  const title = e.title || '(no title)';
+  const snippet = opts.snippet ? `<div class="snippet">${escape(stripSnippet(opts.snippet))}</div>` : '';
+  return `<div class="entry">
+    <a href="#id=${e.id}"><span class="title">${e.id}. ${escape(title)}</span></a>
+    <span class="badge ${status}">${status}</span>
+    <span class="badge">${type}</span>
+    ${snippet}
+  </div>`;
+}
+
+let currentEntry = null;
+let currentQuery = '';
+let searchDebounce = null;
+
 async function loadList() {
   const el = document.getElementById('list');
+  const res = document.getElementById('searchResults');
+  res.style.display = 'none';
+  res.innerHTML = '';
   el.innerHTML = 'Loading…';
   document.getElementById('detail').style.display = 'none';
   hideAddForm();
@@ -483,30 +591,46 @@ async function loadList() {
       el.innerHTML = '<p>No KB entries yet.</p>';
       return;
     }
-    let html = '';
-    for (const e of data) {
-      const status = STATUS_BADGE[e.status] || '';
-      const type = e.entry_type || '';
-      html += `<div class="entry">
-        <a href="#id=${e.id}"><strong>${e.id}. ${escape(e.title || '(no title)')}</strong></a>
-        <span class="badge ${status}">${status}</span>
-        <span class="badge">${type}</span>
-      </div>`;
-    }
-    el.innerHTML = html;
+    el.innerHTML = data.map(e => renderEntry(e)).join('');
     if (location.hash.startsWith('#id=')) {
       const id = parseInt(location.hash.slice(4), 10);
-      if (!Number.isNaN(id)) await loadDetail(id, data);
+      if (!Number.isNaN(id)) await loadDetail(id);
     }
   } catch (err) {
     el.innerHTML = `<p class="err">Error loading entries: ${escape(err.message)}</p>`;
   }
 }
 
-let currentEntry = null;
+async function runSearch(q) {
+  currentQuery = q;
+  const el = document.getElementById('list');
+  const res = document.getElementById('searchResults');
+  el.innerHTML = '';
+  document.getElementById('detail').style.display = 'none';
+  hideAddForm();
+  if (!q) {
+    res.style.display = 'none';
+    res.innerHTML = '';
+    loadList();
+    return;
+  }
+  res.style.display = 'block';
+  res.innerHTML = 'Searching…';
+  try {
+    const {data, count} = await fetchJSON('/api/kb/search?q=' + encodeURIComponent(q) + '&limit=50');
+    if (count === 0) {
+      res.innerHTML = `<p>No matches for &ldquo;${escape(q)}&rdquo;.</p>`;
+      return;
+    }
+    res.innerHTML = `<p style="margin:0 0 0.5em;color:#666">${count} match${count === 1 ? '' : 'es'} for &ldquo;${escape(q)}&rdquo;:</p>` + data.map(e => renderEntry(e, {snippet: e.snippet})).join('');
+  } catch (err) {
+    res.innerHTML = `<p class="err">Search failed: ${escape(err.message)}</p>`;
+  }
+}
 
-async function loadDetail(id, cachedList) {
+async function loadDetail(id) {
   document.getElementById('list').style.display = 'none';
+  document.getElementById('searchResults').style.display = 'none';
   hideAddForm();
   const det = document.getElementById('detail');
   det.style.display = 'block';
@@ -515,13 +639,16 @@ async function loadDetail(id, cachedList) {
     const {data} = await fetchJSON('/api/kb/entries/' + id);
     currentEntry = data;
     det.innerHTML = `
-      <h2>Entry #${data.id}: ${escape(data.title || '(no title)')}</h2>
+      <h2>${escape(data.title || '(no title)')}</h2>
+      <p style="color:#666">#${data.id}</p>
       <p>
         <span class="badge">${data.entry_type || ''}</span>
         <span class="badge ${data.status}">${data.status}</span>
         ${data.tags && data.tags.length ? '<span class="badge">tags: ' + escape(JSON.stringify(data.tags)) + '</span>' : ''}
       </p>
-      <label for="content"><strong>Content:</strong></label>
+      <label class="field-label" for="title">Title <span class="req">*</span></label>
+      <input type="text" id="title" value="${escape(data.title || '')}">
+      <label class="field-label" for="content">Content <span class="req">*</span></label>
       <textarea id="content">${escape(data.content || '')}</textarea>
       <p style="margin-top:1em">
         <button class="primary" id="save">Save</button>
@@ -534,7 +661,7 @@ async function loadDetail(id, cachedList) {
         created_by: ${escape(data.created_by || '')} ·
         updated_at: ${escape(data.updated_at || '')}
       </p>`;
-    document.getElementById('save').onclick = () => saveEntry(data.id, {content: document.getElementById('content').value});
+    document.getElementById('save').onclick = () => saveEntry(data.id);
     document.getElementById('approve').onclick = () => saveEntry(data.id, {status: 'approved'});
     document.getElementById('reject').onclick = () => saveEntry(data.id, {status: 'rejected'});
     document.getElementById('delete').onclick = deleteCurrent;
@@ -543,8 +670,16 @@ async function loadDetail(id, cachedList) {
   }
 }
 
-async function saveEntry(id, patch) {
+async function saveEntry(id, extra) {
+  extra = extra || {};
   const statusEl = document.getElementById('status');
+  const title = document.getElementById('title').value.trim();
+  const content = document.getElementById('content').value;
+  if (!title) {
+    statusEl.innerHTML = '<span class="err">Title is required.</span>';
+    return;
+  }
+  const patch = Object.assign({title: title, content: content}, extra);
   statusEl.textContent = 'Saving…';
   try {
     await fetchJSON('/api/kb/entries/' + id, {
@@ -553,7 +688,10 @@ async function saveEntry(id, patch) {
       body: JSON.stringify(patch),
     });
     statusEl.innerHTML = '<span class="msg">Saved.</span>';
-    setTimeout(() => loadList(), 500);
+    setTimeout(() => {
+      if (currentQuery) runSearch(currentQuery);
+      else loadList();
+    }, 500);
   } catch (err) {
     statusEl.innerHTML = '<span class="err">Save failed: ' + escape(err.message) + '</span>';
   }
@@ -568,7 +706,8 @@ async function deleteCurrent() {
     await fetchJSON('/api/kb/entries/' + id, {method: 'DELETE'});
     history.pushState({}, '', location.pathname);
     currentEntry = null;
-    loadList();
+    if (currentQuery) runSearch(currentQuery);
+    else loadList();
   } catch (err) {
     alert('Delete failed: ' + err.message);
   }
@@ -577,8 +716,9 @@ async function deleteCurrent() {
 function showAddForm() {
   document.getElementById('list').style.display = 'none';
   document.getElementById('detail').style.display = 'none';
+  document.getElementById('searchResults').style.display = 'none';
   document.getElementById('addForm').style.display = 'block';
-  document.getElementById('addContent').focus();
+  document.getElementById('addTitle').focus();
 }
 
 function hideAddForm() {
@@ -591,15 +731,22 @@ function hideAddForm() {
 document.getElementById('addBtn').onclick = showAddForm;
 
 document.getElementById('addCancel').onclick = () => {
+  document.getElementById('addTitle').value = '';
   document.getElementById('addContent').value = '';
   document.getElementById('addTags').value = '';
   hideAddForm();
-  loadList();
+  if (currentQuery) runSearch(currentQuery);
+  else loadList();
 };
 
 document.getElementById('addSubmit').onclick = async () => {
   const statusEl = document.getElementById('addStatus');
+  const title = document.getElementById('addTitle').value.trim();
   const content = document.getElementById('addContent').value.trim();
+  if (!title) {
+    statusEl.innerHTML = '<span class="err">Title is required.</span>';
+    return;
+  }
   if (!content) {
     statusEl.innerHTML = '<span class="err">Content is required.</span>';
     return;
@@ -612,6 +759,7 @@ document.getElementById('addSubmit').onclick = async () => {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
+        title: title,
         content: content,
         entry_type: document.getElementById('addType').value,
         tags: tags,
@@ -619,11 +767,13 @@ document.getElementById('addSubmit').onclick = async () => {
       }),
     });
     statusEl.innerHTML = '<span class="msg">Created.</span>';
+    document.getElementById('addTitle').value = '';
     document.getElementById('addContent').value = '';
     document.getElementById('addTags').value = '';
     setTimeout(() => {
       hideAddForm();
-      loadList();
+      if (currentQuery) runSearch(currentQuery);
+      else loadList();
     }, 600);
   } catch (err) {
     statusEl.innerHTML = '<span class="err">Create failed: ' + escape(err.message) + '</span>';
@@ -634,11 +784,27 @@ function escape(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 }
 
+// Search wiring
+const searchInput = document.getElementById('searchInput');
+const searchWrap = document.getElementById('searchWrap');
+document.getElementById('clearBtn').onclick = () => {
+  searchInput.value = '';
+  searchWrap.classList.remove('hasq');
+  runSearch('');
+};
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim();
+  searchWrap.classList.toggle('hasq', q.length > 0);
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => runSearch(q), 200);
+});
+
 document.getElementById('back').onclick = (e) => {
   e.preventDefault();
   history.pushState({}, '', location.pathname);
   document.getElementById('list').style.display = 'block';
   document.getElementById('detail').style.display = 'none';
+  document.getElementById('searchResults').style.display = 'none';
   hideAddForm();
 };
 window.addEventListener('hashchange', () => {
@@ -718,7 +884,7 @@ async def api_kb_get(request: Request) -> JSONResponse:
 async def api_kb_update(request: Request) -> JSONResponse:
     """JSON wrapper around the kb_update MCP tool. No direct DB access.
 
-    Body JSON keys mirror kb_update kwargs: content, tags, status.
+    Body JSON keys mirror kb_update kwargs: title, content, tags, status.
     All fields optional; at least one must be supplied.
     """
     entry_id = request.path_params["entry_id"]
@@ -729,7 +895,7 @@ async def api_kb_update(request: Request) -> JSONResponse:
     if not isinstance(body, dict):
         return JSONResponse({"error": "body must be a JSON object"},
                             status_code=400)
-    allowed = {"content", "tags", "status"}
+    allowed = {"title", "content", "tags", "status"}
     unknown = set(body) - allowed
     if unknown:
         return JSONResponse(
@@ -738,7 +904,7 @@ async def api_kb_update(request: Request) -> JSONResponse:
         )
     if not body:
         return JSONResponse(
-            {"error": "no fields to update; supply at least one of: content, tags, status"},
+            {"error": "no fields to update; supply at least one of: title, content, tags, status"},
             status_code=400,
         )
     try:
@@ -755,6 +921,7 @@ async def api_kb_create(request: Request) -> JSONResponse:
     """JSON wrapper around the kb_add MCP tool. No direct DB access.
 
     Body JSON keys mirror kb_add kwargs:
+      title         (required, non-empty string)
       content       (required, non-empty string)
       entry_type    (required; one of 'runbook'|'fact'|'gotcha')
       tags          (optional list of strings)
@@ -769,11 +936,18 @@ async def api_kb_create(request: Request) -> JSONResponse:
         return JSONResponse({"error": "body must be a JSON object"},
                             status_code=400)
 
-    allowed = {"content", "entry_type", "tags", "source_id", "created_by"}
+    allowed = {"title", "content", "entry_type", "tags", "source_id", "created_by"}
     unknown = set(body) - allowed
     if unknown:
         return JSONResponse(
             {"error": f"unknown fields: {sorted(unknown)}; allowed: {sorted(allowed)}"},
+            status_code=400,
+        )
+
+    title = body.get("title")
+    if not isinstance(title, str) or not title.strip():
+        return JSONResponse(
+            {"error": "title is required and must be a non-empty string"},
             status_code=400,
         )
 
@@ -814,6 +988,7 @@ async def api_kb_create(request: Request) -> JSONResponse:
 
     try:
         result = kb_add(
+            title=title,
             content=content,
             entry_type=entry_type,
             tags=tags,
@@ -823,6 +998,36 @@ async def api_kb_create(request: Request) -> JSONResponse:
         if isinstance(result, dict) and "error" in result:
             return JSONResponse(result, status_code=400)
         return JSONResponse({"data": result}, status_code=201)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@mcp.custom_route("/api/kb/search", methods=["GET"])
+async def api_kb_search(request: Request) -> JSONResponse:
+    """JSON wrapper around the kb_search MCP tool (FTS5 backend).
+
+    Query string: ?q=<query>&limit=<n>. Title + content + tags are all
+    searched (per the FTS5 schema in init_db.sql). Empty query returns
+    empty data with a hint (callers should use /api/kb/list for the
+    unfiltered listing).
+    """
+    q = request.query_params.get("q", "").strip()
+    if not q:
+        return JSONResponse(
+            {"data": [], "count": 0, "hint": "empty query; use /api/kb/list for unfiltered"},
+            status_code=200,
+        )
+    try:
+        limit = int(request.query_params.get("limit", "50"))
+    except ValueError:
+        return JSONResponse({"error": "limit must be an integer"}, status_code=400)
+    if limit < 1 or limit > 200:
+        return JSONResponse({"error": "limit must be between 1 and 200"}, status_code=400)
+    try:
+        results = kb_search(query=q, limit=limit)
+        if isinstance(results, list) and results and isinstance(results[0], dict) and "error" in results[0]:
+            return JSONResponse(results[0], status_code=400)
+        return JSONResponse({"data": results, "count": len(results), "query": q})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 

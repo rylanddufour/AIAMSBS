@@ -17,10 +17,16 @@ CREATE TABLE IF NOT EXISTS kb_sources (
 -- agents start at status=pending, trust_level=0; customer approval moves
 -- status to 'approved' (and the trust ladder can promote trust_level in
 -- a later K6 card).
+--
+-- Title is REQUIRED (CHECK constraint on non-empty) per Ryland 2026-07-29:
+-- agents and customers must both provide a title when creating an entry.
+-- The Python init_db() migration handles existing rows that pre-date
+-- the title column by backfilling from the first line of content.
 CREATE TABLE IF NOT EXISTS kb_entries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   source_id INTEGER REFERENCES kb_sources(id) ON DELETE CASCADE,
   entry_type TEXT NOT NULL CHECK(entry_type IN ('runbook', 'fact', 'gotcha')),
+  title TEXT NOT NULL CHECK(title != ''),
   content TEXT NOT NULL,
   tags TEXT,  -- JSON array
   created_by TEXT NOT NULL CHECK(created_by IN ('agent', 'customer')),
@@ -34,13 +40,14 @@ CREATE INDEX IF NOT EXISTS idx_kb_entries_status ON kb_entries(status);
 CREATE INDEX IF NOT EXISTS idx_kb_entries_source ON kb_entries(source_id);
 CREATE INDEX IF NOT EXISTS idx_kb_entries_type ON kb_entries(entry_type);
 
--- External-content FTS5 index. We index `content` (the entry body) and
--- `tags` (the JSON array as a string) so tag-based and free-text searches
--- both hit the same BM25-ranked table. The `content='kb_entries'` and
--- `content_rowid='id'` options make this a *contentless* mirror table —
--- we keep the FTS index in sync via triggers instead of letting FTS5
--- write into kb_entries directly.
+-- External-content FTS5 index. We index `title`, `content` (the entry
+-- body), and `tags` (the JSON array as a string) so title-based,
+-- tag-based, and free-text searches all hit the same BM25-ranked table.
+-- The `content='kb_entries'` and `content_rowid='id'` options make this
+-- a *contentless* mirror table — we keep the FTS index in sync via
+-- triggers instead of letting FTS5 write into kb_entries directly.
 CREATE VIRTUAL TABLE IF NOT EXISTS kb_fts USING fts5(
+  title,
   content,
   tags,
   content='kb_entries',
@@ -51,12 +58,12 @@ CREATE VIRTUAL TABLE IF NOT EXISTS kb_fts USING fts5(
 -- pattern in the update trigger is the documented FTS5 "external
 -- content" approach: we never let FTS5 see the row twice.
 CREATE TRIGGER IF NOT EXISTS kb_ai AFTER INSERT ON kb_entries BEGIN
-  INSERT INTO kb_fts(rowid, content, tags) VALUES (new.id, new.content, new.tags);
+  INSERT INTO kb_fts(rowid, title, content, tags) VALUES (new.id, new.title, new.content, new.tags);
 END;
 CREATE TRIGGER IF NOT EXISTS kb_ad AFTER DELETE ON kb_entries BEGIN
-  INSERT INTO kb_fts(kb_fts, rowid, content, tags) VALUES('delete', old.id, old.content, old.tags);
+  INSERT INTO kb_fts(kb_fts, rowid, title, content, tags) VALUES('delete', old.id, old.title, old.content, old.tags);
 END;
 CREATE TRIGGER IF NOT EXISTS kb_au AFTER UPDATE ON kb_entries BEGIN
-  INSERT INTO kb_fts(kb_fts, rowid, content, tags) VALUES('delete', old.id, old.content, old.tags);
-  INSERT INTO kb_fts(rowid, content, tags) VALUES (new.id, new.content, new.tags);
+  INSERT INTO kb_fts(kb_fts, rowid, title, content, tags) VALUES('delete', old.id, old.title, old.content, old.tags);
+  INSERT INTO kb_fts(rowid, title, content, tags) VALUES (new.id, new.title, new.content, new.tags);
 END;
