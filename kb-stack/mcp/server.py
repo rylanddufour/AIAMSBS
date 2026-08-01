@@ -206,6 +206,33 @@ def kb_add(
 ) -> dict:
     """Add a KB entry. Returns the new entry id and current state.
 
+    **TITLE IS REQUIRED.** Every entry — agent-written or customer-written,
+    runbook or fact or gotcha — must have a short, human-readable title.
+    This is enforced at THREE layers; do not try to bypass it:
+      1. The schema CHECK constraint `title != ''` rejects empty strings
+         at write time. The INSERT will fail with a constraint error.
+      2. This function validates `title` explicitly and returns
+         `{"error": "title is required and must be a non-empty string"}`
+         before touching the DB if the caller passes empty / whitespace /
+         non-string.
+      3. The kb-mcp web UI rejects the form submission with a 400 if
+         the title field is blank.
+
+    A good title is the ONE thing a human searches for six months from
+    now. It should answer: **what is this entry about, in one line?**
+
+    Examples of GOOD titles (specific, scannable, searchable):
+      - "Win11 link_down: WinRM service stopped after reboot"
+      - "Prometheus WMI exporter: port 9182 firewall rule"
+      - "Snmp v2c community string mismatch gives no-such-name"
+
+    Examples of BAD titles (too generic, defeats the purpose):
+      - "Windows issue"            — what about Windows?
+      - "Network problem"          — what kind, where?
+      - "Server fix"               — what server, what fix?
+      - "Notes"                    — notes on WHAT?
+      - The first sentence of content pasted back as a title.
+
     For MVP, all agent-written entries are created with status='pending'
     (Level 0 trust). Customer-written entries are created with
     status='approved' (Level 3 trust — they wrote it, they own it).
@@ -214,6 +241,8 @@ def kb_add(
         title: REQUIRED. Short human-readable title for the entry
             (enforced by schema CHECK constraint + this function's
             validation). Agents and customers must both provide one.
+            Search engines and humans both rely on this field — make
+            it work as a search hit BEFORE the content is even read.
         content: the runbook/fact/gotcha text.
         entry_type: one of 'runbook', 'fact', 'gotcha'.
         tags: optional list of tag strings; stored as a JSON array.
@@ -275,10 +304,21 @@ def kb_update(
 ) -> dict:
     """Update an existing KB entry.
 
+    **TITLE IS REQUIRED IF PROVIDED.** An empty title is the same mistake
+    as no title — the schema CHECK constraint rejects empty strings, so
+    don't pass `title=""` to "clear" it. Pass `title=None` (omit it) to
+    leave the title unchanged.
+
+    A good title is the ONE thing a human searches for six months from
+    now. If the existing title has gone stale (e.g., the underlying bug
+    was fixed or the symptom changed), prefer rewriting it to a new
+    specific title rather than appending to the old one.
+
     Args:
         entry_id: required. The id of the entry to update.
         title: new title (if changing). Must be non-empty when supplied;
             the schema CHECK constraint enforces non-empty at the DB level.
+            Pass `title=None` (or omit) to keep the existing title.
         content: new content (if changing).
         tags: new tags list (replaces existing).
         status: new status. Customer flips pending -> approved/rejected.
