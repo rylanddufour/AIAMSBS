@@ -1,0 +1,75 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- pytest / coverage ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# --- mypy / linters ---
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# --- Environment files (credentials) ---
+.env
+.env.*
+!.env.example
+*.env.local
+
+# Docker
+.env.mcp  # kb-mcp specific env (mcp credentials)
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# --- Docker / compose ---
+docker-compose.override.yml
+
+# --- Logs / runtime ---
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# --- Local session / agent scratch ---
+.scratch/
+.worktrees/
