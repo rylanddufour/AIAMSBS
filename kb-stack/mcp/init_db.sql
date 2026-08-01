@@ -57,13 +57,22 @@ CREATE VIRTUAL TABLE IF NOT EXISTS kb_fts USING fts5(
 -- Keep the FTS index in sync with kb_entries. The delete-then-insert
 -- pattern in the update trigger is the documented FTS5 "external
 -- content" approach: we never let FTS5 see the row twice.
-CREATE TRIGGER IF NOT EXISTS kb_ai AFTER INSERT ON kb_entries BEGIN
+--
+-- Pattern: DROP TRIGGER IF EXISTS + CREATE TRIGGER (not IF NOT EXISTS).
+-- This ensures old trigger definitions (from a pre-title schema) get
+-- replaced with the new title-aware definitions. CREATE TRIGGER IF
+-- NOT EXISTS alone would skip the new ones because the old ones match
+-- the name — that was the bug fix in commit da38e0b's follow-up.
+DROP TRIGGER IF EXISTS kb_ai;
+CREATE TRIGGER kb_ai AFTER INSERT ON kb_entries BEGIN
   INSERT INTO kb_fts(rowid, title, content, tags) VALUES (new.id, new.title, new.content, new.tags);
 END;
-CREATE TRIGGER IF NOT EXISTS kb_ad AFTER DELETE ON kb_entries BEGIN
+DROP TRIGGER IF EXISTS kb_ad;
+CREATE TRIGGER kb_ad AFTER DELETE ON kb_entries BEGIN
   INSERT INTO kb_fts(kb_fts, rowid, title, content, tags) VALUES('delete', old.id, old.title, old.content, old.tags);
 END;
-CREATE TRIGGER IF NOT EXISTS kb_au AFTER UPDATE ON kb_entries BEGIN
+DROP TRIGGER IF EXISTS kb_au;
+CREATE TRIGGER kb_au AFTER UPDATE ON kb_entries BEGIN
   INSERT INTO kb_fts(kb_fts, rowid, title, content, tags) VALUES('delete', old.id, old.title, old.content, old.tags);
   INSERT INTO kb_fts(rowid, title, content, tags) VALUES (new.id, new.title, new.content, new.tags);
 END;

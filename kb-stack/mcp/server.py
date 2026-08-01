@@ -102,6 +102,20 @@ def init_db() -> None:
             SELECT id, title, content, tags FROM kb_entries;
         """)
 
+    # ---- Migration 3: re-sync FTS rows that pre-date the new triggers ----
+    # The CREATE TRIGGER IF NOT EXISTS in init_db.sql skipped the
+    # new (title-aware) triggers when the old ones existed. New entries
+    # inserted between the FTS rebuild and the trigger fix won't have
+    # their title in kb_fts. Upsert them now. Idempotent: the INSERT
+    # OR REPLACE updates existing rows.
+    if "title" in fts_cols or "title" in [row[1] for row in conn.execute(
+        "PRAGMA table_info(kb_entries)"
+    ).fetchall()]:
+        conn.executescript("""
+            INSERT OR REPLACE INTO kb_fts(rowid, title, content, tags)
+            SELECT id, title, content, tags FROM kb_entries;
+        """)
+
     conn.commit()
     conn.close()
 
