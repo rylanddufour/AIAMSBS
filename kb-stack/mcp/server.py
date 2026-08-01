@@ -134,6 +134,47 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
     return d
 
 
+# FTS5 metacharacters that change query semantics. If any of these appear
+# in the user's query string, the user has opted into advanced syntax and
+# we pass the query through verbatim (no auto-wildcard).
+_FTS5_OPERATORS = set('"*():^')
+
+
+def _normalize_query(query: str) -> str:
+    """Make a 'plain' user query behave as a prefix search.
+
+    Background: FTS5 default tokenization matches whole tokens. `win` will
+    NOT match `Win11` because `Win11` is a different token. Users almost
+    always want prefix matching when they type a fragment — they type
+    `win` and expect to find `Win11`, `Windows`, `winrm`. SQLite's FTS5
+    supports prefix queries via the `*` suffix (e.g. `win*`).
+
+    Strategy:
+      - If the query contains any FTS5 operator (`"`, `*`, `(`, `)`, `:`,
+        `^`), pass it through verbatim — the user is doing advanced
+        syntax and we shouldn't second-guess them.
+      - Otherwise, append `*` to the last whitespace-separated token so
+        the final word becomes a prefix query. Earlier tokens stay exact
+        so multi-word queries like `snmp community` still require both
+        terms (with `community` prefix-matching).
+      - If the query is empty/whitespace, return empty string (caller
+        should handle the "no results" case explicitly).
+
+    This is the same behavior as PostgreSQL's `to_tsquery` defaults
+    (~prefix) and most user-facing search boxes (GitHub, Slack). It
+    eliminates the surprise that `win` returns 0 hits while `win*`
+    returns the expected rows.
+    """
+    query = (query or "").strip()
+    if not query:
+        return ""
+    if any(ch in _FTS5_OPERATORS for ch in query):
+        return query
+    tokens = query.split()
+    tokens[-1] = tokens[-1] + "*"
+    return " ".join(tokens)
+
+
 @mcp.tool()
 def kb_search(
     query: str, limit: int = 10, source_types: list[str] | None = None
@@ -150,7 +191,28 @@ def kb_search(
             source has one of these source_type values. Uses LEFT JOIN, so
             entries with no source (source_id NULL) are always included
             unless you also pass an explicit list.
+
+    Query syntax notes:
+
+    - **Prefix matching is automatic for the last token.** Plain queries
+      like `win` are silently rewritten to `win*` so they find `Win11`,
+      `Windows`, `winrm`, etc. Earlier tokens are matched exactly, so
+      `snmp community` finds entries containing the exact word `snmp`
+      AND something starting with `community`.
+    - **Advanced syntax passes through unchanged.** If your query
+      contains any FTS5 operator (`"`, `*`, `(`, `)`, `:`, `^`), we
+      pass it through verbatim. Use `"phrase"` for exact phrases,
+      `tok*` for explicit prefix, `tok1 OR tok2` for OR, and
+      `title:Win11` to restrict to the title column.
+    - **Hyphens are NOT word separators.** FTS5 treats `-` as a column
+      operator, so `Win11-link_down` errors with `no such column:
+      link_down`. Use a space (`Win11 link_down`) or quote the phrase
+      (`"Win11-link_down"`).
     """
+    query = _normalize_query(query)
+    if not query:
+        # Empty input — return empty list, not an FTS5 syntax error.
+        return []
     conn = _connect()
     cur = conn.cursor()
 
