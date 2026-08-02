@@ -247,15 +247,14 @@ check_prerequisites() {
         sudo apt install -y "${missing_cmds[@]}" jq
     fi
 
-    # Install Node.js 20+ (required for Hermes Dashboard web UI build)
-    if ! command -v node &> /dev/null; then
-        log_info "Installing Node.js (required for Hermes Dashboard web UI)..."
-        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-        sudo apt install -y nodejs
-        log_success "Node.js $(node --version) installed"
-    else
-        log_success "Node.js: $(node --version)"
-    fi
+    # Node.js is intentionally NOT installed here. The canonical Nous
+    # docs-site installer (install_hermes, below) ships its own
+    # Hermes-managed Node and validates it against the `engines` constraint
+    # in web/package.json — so we don't have to track upstream Node major
+    # bumps here. The previous approach (Node install here) was reverted in
+    # commit 026fd64 because the underlying issue was using a stripped-down
+    # GitHub-raw installer that doesn't manage Node; the proper fix is to
+    # delegate Node management to the docs-site installer.
 
     log_success "Prerequisites check complete"
 }
@@ -344,8 +343,19 @@ install_hermes() {
     log_info "Installing Hermes Agent..."
 
     mkdir -p "$HERMES_HOME"
-    # --skip-setup bypasses the interactive setup wizard
-    curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash -s -- --skip-setup
+    # Use the canonical Nous docs-site installer (not the GitHub raw source).
+    # The docs-site script ships a Hermes-managed Node 22 + validates against
+    # the actual `engines` constraint in web/package.json, so we don't have
+    # to track Node major versions in bootstrap.sh.
+    #   --skip-setup       bypasses the interactive LLM wizard — bootstrap's
+    #                      configure_hermes_api() writes ~/.hermes/.env and
+    #                      calls `hermes config set model.{provider,default}`
+    #                      afterwards (the docs-site installer takes no
+    #                      --provider/--model/--api-key flags by design).
+    #   --non-interactive  defensive: skip any future user-input stages.
+    #   --hermes-home      explicit data dir (default would also work via
+    #                      $HERMES_HOME env var, but explicit > implicit).
+    curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup --non-interactive --hermes-home "$HERMES_HOME"
 
     export PATH="$HERMES_HOME/.local/bin:$PATH"
 
