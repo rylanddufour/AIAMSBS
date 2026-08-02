@@ -247,14 +247,10 @@ check_prerequisites() {
         sudo apt install -y "${missing_cmds[@]}" jq
     fi
 
-    # Install Node.js 22+ (required for Hermes Dashboard web UI build;
-    # web/package.json declares engines: node>=22.22.0, npm<11.10.0 || >=11.17.0).
-    # Earlier this used setup_20.x, which silently broke the dashboard build
-    # (npm EBADENGINE on `npm install --silent`) and aborted bootstrap before
-    # deploy_main_stack / deploy_kb_stack ran — see related ticket in BACKLOG.
+    # Install Node.js 20+ (required for Hermes Dashboard web UI build)
     if ! command -v node &> /dev/null; then
         log_info "Installing Node.js (required for Hermes Dashboard web UI)..."
-        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
         sudo apt install -y nodejs
         log_success "Node.js $(node --version) installed"
     else
