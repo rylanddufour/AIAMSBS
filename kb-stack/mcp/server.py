@@ -1175,13 +1175,11 @@ def main() -> None:
 
     init_db()
 
-    # FastMCP.run() does not accept host/port kwargs in this version — set
-    # via the settings object (host/port are top-level Settings fields).
+    # FastMCP 3.x removed the `mcp.settings` attribute. Host/port are now
+    # kwargs to run() (passed through to the underlying uvicorn transport).
     # Custom routes registered via @mcp.custom_route() share the same
     # streamable-http transport on this port (BACKLOG #57).
-    mcp.settings.host = args.host
-    mcp.settings.port = args.port
-    mcp.run(transport="streamable-http")
+    mcp.run(transport="streamable-http", host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

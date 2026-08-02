@@ -253,9 +253,9 @@ def main():
 
     # FastMCP.run() does not accept host/port kwargs in this version — set via
     # the settings object (host/port are top-level Settings fields).
-    mcp.settings.host = args.host
-    mcp.settings.port = args.port
-    mcp.run(transport="streamable-http")
+    # FastMCP 3.x removed the `mcp.settings` attribute. Host/port are now
+    # kwargs to run() (passed through to the underlying uvicorn transport).
+    mcp.run(transport="streamable-http", host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
