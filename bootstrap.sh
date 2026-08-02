@@ -335,13 +335,30 @@ install_docker_compose() {
 install_hermes() {
     log_info "Checking for Hermes Agent..."
 
+    # Always ensure the Hermes-managed Node + CLI are on PATH for the rest
+    # of this bootstrap session — particularly build_dashboard_ui(), which
+    # runs `npm install` directly. The docs-site installer ships Node at
+    # $HERMES_HOME/node/bin/ (verified .220: v22.23.2, npm 10.9.8 — both
+    # meet web/package.json's `engines` constraint) and the hermes CLI at
+    # $HERMES_HOME/.local/bin/. Neither is on the default PATH, so without
+    # this export `npm` is unfindable. This must run on EVERY bootstrap
+    # invocation — including re-runs where Hermes is already installed and
+    # the install below is skipped — hence why it sits above the
+    # idempotency check.
+    export PATH="$HERMES_HOME/node/bin:$HERMES_HOME/.local/bin:$PATH"
+
+    if ! grep -q 'hermes-infrastructure' ~/.bashrc 2>/dev/null; then
+        echo '' >> ~/.bashrc
+        echo '# Hermes Infrastructure' >> ~/.bashrc
+        echo 'export PATH="$HOME/.hermes/node/bin:$HOME/.hermes/.local/bin:$PATH"' >> ~/.bashrc
+    fi
+
     if [ -f "$HERMES_HOME/hermes-agent/venv/bin/hermes" ]; then
         log_success "Hermes is already installed"
         return 0
     fi
 
     log_info "Installing Hermes Agent..."
-
     mkdir -p "$HERMES_HOME"
     # Use the canonical Nous docs-site installer (not the GitHub raw source).
     # The docs-site script ships a Hermes-managed Node 22 + validates against
@@ -356,20 +373,6 @@ install_hermes() {
     #   --hermes-home      explicit data dir (default would also work via
     #                      $HERMES_HOME env var, but explicit > implicit).
     curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup --non-interactive --hermes-home "$HERMES_HOME"
-
-    # Add the docs-site installer's managed Node to PATH for everything that
-    # runs after install_hermes() in this bootstrap, particularly
-    # build_dashboard_ui(). The installer ships Node at $HERMES_HOME/node/bin
-    # (verified .220: v22.23.2) and the Hermes CLI at $HERMES_HOME/.local/bin
-    # — neither is on the default PATH, so without this export `npm` is
-    # unfindable once the host's apt-installed Node is removed.
-    export PATH="$HERMES_HOME/node/bin:$HERMES_HOME/.local/bin:$PATH"
-
-    if ! grep -q 'hermes-infrastructure' ~/.bashrc 2>/dev/null; then
-        echo '' >> ~/.bashrc
-        echo '# Hermes Infrastructure' >> ~/.bashrc
-        echo 'export PATH="$HOME/.hermes/node/bin:$HOME/.hermes/.local/bin:$PATH"' >> ~/.bashrc
-    fi
 
     log_success "Hermes Agent installed to $HERMES_HOME"
 }
@@ -386,10 +389,13 @@ clone_infra_repo() {
     if [ -d "$infra_dir/.git" ]; then
         log_info "Repository already exists, pulling latest..."
         cd "$infra_dir"
-        git pull origin "$INFRA_BRANCH" 2>/dev/null || log_warn "Could not pull latest"
+        # Redirect BOTH stdout and stderr — stdout "Already up to date." or
+        # "Updating abc..def" would otherwise leak into $() capture and
+        # contaminate INFRA_DIR (used as a path everywhere downstream).
+        git pull origin "$INFRA_BRANCH" >/dev/null 2>&1 || log_warn "Could not pull latest"
     else
         log_info "Cloning from $INFRA_REPO"
-        git clone -b "$INFRA_BRANCH" "$INFRA_REPO" "$infra_dir"
+        git clone -b "$INFRA_BRANCH" "$INFRA_REPO" "$infra_dir" >/dev/null 2>&1
     fi
 
     log_success "Infrastructure repository ready at $infra_dir"
