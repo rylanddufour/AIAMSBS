@@ -357,12 +357,18 @@ install_hermes() {
     #                      $HERMES_HOME env var, but explicit > implicit).
     curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup --non-interactive --hermes-home "$HERMES_HOME"
 
-    export PATH="$HERMES_HOME/.local/bin:$PATH"
+    # Add the docs-site installer's managed Node to PATH for everything that
+    # runs after install_hermes() in this bootstrap, particularly
+    # build_dashboard_ui(). The installer ships Node at $HERMES_HOME/node/bin
+    # (verified .220: v22.23.2) and the Hermes CLI at $HERMES_HOME/.local/bin
+    # — neither is on the default PATH, so without this export `npm` is
+    # unfindable once the host's apt-installed Node is removed.
+    export PATH="$HERMES_HOME/node/bin:$HERMES_HOME/.local/bin:$PATH"
 
     if ! grep -q 'hermes-infrastructure' ~/.bashrc 2>/dev/null; then
         echo '' >> ~/.bashrc
         echo '# Hermes Infrastructure' >> ~/.bashrc
-        echo 'export PATH="$HOME/.hermes/.local/bin:$PATH"' >> ~/.bashrc
+        echo 'export PATH="$HOME/.hermes/node/bin:$HOME/.hermes/.local/bin:$PATH"' >> ~/.bashrc
     fi
 
     log_success "Hermes Agent installed to $HERMES_HOME"
