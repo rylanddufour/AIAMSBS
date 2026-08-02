@@ -23,7 +23,7 @@ import json
 import os
 import sqlite3
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
 

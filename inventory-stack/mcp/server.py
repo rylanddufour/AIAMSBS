@@ -2,7 +2,7 @@ import argparse
 import os
 import sqlite3
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 DB_PATH = os.environ.get("INVENTORY_DB_PATH", "/data/inventory.db")
 SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "init_db.sql")
