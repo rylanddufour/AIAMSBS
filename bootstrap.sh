@@ -227,6 +227,25 @@ resolve_provider_model() {
 # Pre-flight Checks
 # ============================================
 
+# Block until the dpkg lock is released, or timeout after ${1:-300}s.
+# Common contention with unattended-upgrades (Ubuntu's automatic security-
+# update service), which holds the dpkg lock while applying security
+# updates in the background. Returns 0 when safe to apt, non-zero on
+# timeout. Call once immediately before each `sudo apt(-get) ...`.
+wait_for_dpkg_lock() {
+    local timeout="${1:-300}"  # default 5 minutes
+    local elapsed=0
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+        if [ "$elapsed" -ge "$timeout" ]; then
+            log_error "Timed out waiting for dpkg lock (${timeout}s)"
+            return 1
+        fi
+        sleep 5
+        elapsed=$((elapsed + 5))
+    done
+    return 0
+}
+
 check_prerequisites() {
     log_info "Running prerequisites check..."
 
@@ -243,7 +262,9 @@ check_prerequisites() {
 
     if [ ${#missing_cmds[@]} -ne 0 ]; then
         log_info "Installing missing dependencies: ${missing_cmds[*]}"
+        wait_for_dpkg_lock || return 1
         sudo apt update
+        wait_for_dpkg_lock || return 1
         sudo apt install -y "${missing_cmds[@]}" jq
     fi
 
@@ -273,7 +294,9 @@ install_docker() {
 
     log_info "Installing Docker..."
 
+    wait_for_dpkg_lock || return 1
     sudo apt update
+    wait_for_dpkg_lock || return 1
     sudo apt install -y \
         apt-transport-https \
         ca-certificates \
@@ -288,7 +311,9 @@ install_docker() {
         "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
         $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
+    wait_for_dpkg_lock || return 1
     sudo apt update
+    wait_for_dpkg_lock || return 1
     sudo apt install -y \
         docker-ce \
         docker-ce-cli \
@@ -1713,7 +1738,9 @@ deploy_kb_stack() {
     done
     if [ ${#missing_mount_pkgs[@]} -ne 0 ]; then
         log_info "Installing KB mount dependencies: ${missing_mount_pkgs[*]}"
+        wait_for_dpkg_lock || return 1
         sudo apt-get update -qq
+        wait_for_dpkg_lock || return 1
         sudo apt-get install -y "${missing_mount_pkgs[@]}"
     else
         log_success "KB mount dependencies present: ${kb_mount_pkgs[*]}"
