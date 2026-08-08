@@ -11,6 +11,7 @@
 #      the agent codebase: profiles, sessions, kanban, cron jobs, .env, etc.)
 #   4. Inventory MCP SQLite database (via sqlite3 .backup + docker cp)
 #   5. KB MCP SQLite database (same pattern)
+#   5b. Vaultwarden SQLite database (BACKLOG #48, sqlite3 .backup + docker cp)
 #   6. Grafana-stack yml configs (alloy, blackbox, loki, prometheus, promtail,
 #      datasources, dashboards.yml provisioning config)
 #
@@ -172,6 +173,29 @@ else
     log "WARN: kb-mcp container not running; skipping KB DB"
 fi
 
+
+# ===== 5b. Vaultwarden DB =====
+# BACKLOG #48. vaultwarden uses SQLite at /data/db.sqlite3. Use the .backup
+# command for an online backup (no locking) since vaultwarden is a live
+# service; docker cp the .bak out and clean up. The image ships sqlite3 CLI.
+VAULTWARDEN_SIZE=0
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx 'vaultwarden'; then
+    log "Backing up vaultwarden DB"
+    if docker exec vaultwarden sh -c "sqlite3 /data/db.sqlite3 ".backup '/data/db.sqlite3.bak'"" 2>>"$WORK/db.err"; then
+        if docker cp vaultwarden:/data/db.sqlite3.bak "$WORK/db/vaultwarden.db" 2>>"$WORK/db.err"; then
+            VAULTWARDEN_SIZE=$(stat -c%s "$WORK/db/vaultwarden.db" 2>/dev/null || echo 0)
+            log "  vaultwarden DB: $VAULTWARDEN_SIZE bytes"
+        else
+            log "  WARN: docker cp of vaultwarden failed"
+        fi
+        docker exec vaultwarden rm -f /data/db.sqlite3.bak 2>/dev/null || true
+    else
+        log "  WARN: sqlite3 backup of vaultwarden failed (image may lack sqlite3 CLI)"
+    fi
+else
+    log "WARN: vaultwarden container not running; skipping vaultwarden DB"
+fi
+
 # ===== 6. Config yml files =====
 log "Copying yml config files"
 for f in alloy.yml blackbox.yml loki.yml prometheus.yml promtail.yml; do
@@ -196,6 +220,7 @@ PROV_COUNT="$PROV_COUNT" \
 HERMES_SIZE="$HERMES_SIZE" \
 INVENTORY_SIZE="$INVENTORY_SIZE" \
 KB_SIZE="$KB_SIZE" \
+VAULTWARDEN_SIZE="$VAULTWARDEN_SIZE" \
 AIAMSBS_DIR="$AIAMSBS_DIR" \
 GRAFANA_URL="$GRAFANA_URL" \
 python3 - <<'PY' > "$WORK/MANIFEST.json"
@@ -210,6 +235,7 @@ print(json.dumps({
     "hermes_zip_size_bytes": int(os.environ.get("HERMES_SIZE", "0")),
     "inventory_db_size_bytes": int(os.environ.get("INVENTORY_SIZE", "0")),
     "kb_db_size_bytes": int(os.environ.get("KB_SIZE", "0")),
+    "vaultwarden_db_size_bytes": int(os.environ.get("VAULTWARDEN_SIZE", "0")),
 }, indent=2))
 PY
 

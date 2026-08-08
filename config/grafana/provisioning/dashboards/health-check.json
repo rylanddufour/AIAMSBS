@@ -913,6 +913,51 @@
           "showMiniMap": false
         }
       }
+    },
+    {
+      "id": 80,
+      "title": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 8,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "probe_success{job=\"blackbox\",instance=\"http://localhost:8003/alive\"}",
+          "refId": "A",
+          "legendFormat": "Vaultwarden"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red"
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "name"
+      }
     }
   ],
   "revision": 3

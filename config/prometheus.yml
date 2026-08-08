@@ -67,6 +67,7 @@ scrape_configs:
           - http://localhost:3100/ready          # Loki
           - http://localhost:9090/-/ready        # Prometheus
           - http://localhost:12345/-/ready       # Alloy
+          - http://localhost:8003/alive          # Vaultwarden (BACKLOG #48)
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
