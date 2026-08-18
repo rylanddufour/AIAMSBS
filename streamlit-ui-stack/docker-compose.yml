@@ -45,11 +45,12 @@ services:
       # under ./data/. alloy on the host tails a sibling path; see below.
       - ./data:/data/streamlit-ui:rw
       # Bind-mount the source so editing a .py file live-reloads
-      # (server.runOnSave=true in the Dockerfile ENTRYPOINT).
+      # (server.runOnSave=true in the Dockerfile ENTRYPOINT). The
+      # .streamlit/config.toml lives INSIDE this directory so the theme
+      # + server settings are picked up at /app/streamlit-app/.streamlit/
+      # without needing a separate nested bind mount (which fails because
+      # /app/streamlit-app is read-only).
       - ./streamlit-app:/app/streamlit-app:ro
-      # .streamlit/config.toml (theme + server settings). Bind-mounted so
-      # theme tweaks don't require a rebuild either.
-      - ./.streamlit:/app/streamlit-app/.streamlit:ro
     environment:
       # ---- Auth (single admin for v1.0) ----
       # bcrypt hash is the production path; _PASSWORD is the v1.0 private-
