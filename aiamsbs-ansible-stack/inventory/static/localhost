@@ -1,0 +1,5 @@
+---
+# Minimal localhost inventory for hello.yml. Same shape as Card 4 / Card 7
+# will use for real customer playbooks (one host per line, optional
+# ansible_host= override).
+localhost ansible_connection=local

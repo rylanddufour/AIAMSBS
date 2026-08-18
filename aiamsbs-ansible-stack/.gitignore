@@ -1,0 +1,4 @@
+# Runtime artifacts — never commit. The host's alloy tails ./logs/*.log
+# and the docker socket mounts ./artifacts/ for ansible facts cache.
+logs/
+artifacts/

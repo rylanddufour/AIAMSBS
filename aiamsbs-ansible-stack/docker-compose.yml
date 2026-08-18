@@ -1,0 +1,85 @@
+# AIAMSBS v1.0 Ansible execution side (BACKLOG #64, Card 2).
+#
+# Two sibling containers on the shared `monitoring` Docker network:
+#
+#   aiamsbs-ansible         — stock Ansible runtime. NO exposed port.
+#                              Stays alive so the runner can docker exec
+#                              into it. Mounts /ansible/{playbooks,
+#                              inventory,artifacts,logs} from the host.
+#
+#   aiamsbs-ansible-runner  — thin FastAPI bridge. ONLY container with
+#                              /var/run/docker.sock mounted. Streamlit
+#                              (Card 3) talks to this over HTTP, which
+#                              then `docker exec`s the ansible container.
+#                              No host port — backend service on the
+#                              monitoring network only.
+#
+# Both containers share the same /ansible/logs bind mount so the host's
+# Grafana Alloy tails one NDJSON directory and ships everything to Loki
+# with stable labels {job="aiamsbs-ansible", source="aiamsbs_host"}.
+
+services:
+  aiamsbs-ansible:
+    build:
+      context: .
+      dockerfile: aiamsbs-ansible/Dockerfile
+    image: aiamsbs_aiamsbs-ansible
+    container_name: aiamsbs-ansible
+    # No exposed port. Lives on the monitoring network only.
+    networks:
+      - monitoring
+    volumes:
+      # Playbook sources — bind-mounted so customers (and the runner) can
+      # drop playbooks into a known host path.
+      - ./playbooks/customer:/ansible/playbooks/customer:rw
+      - ./playbooks/generated:/ansible/playbooks/generated:rw
+      # Inventory files (static = hand-edited, generated = script-built).
+      - ./inventory/static:/ansible/inventory/static:rw
+      - ./inventory/generated:/ansible/inventory/generated:rw
+      # Playbook output: facts cache, callback results.
+      - ./artifacts:/ansible/artifacts:rw
+      # loki_logger NDJSON output. Alloy on the host tails this directory.
+      - ./logs:/ansible/logs:rw
+    restart: unless-stopped
+
+  aiamsbs-ansible-runner:
+    build:
+      context: .
+      dockerfile: aiamsbs-ansible-runner/Dockerfile
+    image: aiamsbs_aiamsbs-ansible-runner
+    container_name: aiamsbs-ansible-runner
+    # No host port. Lives on the monitoring network; Streamlit (Card 3)
+    # reaches it via the container name on the network.
+    networks:
+      - monitoring
+    volumes:
+      # docker socket — the ONLY reason this container can be a privilege
+      # boundary for the rest of the stack. Streamlit never sees it.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Shared log directory with aiamsbs-ansible (same host path).
+      - ./logs:/ansible/logs:rw
+      # loki_logger module — bind-mounted for fast iteration during dev
+      # (changes to loki_logger.py without rebuild).
+      - ./loki_logger.py:/app/loki_logger.py:ro
+    environment:
+      # Default dev secret. Production: set RUNNER_HMAC_SECRET in
+      # /home/ansible/AIAMSBS/.env or via compose --env-file.
+      - RUNNER_HMAC_SECRET=${RUNNER_HMAC_SECRET:-dev-secret-rotate-me}
+      - ANSIBLE_CONTAINER_NAME=aiamsbs-ansible
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - PYTHONPATH=/app
+    # Healthcheck: hit /health inside the container over the local socket.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    # Order: ansible container first so the runner's healthcheck finds it.
+    depends_on:
+      aiamsbs-ansible:
+        condition: service_started
+
+networks:
+  monitoring:
+    external: true

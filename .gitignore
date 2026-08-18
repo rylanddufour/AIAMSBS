@@ -73,3 +73,7 @@ logs/
 # --- Local session / agent scratch ---
 .scratch/
 .worktrees/
+
+# --- aiamsbs-ansible-stack runtime artifacts ---
+aiamsbs-ansible-stack/artifacts/
+aiamsbs-ansible-stack/logs/

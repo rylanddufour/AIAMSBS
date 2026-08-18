@@ -1,0 +1,12 @@
+---
+# hello.yml — trivial test playbook for Card 2 E2E verification.
+# Runs `debug: msg=hi` against the local inventory. Returns 0.
+# Used by `curl POST /run` happy-path test.
+- name: Hello (E2E smoke test)
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  tasks:
+    - name: Print hi
+      ansible.builtin.debug:
+        msg: "hello from aiamsbs-ansible"

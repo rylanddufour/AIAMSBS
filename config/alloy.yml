@@ -73,3 +73,29 @@ loki.write "systemd" {
         url = "http://loki:3100/loki/api/v1/push"
     }
 }
+
+// ----------------------------------------------------------------------------
+// aiamsbs-ansible-stack (BACKLOG #64, Card 2)
+// Tail NDJSON files written by /home/ansible/AIAMSBS/aiamsbs-ansible-stack/logs/*.log
+// (the bind-mounted /ansible/logs inside both aiamsbs-ansible and
+// aiamsbs-ansible-runner). loki_logger.py appends to one file per stream.
+// ----------------------------------------------------------------------------
+
+local.file_match "aiamsbs_ansible" {
+    path_targets = [{
+        __path__ = "/home/ansible/AIAMSBS/aiamsbs-ansible-stack/logs/*.log",
+        job      = "aiamsbs-ansible",
+        source   = "aiamsbs_host",
+    }]
+}
+
+loki.source.file "aiamsbs_ansible" {
+    targets    = local.file_match.aiamsbs_ansible.targets
+    forward_to = [loki.write.aiamsbs_ansible.receiver]
+}
+
+loki.write "aiamsbs_ansible" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}
