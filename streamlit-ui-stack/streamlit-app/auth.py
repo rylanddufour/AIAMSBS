@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import hmac
 import os
 import warnings
 
@@ -63,12 +64,10 @@ def _verify_password(submitted: str) -> bool:
             pass
     p = _expected_admin_password()
     if p:
-        # Constant-time-ish: bcrypt the candidate too (cheap). Avoids leaking
-        # the match length through naive str equality.
-        return bcrypt.checkpw(
-            submitted.encode("utf-8"),
-            bcrypt.hashpw(p.encode("utf-8"), bcrypt.gensalt()),
-        ) and submitted == p
+        # Constant-time string compare so attackers can't probe the length
+        # of the password by timing the response. hmac.compare_digest is
+        # the standard library's recommended primitive for this.
+        return hmac.compare_digest(submitted.encode("utf-8"), p.encode("utf-8"))
     return False
 
 
@@ -101,6 +100,16 @@ def render_login_form() -> bool:
     st.session_state["authenticated"] = True
     st.session_state["user"] = username
     st.session_state["user_id"] = user_id
+    # Emit a streamlit_login event to Loki for the audit trail.
+    try:
+        from loki_logger import log_event
+        log_event("streamlit", {
+            "event": "streamlit_login",
+            "user_id": user_id,
+            "username": username,
+        })
+    except Exception:
+        pass  # logging failures must never block login
     return True
 
 
