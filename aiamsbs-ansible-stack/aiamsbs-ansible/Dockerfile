@@ -54,7 +54,7 @@ COPY loki_logger.py /ansible/loki_logger.py
 # Entrypoint keeps the container alive indefinitely so the runner can
 # docker exec into it. The runner does NOT manage ansible processes
 # directly — it shells out to `docker exec` on this container.
-COPY entrypoint.sh /ansible/entrypoint.sh
+COPY aiamsbs-ansible/entrypoint.sh /ansible/entrypoint.sh
 RUN chmod +x /ansible/entrypoint.sh
 
 # /ansible subpaths match the bind mounts in docker-compose.yml:

@@ -38,7 +38,7 @@ WORKDIR /app
 # THIS container too — same as in aiamsbs-ansible. Both containers see
 # the same files, alloy reads them once.
 COPY loki_logger.py /app/loki_logger.py
-COPY main.py /app/main.py
+COPY aiamsbs-ansible-runner/main.py /app/main.py
 
 EXPOSE 8000
 
