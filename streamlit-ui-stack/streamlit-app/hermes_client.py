@@ -141,9 +141,29 @@ class HermesAPIError(HermesClientError):
 # ---------------------------------------------------------------------------
 
 def hermes_api_base_url() -> str:
-    """Return the Hermes API server base URL (with /v1 suffix)."""
+    """Return the Hermes API server base URL (with /v1 suffix).
+
+    This is the base for /v1/responses + /v1/models (OpenAI Responses
+    API shape). For /api/sessions the gateway serves them at the ROOT
+    (not under /v1/), so list_sessions / get_session / delete_session
+    use `_api_base()` below instead of this URL.
+    """
     v = os.environ.get("HERMES_API_BASE_URL", "").strip()
     return v or "http://host.docker.internal:8642/v1"
+
+
+def _api_base() -> str:
+    """Base URL for non-/v1 endpoints (/api/sessions, etc.).
+
+    Hermes serves the session API at the root of the gateway, not under
+    /v1/, so we strip the trailing /v1 from the configured base. If
+    the operator sets HERMES_API_BASE_URL=http://host:8642 (no /v1),
+    we use it as-is.
+    """
+    base = hermes_api_base_url().rstrip("/")
+    if base.endswith("/v1"):
+        return base[: -len("/v1")]
+    return base
 
 
 def hermes_api_key() -> str:
@@ -202,17 +222,23 @@ def _hermes_request(
             "HERMES_API_KEY is not set in the streamlit-ui container env. "
             "Set it in docker-compose.yml (or .env) and rebuild."
         )
-    base = hermes_api_base_url().rstrip("/")
-    # If the base ends in /v1 and the path starts with v1/, strip one.
-    if base.endswith("/v1") and path.startswith("v1/"):
-        path = path[len("v1/"):]
-    # If the base does NOT end in /v1 and the path starts with /v1, strip it.
-    if not base.endswith("/v1") and path.startswith("/v1"):
-        path = path[len("/v1"):]
-    # Likewise for /api/ — callers pass either "api/sessions" or "/api/sessions".
-    if path.startswith("/api/"):
-        path = path[1:]
-    url = f"{base}/{path.lstrip('/')}"
+    # /v1/* paths (POST /v1/responses, GET /v1/models) use the configured
+    # base (which ends in /v1). /api/* paths (GET /api/sessions) are
+    # served at the root of the gateway, so we swap to _api_base() for
+    # those. This avoids accidentally building /v1/api/sessions.
+    if path.startswith("/api/") or path.startswith("api/"):
+        base = _api_base()
+        # normalize the leading-slash form
+        p = path.lstrip("/")
+    else:
+        base = hermes_api_base_url().rstrip("/")
+        if base.endswith("/v1") and path.startswith("v1/"):
+            p = path[len("v1/"):]
+        elif not base.endswith("/v1") and path.startswith("/v1"):
+            p = path[len("/v1"):]
+        else:
+            p = path.lstrip("/")
+    url = f"{base}/{p.lstrip('/')}"
     headers = {
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
