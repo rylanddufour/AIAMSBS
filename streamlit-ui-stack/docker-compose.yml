@@ -1,0 +1,88 @@
+# AIAMSBS v1.0 customer Streamlit UI stack (BACKLOG #64, Card 3).
+#
+# One sibling container on the shared `monitoring` Docker network:
+#
+#   streamlit-ui — python:3.12-slim + streamlit + bcrypt + httpx.
+#                  Exposes 8501 to the host (the ONLY port this stack
+#                  publishes). Talks to the rest of AIAMSBS over HTTP
+#                  on the monitoring network.
+#
+# What streamlit-ui talks to (all by container name on `monitoring`):
+#   - aiamsbs-ansible-runner:8000   (Card 2; HMAC-signed playbook exec)
+#   - kb-mcp:8002                   (BACKLOG #39; KB search; Card 6)
+#   - inventory-mcp:8001            (BACKLOG #39.2; device inventory; Card 6)
+#   - loki:3100                     (log query; out of scope this card)
+#
+# What streamlit-ui does NOT touch:
+#   - /var/run/docker.sock — that's aiamsbs-ansible-runner's job (Card 2).
+#     Streamlit -> runner -> docker exec is the privilege-bounded path.
+#   - The host filesystem beyond ./data and the loki log bind mount.
+
+services:
+  streamlit-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aiamsbs_streamlit-ui
+    container_name: streamlit-ui
+    # Port 8501 is the ONLY host-side port this v1.0 customer stack exposes.
+    # Streamlit's /_stcore/health endpoint responds on this port too, which
+    # is what the orchestrator's verify list curls.
+    ports:
+      - "0.0.0.0:8501:8501"
+    # Hermes Web Dashboard runs on the host (s6-overlay), not in a container.
+    # `host-gateway` is Docker's special alias that resolves to the host's
+    # bridge IP at container-start time (Linux Docker 20.10+, macOS, Windows).
+    # So HERMES_URL=http://host.docker.internal:9119 inside the container
+    # hits the host's port 9119. This works for both Linux bridge networks
+    # and Docker Desktop without operator config.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - monitoring
+    volumes:
+      # SQLite DB (streamlit-ui.db) + loki_logger NDJSON output. Both live
+      # under ./data/. alloy on the host tails a sibling path; see below.
+      - ./data:/data/streamlit-ui:rw
+      # Bind-mount the source so editing a .py file live-reloads
+      # (server.runOnSave=true in the Dockerfile ENTRYPOINT).
+      - ./streamlit-app:/app/streamlit-app:ro
+      # .streamlit/config.toml (theme + server settings). Bind-mounted so
+      # theme tweaks don't require a rebuild either.
+      - ./.streamlit:/app/streamlit-app/.streamlit:ro
+    environment:
+      # ---- Auth (single admin for v1.0) ----
+      # bcrypt hash is the production path; _PASSWORD is the v1.0 private-
+      # deployment fallback (logs a warning at startup, does not crash).
+      # Both default to dev values so the orchestrator's mechanical
+      # acceptance checks can log in. Production sets _PASSWORD_HASH and
+      # leaves _PASSWORD unset.
+      - STREAMLIT_ADMIN_USERNAME=${STREAMLIT_ADMIN_USERNAME:-admin}
+      - STREAMLIT_ADMIN_PASSWORD_HASH=${STREAMLIT_ADMIN_PASSWORD_HASH:-}
+      - STREAMLIT_ADMIN_PASSWORD=${STREAMLIT_ADMIN_PASSWORD:-admin}
+      # ---- Backend URLs (resolved on the monitoring network) ----
+      - HERMES_URL=${HERMES_URL:-http://host.docker.internal:9119}
+      - KB_MCP_URL=${KB_MCP_URL:-http://kb-mcp:8002}
+      - INVENTORY_MCP_URL=${INVENTORY_MCP_URL:-http://inventory-mcp:8001}
+      - LOKI_URL=${LOKI_URL:-http://loki:3100}
+      - ANSIBLE_RUNNER_URL=${ANSIBLE_RUNNER_URL:-http://aiamsbs-ansible-runner:8000}
+      - GRAFANA_URL=${GRAFANA_URL:-http://grafana:3000}
+      # ---- Customer name (for the "AIAMSBS v1.0 — Customer <name>" header) ----
+      - AIAMSBS_CUSTOMER_NAME=${AIAMSBS_CUSTOMER_NAME:-dufour-int}
+      # ---- Loki logger output dir ----
+      # loki_logger.py uses /ansible/logs by default; override to the
+      # bind-mount path so NDJSON lands under ./data/logs/.
+      - LOKI_LOG_DIR=/data/streamlit-ui/logs
+    healthcheck:
+      # Same probe as the Dockerfile HEALTHCHECK, but reachable from the
+      # host (Docker's HEALTHCHECK runs inside the container network ns).
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8501/_stcore/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+networks:
+  monitoring:
+    external: true
