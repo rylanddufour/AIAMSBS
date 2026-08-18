@@ -1,0 +1,70 @@
+# AIAMSBS v1.0 private-customer overlay compose (BACKLOG #64, Card 7).
+#
+# This file is the **single customer-facing entry point** for the
+# v1.0 features (BACKLOG #64, Cards 2-6):
+#
+#   - aiamsbs-ansible         (Card 2 — stock Ansible runtime)
+#   - aiamsbs-ansible-runner  (Card 2 — FastAPI bridge with docker.sock)
+#   - streamlit-ui            (Cards 3-6 — Streamlit customer UI)
+#
+# The overlay is intentionally thin: it pulls the per-service definitions
+# from the existing Card 2/3 compose files via top-level `include:` and
+# only adds a `aiamsbs-v1-private=true` label so the E2E verify step can
+# filter on it (`docker ps --filter label=aiamsbs-v1-private`).
+#
+# Why an overlay and not a new top-level compose?
+#   * The main `docker-compose.yml` brings up the `monitoring` Docker
+#     network. Without the main stack, the v1.0 services have nowhere
+#     to attach.
+#   * The Card 2/3 inner compose files are the source of truth for
+#     each service's image, bind mounts, env, and healthcheck. Duplicating
+#     them here would drift the moment Card 2 or Card 3 changes a label.
+#   * Re-running `docker compose -f docker-compose.yml -f docker-compose.v1-private.yml
+#     up -d` is a no-op for already-up services and idempotent for the
+#     ones that aren't (Docker Compose skips rebuilds when the image +
+#     context are unchanged).
+#
+# Customer install:
+#   cd ~/AIAMSBS
+#   docker compose -f docker-compose.yml -f docker-compose.v1-private.yml up -d
+#
+# Or via bootstrap.sh:
+#   bash bootstrap.sh --v1-private --api-key $OPENROUTER_API_KEY
+#
+# Idempotency:
+#   * Re-running `up -d` with no changes → no images rebuilt, no
+#     recreate. The `--remove-orphans` flag is only used by the E2E
+#     verify step when going back to a clean slate.
+#   * Removing v1.0 only (without touching the main stack):
+#       docker compose -f docker-compose.v1-private.yml down --remove-orphans
+
+include:
+  - path: ./aiamsbs-ansible-stack/docker-compose.yml
+  - path: ./streamlit-ui-stack/docker-compose.yml
+
+# Label the three v1.0 services so `docker ps --filter label=aiamsbs-v1-private`
+# is the canonical "is the v1.0 stack up?" check. The override is additive —
+# all other fields (image, build, env, volumes, networks, healthcheck) come
+# from the included compose files.
+services:
+  aiamsbs-ansible:
+    labels:
+      aiamsbs-v1-private: "true"
+      aiamsbs-card: "2"
+  aiamsbs-ansible-runner:
+    labels:
+      aiamsbs-v1-private: "true"
+      aiamsbs-card: "2"
+  streamlit-ui:
+    labels:
+      aiamsbs-v1-private: "true"
+      aiamsbs-card: "3"
+
+# All three services attach to the `monitoring` network, which is created
+# by the main docker-compose.yml and marked external here. If the main
+# stack is not up, `up -d` will fail with "network monitoring not found"
+# — that's intentional. The overlay is meant to extend, not replace.
+networks:
+  monitoring:
+    external: true
+    name: monitoring

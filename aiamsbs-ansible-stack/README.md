@@ -158,3 +158,37 @@ SMB network device / Windows server automation.
 - Card 4: Run Playbook UI — owns the confirmation flow + HMAC client.
 - Card 7: E2E + bootstrap — owns `deploy_aiamsbs_ansible_stack()` and
   the customer overlay compose.
+
+---
+
+## Card 7 integration (BACKLOG #64, Card 7)
+
+As of Card 7 this stack is **never deployed standalone** on a customer
+host. The customer-facing install path is the overlay compose at the
+repo root:
+
+```bash
+cd ~/AIAMSBS
+docker compose -f docker-compose.yml -f docker-compose.v1-private.yml up -d
+```
+
+The overlay `include:`s `aiamsbs-ansible-stack/docker-compose.yml` (this
+file) and `streamlit-ui-stack/docker-compose.yml`, so the bind mounts,
+env vars, healthchecks, and image tags defined here flow through
+unchanged. The overlay only adds a `aiamsbs-v1-private=true` label to
+the three v1.0 services (so `docker ps --filter label=aiamsbs-v1-private`
+is the canonical "is the v1.0 stack up?" check).
+
+`bootstrap.sh` gains two new functions called from `main()`:
+
+- `deploy_aiamsbs_ansible_stack()` — gated on `AIAMSBS_DEPLOY_V1_PRIVATE=true`
+  (or `--v1-private`). Calls
+  `docker compose -f docker-compose.yml -f docker-compose.v1-private.yml up -d
+  aiamsbs-ansible aiamsbs-ansible-runner`.
+- `deploy_streamlit_ui_stack()` — same gate, scopes to `streamlit-ui`.
+
+Both functions are idempotent (a no-op on a healthy install) and
+hard-gated (the main branch never deploys v1.0 features unless the
+customer opts in). The pre-Card 7 standalone `docker compose -f
+aiamsbs-ansible-stack/docker-compose.yml up -d` invocation still works
+for dev, but is **not** the customer path.

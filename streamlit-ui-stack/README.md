@@ -136,3 +136,38 @@ curl -s -G http://localhost:3100/loki/api/v1/query \
 - Card 3 (this card): shell + auth + SQLite + Loki plumbing + Home/Settings/Health pages + E2E verify on .220.
 - Card 4–6: pages built on this shell.
 - Card 7: bootstrap wires `deploy_streamlit_ui_stack()` into the v1.0 private customer overlay compose.
+
+---
+
+## Card 7 integration (BACKLOG #64, Card 7)
+
+As of Card 7 this stack is **never deployed standalone** on a customer
+host. The customer-facing install path is the overlay compose at the
+repo root:
+
+```bash
+cd ~/AIAMSBS
+docker compose -f docker-compose.yml -f docker-compose.v1-private.yml up -d
+```
+
+The overlay `include:`s `streamlit-ui-stack/docker-compose.yml` (this
+file) and `aiamsbs-ansible-stack/docker-compose.yml`. Bind mounts, env
+vars, healthchecks, and image tags defined here flow through unchanged.
+The overlay only adds a `aiamsbs-v1-private=true` label to the three
+v1.0 services.
+
+`bootstrap.sh` gains two new functions called from `main()`:
+
+- `deploy_aiamsbs_ansible_stack()` — gated on
+  `AIAMSBS_DEPLOY_V1_PRIVATE=true` (or `--v1-private`). Brings up the
+  Card 2 stack first (the runner).
+- `deploy_streamlit_ui_stack()` — same gate, scopes to `streamlit-ui`.
+  Order matters: the runner must be up before streamlit-ui posts
+  HMAC-signed requests to it.
+
+Both functions are idempotent (a no-op on a healthy install) and
+hard-gated. `print_v1_private_post_install()` prints the Streamlit
+URL, default credentials reminder, customer flow TL;DR, and Loki
+query labels at the end of the bootstrap run.
+
+See `docs/streamlit-ui.md` for the user-facing guide.
