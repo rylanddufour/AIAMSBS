@@ -100,6 +100,20 @@ services:
       - RUNNER_HMAC_SECRET=${RUNNER_HMAC_SECRET:-dev-secret-rotate-me}
       # ---- Customer name (for the "AIAMSBS v1.0 — Customer <name>" header) ----
       - AIAMSBS_CUSTOMER_NAME=${AIAMSBS_CUSTOMER_NAME:-dufour-int}
+      # ---- Hermes API server (Card 5 — Agent Chat) ----
+      # The Hermes gateway (Card 1) runs on the host s6-overlay and
+      # exposes a /v1/responses + /api/sessions API on port 8642.
+      # streamlit-ui talks to it over host.docker.internal:8642. The
+      # API key is the 64-char hex API_SERVER_KEY from
+      # /home/ansible/.hermes/.env on the VM. On a clean v1.0 deploy
+      # bootstrap.sh should set HERMES_API_KEY from that file via a
+      # `secrets:` block — but for the Card 5 reconcile we set it
+      # directly in the customer's .env so the operator can rotate the
+      # gateway key without rebuilding the image.
+      - HERMES_API_BASE_URL=${HERMES_API_BASE_URL:-http://host.docker.internal:8642/v1}
+      - HERMES_API_KEY=${HERMES_API_KEY:-}
+      - HERMES_MODEL=${HERMES_MODEL:-minimax/minimax-m3}
+      - HERMES_PROFILE=${HERMES_PROFILE:-it_admin}
       # ---- Loki logger output dir ----
       # Card 2's alloy tails /var/lib/hermes/logs/aiamsbs-streamlit/*.log
       # (see config/alloy.yml, the aiamsbs-streamlit block). We bind-mount
