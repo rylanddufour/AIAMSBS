@@ -62,6 +62,18 @@ services:
       # without needing a separate nested bind mount (which fails because
       # /app/streamlit-app is read-only).
       - ./streamlit-app:/app/streamlit-app:ro
+      # Card 4 (Run Playbook) needs read-only access to the playbook and
+      # inventory trees so the dropdown can list filenames without
+      # `docker exec` into aiamsbs-ansible. The Card 2 stack bind-mounts
+      # these into aiamsbs-ansible at /ansible/{playbooks,inventory} as
+      # RW. We add the SAME directory at the SAME in-container path as
+      # a read-only bind mount. The :ro flag means streamlit-ui can
+      # NEVER modify ansible content — only aiamsbs-ansible (via docker
+      # exec) can. The relative path is ../aiamsbs-ansible-stack/...
+      # because streamlit-ui-stack/ is a sibling of aiamsbs-ansible-stack/.
+      # Source-of-truth check: paths exist on .220 (Card 2 created them).
+      - ../aiamsbs-ansible-stack/playbooks:/ansible/playbooks:ro
+      - ../aiamsbs-ansible-stack/inventory:/ansible/inventory:ro
     environment:
       # ---- Auth (single admin for v1.0) ----
       # bcrypt hash is the production path; _PASSWORD is the v1.0 private-
@@ -79,6 +91,13 @@ services:
       - LOKI_URL=${LOKI_URL:-http://loki:3100}
       - ANSIBLE_RUNNER_URL=${ANSIBLE_RUNNER_URL:-http://aiamsbs-ansible-runner:8000}
       - GRAFANA_URL=${GRAFANA_URL:-http://grafana:3000}
+      # Card 4 (Run Playbook): HMAC shared secret for signing POSTs to
+      # aiamsbs-ansible-runner. MUST match the runner's
+      # RUNNER_HMAC_SECRET (default "dev-secret-rotate-me"). The runner
+      # verifies a SHA-256 signature over the raw request body using
+      # this secret; mismatch → 401. Card 4 hermes_client.sign_request
+      # is the ONLY caller; never bypass the signature.
+      - RUNNER_HMAC_SECRET=${RUNNER_HMAC_SECRET:-dev-secret-rotate-me}
       # ---- Customer name (for the "AIAMSBS v1.0 — Customer <name>" header) ----
       - AIAMSBS_CUSTOMER_NAME=${AIAMSBS_CUSTOMER_NAME:-dufour-int}
       # ---- Loki logger output dir ----
