@@ -39,7 +39,12 @@ services:
       # Playbook output: facts cache, callback results.
       - ./artifacts:/ansible/artifacts:rw
       # loki_logger NDJSON output. Alloy on the host tails this directory.
-      - ./logs:/ansible/logs:rw
+      # The path is a subdir of the operator's $HOME/.hermes/logs/ because
+      # the main docker-compose.yml alloy service already bind-mounts that
+      # path (read-only) as /var/lib/hermes/logs — and we MUST NOT edit
+      # the main compose file. Writing here means alloy can see the logs
+      # without needing a new bind mount in the monitoring stack.
+      - ${HOME}/.hermes/logs/aiamsbs-ansible:/ansible/logs:rw
     restart: unless-stopped
 
   aiamsbs-ansible-runner:
@@ -57,7 +62,10 @@ services:
       # boundary for the rest of the stack. Streamlit never sees it.
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Shared log directory with aiamsbs-ansible (same host path).
-      - ./logs:/ansible/logs:rw
+      # Sibling of the aiamsbs-ansible service's bind mount source, so
+      # both containers see the same files. See comment there for why
+      # this path lives under $HOME/.hermes/logs.
+      - ${HOME}/.hermes/logs/aiamsbs-ansible:/ansible/logs:rw
       # loki_logger module — bind-mounted for fast iteration during dev
       # (changes to loki_logger.py without rebuild).
       - ./loki_logger.py:/app/loki_logger.py:ro

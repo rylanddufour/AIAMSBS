@@ -76,14 +76,19 @@ loki.write "systemd" {
 
 // ----------------------------------------------------------------------------
 // aiamsbs-ansible-stack (BACKLOG #64, Card 2)
-// Tail NDJSON files written by /home/ansible/AIAMSBS/aiamsbs-ansible-stack/logs/*.log
-// (the bind-mounted /ansible/logs inside both aiamsbs-ansible and
-// aiamsbs-ansible-runner). loki_logger.py appends to one file per stream.
+// Tail NDJSON files written by $HOME/.hermes/logs/aiamsbs-ansible/*.log on
+// the host. loki_logger.py appends one NDJSON line per event. The bind
+// mount source is chosen so the logs land in a directory the alloy
+// container already has mounted (as ${HOME}/.hermes/logs ->
+// /var/lib/hermes/logs, see docker-compose.yml alloy service) — this
+// avoids adding a new bind mount to the main monitoring stack.
+// loki_logger.py writes RFC3339Nano timestamps in the `ts` field, which
+// matches alloy's NDJSON parser default (RFC3339Nano).
 // ----------------------------------------------------------------------------
 
 local.file_match "aiamsbs_ansible" {
     path_targets = [{
-        __path__ = "/home/ansible/AIAMSBS/aiamsbs-ansible-stack/logs/*.log",
+        __path__ = "/var/lib/hermes/logs/aiamsbs-ansible/*.log",
         job      = "aiamsbs-ansible",
         source   = "aiamsbs_host",
     }]

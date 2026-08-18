@@ -21,12 +21,22 @@ from __future__ import annotations
 import json
 import os
 import sys
-import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Where the NDJSON files land. Defaults match the bind mount in
 # docker-compose.yml; override with LOKI_LOG_DIR for tests.
 LOG_DIR = Path(os.environ.get("LOKI_LOG_DIR", "/ansible/logs"))
+
+
+def _ts_rfc3339nano() -> str:
+    """ISO-8601 / RFC-3339 timestamp with microsecond precision + UTC offset.
+
+    Grafana Alloy's loki.source.file (NDJSON parser, default
+    timestamp_format=RFC3339Nano) needs this format. Unix-epoch floats
+    (time.time()) are silently rejected, so we never use those.
+    """
+    return datetime.now(timezone.utc).isoformat()
 
 
 def log_event(stream: str, fields: dict) -> None:
@@ -42,7 +52,7 @@ def log_event(stream: str, fields: dict) -> None:
             swallow this so logging never breaks the calling code path.
     """
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    record = {"ts": time.time(), "stream": stream, **fields}
+    record = {"ts": _ts_rfc3339nano(), "stream": stream, **fields}
     line = json.dumps(record, default=str)
     target = LOG_DIR / f"{stream}.log"
     with target.open("a", encoding="utf-8") as fh:
