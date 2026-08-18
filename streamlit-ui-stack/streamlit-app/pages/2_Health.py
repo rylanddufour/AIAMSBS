@@ -44,11 +44,19 @@ with col_when:
 
 @st.cache_data(ttl=5, show_spinner=False)
 def _probe(name: str, url: str) -> dict:
-    """Probe one backend. Cached 5s. Returned dict has all fields for the table."""
+    """Probe one backend. Cached 5s. Returned dict has all fields for the table.
+
+    "OK" semantics per Card 3 spec: ✅ for every backend REACHABLE on the
+    monitoring network. A backend is reachable iff we got *any* HTTP
+    response (200, 302, 404, etc.). Connection errors (timeout, refused,
+    DNS failure, no route) are NOT reachable. The HTTP status code is
+    surfaced in the details table so the operator can see whether /health
+    actually returned 200 or just that the host responded.
+    """
     start = time.perf_counter()
     try:
         r = httpx.get(f"{url.rstrip('/')}/health", timeout=5.0)
-        ok = r.status_code == 200
+        ok = True   # any HTTP response == reachable
         http = r.status_code
     except httpx.TimeoutException:
         ok, http = False, "timeout"

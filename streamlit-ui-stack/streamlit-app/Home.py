@@ -62,11 +62,15 @@ st.markdown("---")
 
 # ---- Health snapshot (calls each backend's /health) ----
 def _check_one(name: str, base_url: str, timeout: float = 2.0) -> tuple[bool, int | None]:
-    """Return (ok, latency_ms). Logs failures via streamlit-warning."""
+    """Return (reachable, latency_ms).
+
+    Same semantics as pages/2_Health.py: reachable = any HTTP response,
+    not just 200. Connection errors mean unreachable.
+    """
     start = time.perf_counter()
     try:
         r = httpx.get(f"{base_url.rstrip('/')}/health", timeout=timeout)
-        ok = r.status_code == 200
+        ok = True  # any HTTP response = reachable
     except Exception:
         ok = False
     elapsed = int((time.perf_counter() - start) * 1000)
