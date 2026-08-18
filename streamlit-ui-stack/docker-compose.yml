@@ -41,9 +41,20 @@ services:
     networks:
       - monitoring
     volumes:
-      # SQLite DB (streamlit-ui.db) + loki_logger NDJSON output. Both live
-      # under ./data/. alloy on the host tails a sibling path; see below.
+      # SQLite DB lives here. Loki logs go to a SIBLING bind mount
+      # below — see comment on the log mount.
       - ./data:/data/streamlit-ui:rw
+      # Loki log directory. Card 2's alloy (config/alloy.yml) tails
+      # /var/lib/hermes/logs/aiamsbs-streamlit/*.log, which is the
+      # alloy container's read-only bind mount of /home/ansible/.hermes/logs.
+      # So streamlit's loki_logger writes need to land in a subdir of that
+      # shared mount — otherwise alloy never sees the events and the audit
+      # trail is lost. We bind-mount the aiamsbs-streamlit subdir directly
+      # so the container can write there without re-mounting the whole
+      # ~/.hermes/logs tree (which would leak the operator's other logs).
+      # The host directory must pre-exist with write permission for the
+      # container's uid (root, since python:3.12-slim defaults to root).
+      - /home/ansible/.hermes/logs/aiamsbs-streamlit:/home/ansible/.hermes/logs/aiamsbs-streamlit:rw
       # Bind-mount the source so editing a .py file live-reloads
       # (server.runOnSave=true in the Dockerfile ENTRYPOINT). The
       # .streamlit/config.toml lives INSIDE this directory so the theme
@@ -71,9 +82,13 @@ services:
       # ---- Customer name (for the "AIAMSBS v1.0 — Customer <name>" header) ----
       - AIAMSBS_CUSTOMER_NAME=${AIAMSBS_CUSTOMER_NAME:-dufour-int}
       # ---- Loki logger output dir ----
-      # loki_logger.py uses /ansible/logs by default; override to the
-      # bind-mount path so NDJSON lands under ./data/logs/.
-      - LOKI_LOG_DIR=/data/streamlit-ui/logs
+      # Card 2's alloy tails /var/lib/hermes/logs/aiamsbs-streamlit/*.log
+      # (see config/alloy.yml, the aiamsbs-streamlit block). We bind-mount
+      # that exact host path into the container at /home/ansible/.hermes/logs/
+      # aiamsbs-streamlit above, and point loki_logger here. Result:
+      # streamlit events → NDJSON file → alloy tails → Loki with labels
+      # {job="aiamsbs-streamlit", source="aiamsbs_host"}.
+      - LOKI_LOG_DIR=/home/ansible/.hermes/logs/aiamsbs-streamlit
     healthcheck:
       # Same probe as the Dockerfile HEALTHCHECK, but reachable from the
       # host (Docker's HEALTHCHECK runs inside the container network ns).
