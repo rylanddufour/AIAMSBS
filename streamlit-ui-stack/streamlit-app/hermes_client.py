@@ -714,6 +714,8 @@ def new_run_id() -> str:
 def short_run_id(run_id: str) -> str:
     """Return the first 8 hex chars of a run id. Used in tables to keep
     columns narrow without sacrificing uniqueness within a session."""
+    if not run_id:
+        return "(no run id)"
     return run_id.split("-", 1)[0] if "-" in run_id else run_id[:8]
 
 
