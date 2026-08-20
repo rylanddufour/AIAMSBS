@@ -49,19 +49,6 @@ if not user_id:
     st.error("Session lost its user_id — please log in again.")
     st.stop()
 
-with st.sidebar:
-    st.markdown(f"### AIAMSBS\n**Customer:** `{settings.customer_name}`")
-    st.markdown(f"**User:** `{username}`")
-    st.markdown("---")
-    st.markdown("**KB Search**")
-    st.caption(
-        "Read view of the kb-mcp backend (BACKLOG #30). "
-        "Search entries, drill into detail, add new ones."
-    )
-    st.markdown("---")
-    render_logout_button()
-
-
 # ---- Loki logger (best-effort; never break the page on logging) ----
 def _log(event: str, **fields) -> None:
     """Log a kb_search page event. NEVER includes the query body.
@@ -349,3 +336,8 @@ with st.expander("➕ Add new KB entry", expanded=False):
                 st.error(
                     f"Add failed: {type(e).__name__}: {e}"
                 )
+
+
+# ---- Logout (moved from sidebar to page body) ----
+st.markdown("---")
+render_logout_button()

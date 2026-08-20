@@ -376,3 +376,73 @@ def delete_chat_session(session_id: str, user_id: int) -> bool:
             return cur.rowcount > 0
         finally:
             conn.close()
+
+
+
+# ---- ui_settings helpers (Settings page overrides) ----
+# The ui_settings table is a (key, value) store. The Settings page
+# lets the operator override env-derived URLs (e.g. point at
+# http://192.168.0.220:9119 instead of http://host.docker.internal:9119).
+# load() in settings.py reads these and applies them on top of env.
+
+def get_ui_settings() -> dict[str, str]:
+    """Return all (key, value) rows from ui_settings as a dict.
+    Missing keys are simply absent; the caller falls back to env."""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT key, value FROM ui_settings"
+        ).fetchall()
+    return {k: v for k, v in rows if v is not None}
+
+
+def set_ui_setting(key: str, value: str) -> None:
+    """Upsert a single (key, value) row. Empty value deletes the row
+    so the env default takes over again."""
+    with _WRITE_LOCK:
+        conn = _connect()
+        try:
+            if value == "" or value is None:
+                conn.execute("DELETE FROM ui_settings WHERE key = ?", (key,))
+            else:
+                conn.execute(
+                    "INSERT INTO ui_settings (key, value, updated_at) "
+                    "VALUES (?, ?, CURRENT_TIMESTAMP) "
+                    "ON CONFLICT(key) DO UPDATE SET "
+                    "value = excluded.value, updated_at = CURRENT_TIMESTAMP",
+                    (key, value),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def set_ui_settings(d: dict[str, str]) -> None:
+    """Bulk upsert. Empty values delete the row."""
+    with _WRITE_LOCK:
+        conn = _connect()
+        try:
+            for k, v in d.items():
+                if v == "" or v is None:
+                    conn.execute("DELETE FROM ui_settings WHERE key = ?", (k,))
+                else:
+                    conn.execute(
+                        "INSERT INTO ui_settings (key, value, updated_at) "
+                        "VALUES (?, ?, CURRENT_TIMESTAMP) "
+                        "ON CONFLICT(key) DO UPDATE SET "
+                        "value = excluded.value, updated_at = CURRENT_TIMESTAMP",
+                        (k, v),
+                    )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def reset_all_ui_settings() -> None:
+    """Delete all ui_settings rows so env defaults take over."""
+    with _WRITE_LOCK:
+        conn = _connect()
+        try:
+            conn.execute("DELETE FROM ui_settings")
+            conn.commit()
+        finally:
+            conn.close()

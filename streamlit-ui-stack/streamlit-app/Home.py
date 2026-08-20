@@ -35,27 +35,24 @@ if not require_auth():
 settings = load_settings()
 
 # ---- Sidebar ----
-with st.sidebar:
-    st.markdown(f"### AIAMSBS\n**Customer:** `{settings.customer_name}`")
-    st.markdown(f"**User:** `{st.session_state.get('user', '?')}`")
-    st.markdown("---")
-    render_logout_button()
-
 # ---- Header ----
 st.title(f"AIAMSBS v1.0 — Customer {settings.customer_name}")
 st.caption(
     "Private deployment dashboard. Backends below run on the AIAMSBS host. "
-    "Pages (Settings, Health, and the upcoming Run Playbook / Agent Chat) "
-    "are in the sidebar."
+    "Pages (Settings, Run Playbook, Agent Chat, etc.) are in the sidebar. "
+    "Quick Links point at host IPs by default — edit them on the Settings page."
 )
 
 # ---- Quick links ----
+# Uses the Quick Links group (browser-facing, host IP) from Settings,
+# NOT the Backend URLs (container-internal). Edit these on the
+# Settings page if the host IP changes.
 st.subheader("Quick links")
-ql1, ql2, ql3, ql4 = st.columns(4)
-ql1.link_button("Open Grafana", settings.grafana_url, use_container_width=True)
-ql2.link_button("Open Hermes Dashboard", settings.hermes_url, use_container_width=True)
-ql3.link_button("Open KB MCP", settings.kb_url, use_container_width=True)
-ql4.link_button("Open Inventory MCP", settings.inventory_url, use_container_width=True)
+ql1, ql2, ql3 = st.columns(3)
+quicklinks = dict(settings.quicklinks)
+ql1.link_button("Open Grafana", quicklinks.get("Open Grafana", settings.grafana_url), use_container_width=True)
+ql2.link_button("Open Hermes Dashboard", quicklinks.get("Open Hermes Dashboard", settings.hermes_url), use_container_width=True)
+ql3.link_button("Open KB MCP", quicklinks.get("Open KB MCP", settings.kb_url), use_container_width=True)
 
 st.markdown("---")
 
@@ -64,7 +61,7 @@ st.markdown("---")
 def _check_one(name: str, base_url: str, timeout: float = 2.0) -> tuple[bool, int | None]:
     """Return (reachable, latency_ms).
 
-    Same semantics as pages/2_Health.py: reachable = any HTTP response,
+    Same semantics as the old Health page: reachable = any HTTP response,
     not just 200. Connection errors mean unreachable.
     """
     start = time.perf_counter()
@@ -97,7 +94,7 @@ for col, row in zip(hcols, snapshot):
         else:
             st.error(f"❌ {row['backend']}\n—", icon="❌")
 
-st.caption("Refreshed every 10s. Full diagnostics on the **Health** page.")
+st.caption("Refreshed every 10s. Full diagnostics below.")
 
 st.markdown("---")
 
@@ -128,6 +125,8 @@ with ra2:
     else:
         st.info("No chat sessions yet. The Agent Chat page (Card 5) lands here.")
 
+
+
 # ---- Footer: log this visit to Loki ----
 try:
     from loki_logger import log_event
@@ -141,3 +140,8 @@ try:
 except Exception as e:
     # Loki failures must never break the page.
     st.caption(f"⚠️ loki_logger: {type(e).__name__}: {e}")
+
+
+# ---- Logout (moved from sidebar to page body) ----
+st.markdown("---")
+render_logout_button()

@@ -52,19 +52,6 @@ if not user_id:
     st.error("Session lost its user_id — please log in again.")
     st.stop()
 
-with st.sidebar:
-    st.markdown(f"### AIAMSBS\n**Customer:** `{settings.customer_name}`")
-    st.markdown(f"**User:** `{username}`")
-    st.markdown("---")
-    st.markdown("**Inventory Search**")
-    st.caption(
-        "Read view of the inventory-mcp backend (BACKLOG #39.2). "
-        "v1.0 is read-only here — adds/edits go via inventory-mcp."
-    )
-    st.markdown("---")
-    render_logout_button()
-
-
 # ---- Loki logger (best-effort; never break the page on logging) ----
 def _log(event: str, **fields) -> None:
     """Log an inventory page event. NEVER includes the query body."""
@@ -351,3 +338,8 @@ for d in filtered:
         st.markdown(_status_badge(d.get("status")))
     with cols[5]:
         st.caption(f"`{d.get('last_seen', '—')}`")
+
+
+# ---- Logout (moved from sidebar to page body) ----
+st.markdown("---")
+render_logout_button()
