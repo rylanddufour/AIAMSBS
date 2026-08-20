@@ -288,6 +288,29 @@ check_prerequisites() {
         sudo apt install -y "${missing_cmds[@]}" jq
     fi
 
+    # Runtime libs that the docs-site installer's Hermes-managed Node binary
+    # dynamically links against. Without libatomic1, Node 26 fails to start on
+    # a fresh Ubuntu VM with `error while loading shared libraries:
+    # libatomic.so.1` (the docs-site installer then tries to redownload Node,
+    # which hits the same error again). libstdc++6 and libgcc-s1 are usually
+    # preinstalled on Ubuntu 22.04+ but we list them defensively so apt skips
+    # them if already present.
+    #
+    # BACKLOG #64 v1.0-private (2026-08-20): a customer VM rolled back to a
+    # pre-install snapshot and the bootstrap bailed at install_hermes() with
+    # the libatomic.so.1 error. Install here so install_hermes() can't fail.
+    local missing_libs=()
+    for lib in libatomic1 libstdc++6 libgcc-s1; do
+        if ! dpkg -s "$lib" >/dev/null 2>&1; then
+            missing_libs+=("$lib")
+        fi
+    done
+    if [ ${#missing_libs[@]} -ne 0 ]; then
+        log_info "Installing Node runtime libs: ${missing_libs[*]}"
+        wait_for_dpkg_lock || return 1
+        sudo apt install -y "${missing_libs[@]}"
+    fi
+
     # Node.js is intentionally NOT installed here. The canonical Nous
     # docs-site installer (install_hermes, below) ships its own
     # Hermes-managed Node and validates it against the `engines` constraint
