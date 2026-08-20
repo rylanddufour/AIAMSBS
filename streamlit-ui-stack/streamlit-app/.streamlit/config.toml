@@ -1,0 +1,32 @@
+# Streamlit runtime config. Theme + telemetry. Server flags live in the
+# Dockerfile ENTRYPOINT (so they show up in `docker inspect`).
+
+[theme]
+base = "light"
+primaryColor = "#0a3d62"      # AIAMSBS-blue (BACKLOG #64 design)
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"
+font = "sans serif"
+
+[server]
+# Headless mode is set on the CLI in Dockerfile ENTRYPOINT; duplicate here
+# so a `streamlit run` from inside the container also behaves headless.
+headless = true
+port = 8501
+# Allow runOnSave (set via CLI in Dockerfile) but disable the XSRF cookie
+# check — Streamlit's own auth (we add bcrypt on top) doesn't need it.
+enableXsrfProtection = false
+# 0.0.0.0 is set via CLI in Dockerfile; duplicate here for clarity.
+address = "0.0.0.0"
+
+[browser]
+gatherUsageStats = false
+
+[client]
+# No telemetry / error reporting to Streamlit's cloud. v1.0 is on-prem.
+toolbarMode = "minimal"
+showErrorDetails = false
+
+[logger]
+level = "info"

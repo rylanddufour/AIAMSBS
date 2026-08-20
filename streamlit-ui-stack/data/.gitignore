@@ -1,0 +1,9 @@
+# Local SQLite DB + loki_logger NDJSON output (created at runtime).
+# This dir is bind-mounted into the streamlit-ui container at /data/streamlit-ui.
+# streamlit-ui.db → sqlite3 database for users / chat_sessions / playbook_runs /
+#                    playbook_run_events / ui_settings.
+# logs/*.log       → NDJSON files written by loki_logger.py (tailed by alloy).
+*.db
+*.db-wal
+*.db-shm
+logs/

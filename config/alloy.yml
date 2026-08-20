@@ -73,3 +73,65 @@ loki.write "systemd" {
         url = "http://loki:3100/loki/api/v1/push"
     }
 }
+
+// ----------------------------------------------------------------------------
+// aiamsbs-ansible-stack (BACKLOG #64, Card 2)
+// Tail NDJSON files written by $HOME/.hermes/logs/aiamsbs-ansible/*.log on
+// the host. loki_logger.py appends one NDJSON line per event. The bind
+// mount source is chosen so the logs land in a directory the alloy
+// container already has mounted (as ${HOME}/.hermes/logs ->
+// /var/lib/hermes/logs, see docker-compose.yml alloy service) — this
+// avoids adding a new bind mount to the main monitoring stack.
+// loki_logger.py writes RFC3339Nano timestamps in the `ts` field, which
+// matches alloy's NDJSON parser default (RFC3339Nano).
+// ----------------------------------------------------------------------------
+
+local.file_match "aiamsbs_ansible" {
+    path_targets = [{
+        __path__ = "/var/lib/hermes/logs/aiamsbs-ansible/*.log",
+        job      = "aiamsbs-ansible",
+        source   = "aiamsbs_host",
+    }]
+}
+
+loki.source.file "aiamsbs_ansible" {
+    targets    = local.file_match.aiamsbs_ansible.targets
+    forward_to = [loki.write.aiamsbs_ansible.receiver]
+}
+
+loki.write "aiamsbs_ansible" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}
+
+// ----------------------------------------------------------------------------
+// aiamsbs-streamlit-stack (BACKLOG #64, Card 3)
+// Tail NDJSON files written by $HOME/.hermes/logs/aiamsbs-streamlit/*.log on
+// the host. loki_logger.py (reused from Card 2 via a symlink) appends one
+// NDJSON line per event with a stream identifier like "streamlit". The bind
+// mount source is chosen so the logs land in a directory the alloy
+// container already has mounted (as ${HOME}/.hermes/logs ->
+// /var/lib/hermes/logs, see docker-compose.yml alloy service) — this avoids
+// adding a new bind mount to the main monitoring stack. Labels
+// {job="aiamsbs-streamlit", source="aiamsbs_host"} match the Card 2 pattern.
+// ----------------------------------------------------------------------------
+
+local.file_match "aiamsbs_streamlit" {
+    path_targets = [{
+        __path__ = "/var/lib/hermes/logs/aiamsbs-streamlit/*.log",
+        job      = "aiamsbs-streamlit",
+        source   = "aiamsbs_host",
+    }]
+}
+
+loki.source.file "aiamsbs_streamlit" {
+    targets    = local.file_match.aiamsbs_streamlit.targets
+    forward_to = [loki.write.aiamsbs_streamlit.receiver]
+}
+
+loki.write "aiamsbs_streamlit" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}

@@ -1,0 +1,137 @@
+# AIAMSBS v1.0 customer Streamlit UI stack (BACKLOG #64, Card 3).
+#
+# One sibling container on the shared `monitoring` Docker network:
+#
+#   streamlit-ui — python:3.12-slim + streamlit + bcrypt + httpx.
+#                  Exposes 8501 to the host (the ONLY port this stack
+#                  publishes). Talks to the rest of AIAMSBS over HTTP
+#                  on the monitoring network.
+#
+# What streamlit-ui talks to (all by container name on `monitoring`):
+#   - aiamsbs-ansible-runner:8000   (Card 2; HMAC-signed playbook exec)
+#   - kb-mcp:8002                   (BACKLOG #39; KB search; Card 6)
+#   - inventory-mcp:8001            (BACKLOG #39.2; device inventory; Card 6)
+#   - loki:3100                     (log query; out of scope this card)
+#
+# What streamlit-ui does NOT touch:
+#   - /var/run/docker.sock — that's aiamsbs-ansible-runner's job (Card 2).
+#     Streamlit -> runner -> docker exec is the privilege-bounded path.
+#   - The host filesystem beyond ./data and the loki log bind mount.
+
+services:
+  streamlit-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aiamsbs_streamlit-ui
+    container_name: streamlit-ui
+    # Port 8501 is the ONLY host-side port this v1.0 customer stack exposes.
+    # Streamlit's /_stcore/health endpoint responds on this port too, which
+    # is what the orchestrator's verify list curls.
+    ports:
+      - "0.0.0.0:8501:8501"
+    # Hermes Web Dashboard runs on the host (s6-overlay), not in a container.
+    # `host-gateway` is Docker's special alias that resolves to the host's
+    # bridge IP at container-start time (Linux Docker 20.10+, macOS, Windows).
+    # So HERMES_URL=http://host.docker.internal:9119 inside the container
+    # hits the host's port 9119. This works for both Linux bridge networks
+    # and Docker Desktop without operator config.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - monitoring
+    volumes:
+      # SQLite DB lives here. Loki logs go to a SIBLING bind mount
+      # below — see comment on the log mount.
+      - ./data:/data/streamlit-ui:rw
+      # Loki log directory. Card 2's alloy (config/alloy.yml) tails
+      # /var/lib/hermes/logs/aiamsbs-streamlit/*.log, which is the
+      # alloy container's read-only bind mount of /home/ansible/.hermes/logs.
+      # So streamlit's loki_logger writes need to land in a subdir of that
+      # shared mount — otherwise alloy never sees the events and the audit
+      # trail is lost. We bind-mount the aiamsbs-streamlit subdir directly
+      # so the container can write there without re-mounting the whole
+      # ~/.hermes/logs tree (which would leak the operator's other logs).
+      # The host directory must pre-exist with write permission for the
+      # container's uid (root, since python:3.12-slim defaults to root).
+      - /home/ansible/.hermes/logs/aiamsbs-streamlit:/home/ansible/.hermes/logs/aiamsbs-streamlit:rw
+      # Bind-mount the source so editing a .py file live-reloads
+      # (server.runOnSave=true in the Dockerfile ENTRYPOINT). The
+      # .streamlit/config.toml lives INSIDE this directory so the theme
+      # + server settings are picked up at /app/streamlit-app/.streamlit/
+      # without needing a separate nested bind mount (which fails because
+      # /app/streamlit-app is read-only).
+      - ./streamlit-app:/app/streamlit-app:ro
+      # Card 4 (Run Playbook) needs read-only access to the playbook and
+      # inventory trees so the dropdown can list filenames without
+      # `docker exec` into aiamsbs-ansible. The Card 2 stack bind-mounts
+      # these into aiamsbs-ansible at /ansible/{playbooks,inventory} as
+      # RW. We add the SAME directory at the SAME in-container path as
+      # a read-only bind mount. The :ro flag means streamlit-ui can
+      # NEVER modify ansible content — only aiamsbs-ansible (via docker
+      # exec) can. The relative path is ../aiamsbs-ansible-stack/...
+      # because streamlit-ui-stack/ is a sibling of aiamsbs-ansible-stack/.
+      # Source-of-truth check: paths exist on .220 (Card 2 created them).
+      - ../aiamsbs-ansible-stack/playbooks:/ansible/playbooks:ro
+      - ../aiamsbs-ansible-stack/inventory:/ansible/inventory:ro
+    environment:
+      # ---- Auth (single admin for v1.0) ----
+      # bcrypt hash is the production path; _PASSWORD is the v1.0 private-
+      # deployment fallback (logs a warning at startup, does not crash).
+      # Both default to dev values so the orchestrator's mechanical
+      # acceptance checks can log in. Production sets _PASSWORD_HASH and
+      # leaves _PASSWORD unset.
+      - STREAMLIT_ADMIN_USERNAME=${STREAMLIT_ADMIN_USERNAME:-admin}
+      - STREAMLIT_ADMIN_PASSWORD_HASH=${STREAMLIT_ADMIN_PASSWORD_HASH:-}
+      - STREAMLIT_ADMIN_PASSWORD=${STREAMLIT_ADMIN_PASSWORD:-admin}
+      # ---- Backend URLs (resolved on the monitoring network) ----
+      - HERMES_URL=${HERMES_URL:-http://host.docker.internal:9119}
+      - KB_MCP_URL=${KB_MCP_URL:-http://kb-mcp:8002}
+      - INVENTORY_MCP_URL=${INVENTORY_MCP_URL:-http://inventory-mcp:8001}
+      - LOKI_URL=${LOKI_URL:-http://loki:3100}
+      - ANSIBLE_RUNNER_URL=${ANSIBLE_RUNNER_URL:-http://aiamsbs-ansible-runner:8000}
+      - GRAFANA_URL=${GRAFANA_URL:-http://grafana:3000}
+      # Card 4 (Run Playbook): HMAC shared secret for signing POSTs to
+      # aiamsbs-ansible-runner. MUST match the runner's
+      # RUNNER_HMAC_SECRET (default "dev-secret-rotate-me"). The runner
+      # verifies a SHA-256 signature over the raw request body using
+      # this secret; mismatch → 401. Card 4 hermes_client.sign_request
+      # is the ONLY caller; never bypass the signature.
+      - RUNNER_HMAC_SECRET=${RUNNER_HMAC_SECRET:-dev-secret-rotate-me}
+      # ---- Customer name (for the "AIAMSBS v1.0 — Customer <name>" header) ----
+      - AIAMSBS_CUSTOMER_NAME=${AIAMSBS_CUSTOMER_NAME:-dufour-int}
+      # ---- Hermes API server (Card 5 — Agent Chat) ----
+      # The Hermes gateway (Card 1) runs on the host s6-overlay and
+      # exposes a /v1/responses + /api/sessions API on port 8642.
+      # streamlit-ui talks to it over host.docker.internal:8642. The
+      # API key is the 64-char hex API_SERVER_KEY from
+      # /home/ansible/.hermes/.env on the VM. On a clean v1.0 deploy
+      # bootstrap.sh should set HERMES_API_KEY from that file via a
+      # `secrets:` block — but for the Card 5 reconcile we set it
+      # directly in the customer's .env so the operator can rotate the
+      # gateway key without rebuilding the image.
+      - HERMES_API_BASE_URL=${HERMES_API_BASE_URL:-http://host.docker.internal:8642/v1}
+      - HERMES_API_KEY=${HERMES_API_KEY:-}
+      - HERMES_MODEL=${HERMES_MODEL:-minimax/minimax-m3}
+      - HERMES_PROFILE=${HERMES_PROFILE:-it_admin}
+      # ---- Loki logger output dir ----
+      # Card 2's alloy tails /var/lib/hermes/logs/aiamsbs-streamlit/*.log
+      # (see config/alloy.yml, the aiamsbs-streamlit block). We bind-mount
+      # that exact host path into the container at /home/ansible/.hermes/logs/
+      # aiamsbs-streamlit above, and point loki_logger here. Result:
+      # streamlit events → NDJSON file → alloy tails → Loki with labels
+      # {job="aiamsbs-streamlit", source="aiamsbs_host"}.
+      - LOKI_LOG_DIR=/home/ansible/.hermes/logs/aiamsbs-streamlit
+    healthcheck:
+      # Same probe as the Dockerfile HEALTHCHECK, but reachable from the
+      # host (Docker's HEALTHCHECK runs inside the container network ns).
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8501/_stcore/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+networks:
+  monitoring:
+    external: true

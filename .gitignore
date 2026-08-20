@@ -73,3 +73,13 @@ logs/
 # --- Local session / agent scratch ---
 .scratch/
 .worktrees/
+
+# --- aiamsbs-ansible-stack runtime artifacts ---
+aiamsbs-ansible-stack/artifacts/
+aiamsbs-ansible-stack/logs/
+
+# --- streamlit-ui-stack runtime artifacts (sqlite + loki NDJSON) ---
+streamlit-ui-stack/data/*.db
+streamlit-ui-stack/data/*.db-wal
+streamlit-ui-stack/data/*.db-shm
+streamlit-ui-stack/data/logs/
