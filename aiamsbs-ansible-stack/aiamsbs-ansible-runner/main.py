@@ -18,6 +18,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import sys
 import time
 from typing import AsyncIterator, Optional
@@ -138,11 +139,17 @@ async def run_playbook(request: Request):
 
     Body (JSON, raw bytes signed by HMAC):
         {
-            "inventory": "inventory/static/localhost",     # required, str
-            "playbook":  "playbooks/generated/hello.yml",   # required, str
-            "extra_vars": {"key": "value"},                 # optional, dict
-            "check": false,                                 # optional, bool
-            "diff":  false                                  # optional, bool
+            "inline_inventory": "host01 ansible_host=10.0.0.1 ansible_user=opc ansible_connection=ssh,host02 ...,",
+            # ^^^ Card 8: REPLACES the legacy `inventory` file-path field.
+            # Format: comma-separated host fragments, NO outer shell quotes,
+            # trailing comma. Ansible parses the trailing comma as the
+            # "this is a list, not a filename" disambiguator. Because we
+            # pass the value as a single argv item (no shell), outer shell
+            # quotes would be parsed as part of the first host's name.
+            "playbook":        "playbooks/generated/hello.yml",   # required, str
+            "extra_vars":      {"key": "value"},                   # optional, dict
+            "check":           false,                              # optional, bool
+            "diff":            false                               # optional, bool
         }
 
     Returns NDJSON stream; one JSON object per line:
@@ -169,12 +176,36 @@ async def run_playbook(request: Request):
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="request body is not valid JSON")
 
-    inventory = payload.get("inventory")
+    # Card 8: inline_inventory is the live-built string from the Streamlit
+    # UI, sourced from inventory-mcp. Format: comma-separated host
+    # fragments, NO outer shell quotes, trailing comma. The trailing comma
+    # is the "this is a list, not a filename" disambiguator that Ansible
+    # requires. We pass the value as a single argv item to ansible-playbook
+    # via docker exec (no shell in between), so shell-quote-wrapping the
+    # value would result in the literal quote being parsed as part of the
+    # first host's name.
+    inline_inventory = payload.get("inline_inventory")
     playbook = payload.get("playbook")
-    if not inventory or not playbook:
+    if not inline_inventory or not playbook:
         raise HTTPException(
             status_code=400,
-            detail="'inventory' and 'playbook' are required")
+            detail="'inline_inventory' and 'playbook' are required")
+    if not isinstance(inline_inventory, str):
+        raise HTTPException(
+            status_code=400,
+            detail="'inline_inventory' must be a string")
+    # Defence-in-depth: reject any character that could break out of the
+    # inventory parsing or inject a flag. Allow only safe hostname chars,
+    # whitespace, commas, equals, dots, underscores, and colons (for IPv6).
+    # Explicitly forbid quotes (we use argv, not shell).
+    if not re.fullmatch(r'[\w\.\s,=\-:/]+', inline_inventory):
+        raise HTTPException(
+            status_code=400,
+            detail="'inline_inventory' contains disallowed characters")
+    if len(inline_inventory) > 8192:
+        raise HTTPException(
+            status_code=400,
+            detail="'inline_inventory' exceeds 8KB cap")
 
     extra_vars = payload.get("extra_vars") or {}
     use_check = bool(payload.get("check", False))
@@ -184,7 +215,7 @@ async def run_playbook(request: Request):
     # shell — pass argv directly via docker exec's cmd=[...]. This avoids
     # any chance of injection through inventory/playbook paths and keeps
     # the args predictable.
-    cmd = ["ansible-playbook", "-i", inventory, playbook]
+    cmd = ["ansible-playbook", "-i", inline_inventory, playbook]
     if extra_vars:
         cmd.extend(["--extra-vars", json.dumps(extra_vars)])
     if use_check:
@@ -197,7 +228,7 @@ async def run_playbook(request: Request):
     loki_logger.log_event("runner", {
         "event": "exec_start",
         "container": ANSIBLE_CONTAINER_NAME,
-        "inventory": inventory,
+        "inline_inventory_len": len(inline_inventory),
         "playbook": playbook,
         "check": use_check,
         "diff": use_diff,
