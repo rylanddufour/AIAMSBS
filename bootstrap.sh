@@ -50,12 +50,12 @@ CLI_PROVIDER="openrouter"
 CLI_MODEL=""
 AUTO_DEPLOY=true
 DASHBOARD_USER="admin"
-# BACKLOG #64 (v1.0 private customer deployment). Defaults to false so the
-# main branch's bootstrap.sh does NOT silently ship v1.0 features to
-# non-private customers. Customers opt in with either the --v1-private CLI
-# flag (preferred) or the AIAMSBS_DEPLOY_V1_PRIVATE=true env var.
-V1_PRIVATE=false
-AIAMSBS_DEPLOY_V1_PRIVATE="${AIAMSBS_DEPLOY_V1_PRIVATE:-false}"
+# BACKLOG #64 (v1.0 customer-facing deployment). The customer-facing services
+# (aiamsbs-ansible + aiamsbs-ansible-runner + streamlit-ui) are always deployed
+# with the main stack — they live in docker-compose.yml, not an overlay.
+# Customer-vs-operator visibility is governed by authentication, not install
+# flags.
+# Removed 2026-08-20: --v1-private CLI flag and AIAMSBS_DEPLOY_V1_PRIVATE env var.
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -83,15 +83,6 @@ while [[ $# -gt 0 ]]; do
             DASHBOARD_USER="$2"
             shift 2
             ;;
-        --v1-private)
-            # BACKLOG #64: deploy the v1.0 private customer stack (Ansible
-            # runner + Streamlit UI overlay) on top of the main monitoring
-            # stack. The overlay is at docker-compose.v1-private.yml and
-            # extends (does not replace) the main docker-compose.yml.
-            V1_PRIVATE=true
-            AIAMSBS_DEPLOY_V1_PRIVATE=true
-            shift
-            ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
@@ -102,15 +93,10 @@ while [[ $# -gt 0 ]]; do
             echo "  --auto-deploy       Automatically deploy stack after setup (default)"
             echo "  --no-auto-deploy    Skip auto-deploy"
             echo "  --dashboard-user USER   Username for the Hermes dashboard (default: admin)"
-            echo "  --v1-private        BACKLOG #64: deploy the v1.0 private customer stack"
-            echo "                      (Ansible runner + Streamlit UI overlay) on top of the"
-            echo "                      main monitoring stack via docker-compose.v1-private.yml"
-            echo "                      Also settable via AIAMSBS_DEPLOY_V1_PRIVATE=true"
             echo ""
             echo "Examples:"
             echo "  $0 --api-key sk-xxx --provider openrouter"
             echo "  $0 --api-key sk-xxx --provider openai --model gpt-4o"
-            echo "  $0 --api-key sk-xxx --v1-private     # v1.0 private customer install"
             echo "  $0                  # Interactive mode"
             exit 0
             ;;
@@ -1800,54 +1786,32 @@ deploy_kb_stack() {
 }
 
 # ============================================
-# Deploy v1.0 Private Customer Stack (BACKLOG #64, Cards 2-6)
+# Deploy v1.0 Customer-Facing Services (BACKLOG #64, Cards 2-6)
 # ============================================
 #
-# Two sibling deploy functions. Both gated on AIAMSBS_DEPLOY_V1_PRIVATE=true
-# (or the --v1-private CLI flag) so the main branch's bootstrap.sh does NOT
-# silently ship v1.0 features to non-private customers. Both pull from the
-# overlay compose file at the repo root, which in turn `include:`s the
-# Card 2 (aiamsbs-ansible-stack) and Card 3 (streamlit-ui-stack) inner
-# compose files.
+# The customer-facing services (aiamsbs-ansible, aiamsbs-ansible-runner,
+# streamlit-ui) live in docker-compose.yml — always deployed with the main
+# stack. No opt-in gate, no overlay.
 #
 # Idempotency: `docker compose ... up -d` is naturally idempotent. It
 # skips images that already exist with no context changes, skips recreate
 # for services whose config is unchanged, and only restarts containers
 # whose env, volumes, or healthcheck actually changed. Re-running
-# `bash bootstrap.sh --v1-private` on a healthy install is a no-op
-# (verified by Card 7 E2E step "idempotency").
+# `bash bootstrap.sh` on a healthy install is a no-op for these services.
 
 deploy_aiamsbs_ansible_stack() {
     # INFRA_DIR is set once in main() upfront; this function should not re-clone.
     local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
-
-    # Gate: only deploy if explicitly opted in. Default false so the main
-    # branch does not silently turn v1.0 on for everyone.
-    if [ "${AIAMSBS_DEPLOY_V1_PRIVATE:-false}" != "true" ] && [ "${V1_PRIVATE:-false}" != "true" ]; then
-        log_info "v1.0 private customer stack not enabled (set AIAMSBS_DEPLOY_V1_PRIVATE=true or use --v1-private); skipping aiamsbs-ansible deploy"
-        return 0
-    fi
-
-    local overlay_compose="$infra_dir/docker-compose.v1-private.yml"
     local main_compose="$infra_dir/docker-compose.yml"
 
-    if [ ! -f "$overlay_compose" ]; then
-        log_warn "Overlay compose not found at $overlay_compose; skipping aiamsbs-ansible deploy"
-        return 0
-    fi
-
     if [ ! -f "$main_compose" ]; then
-        log_warn "Main compose not found at $main_compose; skipping aiamsbs-ansible deploy (v1.0 overlay extends the main stack)"
+        log_warn "Main compose not found at $main_compose; skipping aiamsbs-ansible deploy"
         return 0
     fi
 
-    log_info "Deploying v1.0 aiamsbs-ansible (Card 2 — Ansible runtime + runner) via overlay..."
+    log_info "Deploying aiamsbs-ansible (Card 2 — Ansible runtime + runner)..."
 
-    # The overlay include: brings in aiamsbs-ansible + aiamsbs-ansible-runner
-    # from aiamsbs-ansible-stack/docker-compose.yml. The main compose brings
-    # up the `monitoring` external network. The two -f flags are required:
-    # the overlay is a strict extension of the main stack.
-    if sg docker -c "docker compose -f '$main_compose' -f '$overlay_compose' up -d aiamsbs-ansible aiamsbs-ansible-runner" 2>&1 | tail -15; then
+    if sg docker -c "docker compose -f '$main_compose' up -d aiamsbs-ansible aiamsbs-ansible-runner" 2>&1 | tail -15; then
         log_success "aiamsbs-ansible stack deployed (Card 2 — ansible + runner on monitoring network)"
     else
         log_warn "aiamsbs-ansible stack deployment failed; continuing"
@@ -1858,24 +1822,14 @@ deploy_aiamsbs_ansible_stack() {
 deploy_streamlit_ui_stack() {
     # INFRA_DIR is set once in main() upfront.
     local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
-
-    # Gate: same as deploy_aiamsbs_ansible_stack. Repeating the gate here
-    # makes the function safe to call independently from the post-install
-    # print path or from a partial re-deploy.
-    if [ "${AIAMSBS_DEPLOY_V1_PRIVATE:-false}" != "true" ] && [ "${V1_PRIVATE:-false}" != "true" ]; then
-        log_info "v1.0 private customer stack not enabled; skipping streamlit-ui deploy"
-        return 0
-    fi
-
-    local overlay_compose="$infra_dir/docker-compose.v1-private.yml"
     local main_compose="$infra_dir/docker-compose.yml"
 
-    if [ ! -f "$overlay_compose" ] || [ ! -f "$main_compose" ]; then
-        log_warn "Overlay or main compose missing; skipping streamlit-ui deploy"
+    if [ ! -f "$main_compose" ]; then
+        log_warn "Main compose missing; skipping streamlit-ui deploy"
         return 0
     fi
 
-    log_info "Deploying v1.0 streamlit-ui (Cards 3-6 — customer Streamlit UI) via overlay..."
+    log_info "Deploying streamlit-ui (Cards 3-6 — customer Streamlit UI)..."
 
     # streamlit-ui depends on aiamsbs-ansible-runner being up (HMAC-signed
     # POSTs to it from the Run Playbook page). Docker Compose's
@@ -1884,7 +1838,7 @@ deploy_streamlit_ui_stack() {
     # runner's healthcheck reports healthy, regardless of declaration
     # order. If aiamsbs-ansible-runner isn't up yet, this is a no-op
     # and a second `up -d streamlit-ui` brings it up.
-    if sg docker -c "docker compose -f '$main_compose' -f '$overlay_compose' up -d streamlit-ui" 2>&1 | tail -15; then
+    if sg docker -c "docker compose -f '$main_compose' up -d streamlit-ui" 2>&1 | tail -15; then
         log_success "streamlit-ui deployed (Cards 3-6 — customer UI on port 8501)"
     else
         log_warn "streamlit-ui deployment failed; continuing"
@@ -2207,29 +2161,23 @@ print_access_summary() {
     echo ""
 }
 
-# print_v1_private_post_install
-# BACKLOG #64, Card 7: customer-facing post-install summary for the
-# v1.0 private customer stack. Called from main() only when
-# AIAMSBS_DEPLOY_V1_PRIVATE=true (or --v1-private). Prints:
-#   - Streamlit URL (the v1.0 customer entry point)
+# print_customer_facing_post_install
+# BACKLOG #64, Card 7: customer-facing post-install summary. Called from
+# main() unconditionally now — the customer-facing services always deploy
+# with the main stack. Prints:
+#   - Streamlit URL (the customer entry point)
 #   - Default credentials reminder (bcrypt-hashed from env)
 #   - One-line TL;DR of the customer flow (login → Run Playbook → confirm)
 #   - Loki label reminder (run_id + stream labels for query)
-print_v1_private_post_install() {
-    # Hard gate. If v1.0 is not enabled, this is a no-op. Returning
-    # silently (not erroring) keeps main()'s call site simple.
-    if [ "${AIAMSBS_DEPLOY_V1_PRIVATE:-false}" != "true" ] && [ "${V1_PRIVATE:-false}" != "true" ]; then
-        return 0
-    fi
-
+print_customer_facing_post_install() {
     local host_ip
     host_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
     [ -z "$host_ip" ] && host_ip="localhost"
 
-    # Pull the v1.0 customer username/password from the env if set, else
-    # fall back to the v1.0 defaults documented in streamlit-ui-stack/
-    # docker-compose.yml. We do NOT regenerate the password here —
-    # that's the customer's first-run responsibility.
+    # Pull the customer username/password from the env if set, else fall
+    # back to the defaults documented in docker-compose.yml. We do NOT
+    # regenerate the password here — that's the customer's first-run
+    # responsibility.
     local v1_user="${STREAMLIT_ADMIN_USERNAME:-admin}"
     local v1_pass="${STREAMLIT_ADMIN_PASSWORD:-admin}"
     if [ -n "${STREAMLIT_ADMIN_PASSWORD_HASH:-}" ]; then
@@ -2238,7 +2186,7 @@ print_v1_private_post_install() {
 
     echo ""
     echo "============================================"
-    echo "  v1.0 Private Customer Stack (BACKLOG #64)"
+    echo "  Customer-Facing Services (BACKLOG #64)"
     echo "============================================"
     echo ""
     echo "  🌐 Streamlit UI (customer entry point)"
@@ -2251,7 +2199,7 @@ print_v1_private_post_install() {
     echo "     2. Pick a page: Home / Settings / Run Playbook / Run History"
     echo "        / Agent Chat / KB Search / Inventory Search."
     echo "     3. To run a playbook: select file → check mode → Confirm"
-    echo "        in the UI (the human click is the v1.0 trust boundary;"
+    echo "        in the UI (the human click is the trust boundary;"
     echo "        the agent never runs ansible-playbook directly)."
     echo ""
     echo "  📊 Loki query labels (Grafana → Explore → Loki):"
@@ -2262,8 +2210,7 @@ print_v1_private_post_install() {
     echo ""
     echo "  🔄 Re-deploy (idempotent — no rebuild on healthy state):"
     echo "     cd ~/AIAMSBS"
-    echo "     docker compose -f docker-compose.yml -f docker-compose.v1-private.yml up -d"
-    echo "     # Or: bash bootstrap.sh --v1-private --api-key \$OPENROUTER_API_KEY"
+    echo "     docker compose up -d"
     echo "============================================"
     echo ""
 }
@@ -2468,23 +2415,22 @@ main() {
     register_kb_mcp "it_admin"
     install_kb_mcp_skill
 
-    # BACKLOG #64, Card 7: v1.0 private customer stack. Both functions
-    # are gated on AIAMSBS_DEPLOY_V1_PRIVATE=true (set by --v1-private).
-    # Order matters: aiamsbs-ansible (Card 2) MUST come up before
-    # streamlit-ui (Card 3) so the Run Playbook page's HMAC-signed
-    # POSTs have a live runner to talk to. Both are no-ops on a
-    # non-v1.0 install.
+    # BACKLOG #64, Card 7: customer-facing services. Both deploy functions
+    # run unconditionally — these services ship with the main stack. Order
+    # matters: aiamsbs-ansible (Card 2) MUST come up before streamlit-ui
+    # (Card 3) so the Run Playbook page's HMAC-signed POSTs have a live
+    # runner to talk to.
     deploy_aiamsbs_ansible_stack
     deploy_streamlit_ui_stack
 
     # Print customer-facing access summary (URLs, credentials, ports, hints)
     print_access_summary
 
-    # v1.0 post-install print (Streamlit URL, creds reminder, flow TL;DR,
-    # Loki labels). Hard-gated inside the function; no-op on a non-v1.0
-    # install. Called after print_access_summary so the customer's terminal
-    # shows the main monitoring stack first, then the v1.0 add-on.
-    print_v1_private_post_install
+    # Customer-facing post-install print (Streamlit URL, creds reminder,
+    # flow TL;DR, Loki labels). Called after print_access_summary so the
+    # customer's terminal shows the main monitoring stack first, then the
+    # customer-facing services.
+    print_customer_facing_post_install
 
     # Run the kickoff inventory discovery so the customer sees devices in
     # their install summary and the blackbox + Prom chain runs end-to-end

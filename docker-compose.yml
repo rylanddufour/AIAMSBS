@@ -181,7 +181,118 @@ services:
       - '--config.file=/etc/blackbox_exporter/blackbox.yml'
     restart: unless-stopped
 
+  # ----------------------------------------------------------------------
+  # AIAMSBS v1.0 customer-facing services (BACKLOG #64).
+  #
+  # These three services are always deployed with the main stack — the
+  # customer's streamlit + ansible execution UI ships in the same install
+  # as the monitoring stack. Customer-vs-operator visibility is governed by
+  # authentication (the streamlit login + the operator's local user), not
+  # by install flags.
+  #
+  # Originally introduced via the `docker-compose.v1-private.yml` overlay
+  # (removed 2026-08-20 — overlay was an opt-in mechanism that pre-dated
+  # the decision to ship AIAMSBS as one product).
+  # ----------------------------------------------------------------------
 
+  # Stock Ansible runtime (BACKLOG #64 Card 2). No exposed port; the
+  # runner container (next) does `docker exec` into this one.
+  aiamsbs-ansible:
+    build:
+      context: ./aiamsbs-ansible-stack
+      dockerfile: aiamsbs-ansible/Dockerfile
+    image: aiamsbs_aiamsbs-ansible
+    container_name: aiamsbs-ansible
+    networks:
+      - monitoring
+    volumes:
+      - ./aiamsbs-ansible-stack/playbooks/customer:/ansible/playbooks/customer:rw
+      - ./aiamsbs-ansible-stack/playbooks/generated:/ansible/playbooks/generated:rw
+      - ./aiamsbs-ansible-stack/inventory/static:/ansible/inventory/static:rw
+      - ./aiamsbs-ansible-stack/inventory/generated:/ansible/inventory/generated:rw
+      - ./aiamsbs-ansible-stack/artifacts:/ansible/artifacts:rw
+      # Loki log directory. The main alloy container already bind-mounts
+      # $HOME/.hermes/logs (read-only) as /var/lib/hermes/logs, so writing
+      # to a subdir here is visible to alloy without editing the main
+      # compose. See aiamsbs-ansible-stack/docker-compose.yml comments for
+      # the full rationale.
+      - ${HOME}/.hermes/logs/aiamsbs-ansible:/ansible/logs:rw
+    restart: unless-stopped
+
+  # FastAPI bridge with /var/run/docker.sock (BACKLOG #64 Card 2). Only
+  # container with the docker socket — streamlit talks to this over HTTP
+  # instead of mounting the socket itself. No host port.
+  aiamsbs-ansible-runner:
+    build:
+      context: ./aiamsbs-ansible-stack
+      dockerfile: aiamsbs-ansible-runner/Dockerfile
+    image: aiamsbs_aiamsbs-ansible-runner
+    container_name: aiamsbs-ansible-runner
+    networks:
+      - monitoring
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${HOME}/.hermes/logs/aiamsbs-ansible:/ansible/logs:rw
+      - ./aiamsbs-ansible-stack/loki_logger.py:/app/loki_logger.py:ro
+    environment:
+      - RUNNER_HMAC_SECRET=${RUNNER_HMAC_SECRET:-dev-secret-rotate-me}
+      - ANSIBLE_CONTAINER_NAME=aiamsbs-ansible
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - PYTHONPATH=/app
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    depends_on:
+      aiamsbs-ansible:
+        condition: service_started
+
+  # Customer-facing Streamlit UI (BACKLOG #64 Cards 3-6). Port 8501 is
+  # the ONLY host-side port this stack publishes.
+  streamlit-ui:
+    build:
+      context: ./streamlit-ui-stack
+      dockerfile: Dockerfile
+    image: aiamsbs_streamlit-ui
+    container_name: streamlit-ui
+    ports:
+      - "0.0.0.0:8501:8501"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - monitoring
+    volumes:
+      - ./streamlit-ui-stack/data:/data/streamlit-ui:rw
+      - /home/ansible/.hermes/logs/aiamsbs-streamlit:/home/ansible/.hermes/logs/aiamsbs-streamlit:rw
+      - ./streamlit-ui-stack/streamlit-app:/app/streamlit-app:ro
+      - ./aiamsbs-ansible-stack/playbooks:/ansible/playbooks:ro
+      - ./aiamsbs-ansible-stack/inventory:/ansible/inventory:ro
+    environment:
+      - STREAMLIT_ADMIN_USERNAME=${STREAMLIT_ADMIN_USERNAME:-admin}
+      - STREAMLIT_ADMIN_PASSWORD_HASH=${STREAMLIT_ADMIN_PASSWORD_HASH:-}
+      - STREAMLIT_ADMIN_PASSWORD=${STREAMLIT_ADMIN_PASSWORD:-admin}
+      - HERMES_URL=${HERMES_URL:-http://host.docker.internal:9119}
+      - KB_MCP_URL=${KB_MCP_URL:-http://kb-mcp:8002}
+      - INVENTORY_MCP_URL=${INVENTORY_MCP_URL:-http://inventory-mcp:8001}
+      - LOKI_URL=${LOKI_URL:-http://loki:3100}
+      - ANSIBLE_RUNNER_URL=${ANSIBLE_RUNNER_URL:-http://aiamsbs-ansible-runner:8000}
+      - GRAFANA_URL=${GRAFANA_URL:-http://grafana:3000}
+      - RUNNER_HMAC_SECRET=${RUNNER_HMAC_SECRET:-dev-secret-rotate-me}
+      - AIAMSBS_CUSTOMER_NAME=${AIAMSBS_CUSTOMER_NAME:-dufour-int}
+      - HERMES_API_BASE_URL=${HERMES_API_BASE_URL:-http://host.docker.internal:8642/v1}
+      - HERMES_API_KEY=${HERMES_API_KEY:-}
+      - HERMES_MODEL=${HERMES_MODEL:-minimax/minimax-m3}
+      - HERMES_PROFILE=${HERMES_PROFILE:-it_admin}
+      - LOKI_LOG_DIR=/home/ansible/.hermes/logs/aiamsbs-streamlit
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8501/_stcore/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
 
 networks:
   monitoring:
