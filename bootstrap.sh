@@ -2431,6 +2431,20 @@ verify_installation() {
             log_warn "  ✗ Streamlit HERMES_API_KEY: ${streamlit_key:-empty} — Agent Chat will fail. Re-run: docker compose up -d streamlit-ui with HERMES_API_KEY in env."
             errors=$((errors+1))
         fi
+        # BACKLOG #67 — Run Playbook "playbook not found" smoke check.
+        # Verify the aiamsbs-ansible container can resolve the same playbook
+        # paths that the streamlit picker would surface. Catches bind-mount
+        # misconfigurations (where streamlit sees /ansible/playbooks/X but
+        # aiamsbs-ansible sees a different tree) before the operator hits
+        # "Confirm" in the UI.
+        local playbook_smoke
+        playbook_smoke=$(sg docker -c "docker exec aiamsbs-ansible ls /ansible/playbooks/generated/_aiamsbs_ping.yml" 2>/dev/null)
+        if [ -n "$playbook_smoke" ] && [ "$(echo "$playbook_smoke" | tr -d '[:space:]')" = "/ansible/playbooks/generated/_aiamsbs_ping.yml" ]; then
+            log_success "  ✓ Run Playbook smoke: /ansible/playbooks/generated/_aiamsbs_ping.yml visible to aiamsbs-ansible"
+        else
+            log_warn "  ✗ Run Playbook smoke: ping playbook not visible inside aiamsbs-ansible container (got: $playbook_smoke). Run Playbook will fail 'not found'."
+            errors=$((errors+1))
+        fi
 
         log_info "Listening ports (AIAMSBS services):"
         list_listening_ports || true
