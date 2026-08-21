@@ -1,11 +1,19 @@
 # pages/3_Run_Playbook.py — AIAMSBS v1.0 customer Run Playbook flow.
 #
-# Card 4 of BACKLOG #64. The headline v1.0 feature: a 5-stage Streamlit
-# flow that lets an authenticated operator pick a playbook + inventory +
-# mode + credentials, REQUIRES a confirmation click, then calls the
-# aiamsbs-ansible-runner HTTP API with an HMAC-signed body. Every run
-# is recorded in the local SQLite (Card 3 schema) and emits Loki events
-# for the audit trail.
+# Card 4 of BACKLOG #64 (now Card 8's inline-inventory variant). The
+# headline v1.0 feature: a 5-stage Streamlit flow that lets an
+# authenticated operator pick a playbook + hosts + mode + credentials,
+# REQUIRES a confirmation click, then calls the aiamsbs-ansible-runner
+# HTTP API with an HMAC-signed body. Every run is recorded in the local
+# SQLite (Card 3 schema) and emits Loki events for the audit trail.
+#
+# Card 8 (BACKLOG #64 v1.0-private): hosts are sourced live from
+# inventory-mcp via MCP Streamable-HTTP and joined into a SINGLE inline
+# inventory string of the form
+#   "host01 ansible_host=10.0.0.1 ansible_user=opc ansible_connection=ssh,host02 ..."
+# which is passed as the `-i` arg to ansible-playbook. There are NO
+# inventory files on disk and NO file picker in the UI. The /ansible
+# bind mount of `inventory/` remains for the empty localhost file (harmless).
 #
 # SAFETY:
 #   * The Confirmation screen is THE safety boundary. There is no
@@ -39,6 +47,12 @@ from hermes_client import (
     redact_secrets,
     short_run_id,
 )
+from mcp_client import (
+    MCPFormatError,
+    MCPUnavailableError,
+    MCPToolError,
+    inventory_list,
+)
 from settings import load as load_settings
 
 st.set_page_config(page_title="Run Playbook — AIAMSBS", page_icon="▶️", layout="wide")
@@ -64,7 +78,34 @@ st.caption(
 # Filesystem roots (Card 4 RO bind mounts of aiamsbs-ansible's directories).
 # ---------------------------------------------------------------------------
 PLAYBOOK_ROOT = Path("/ansible/playbooks")
-INVENTORY_ROOT = Path("/ansible/inventory")
+
+# Card 8 (BACKLOG #64 v1.0-private): inventory is sourced LIVE from
+# inventory-mcp via MCP Streamable-HTTP (POST http://inventory-mcp:8000/mcp
+# JSON-RPC tools/call list_devices). The empty inventory/static/localhost
+# file remains on disk for backwards compat but is never selected by the UI.
+
+# Cache device universe for 30s so repeated page loads don't hammer MCP.
+@st.cache_data(ttl=30, show_spinner=False)
+def _device_universe() -> tuple[list[dict], str | None]:
+    """Fetch all devices from inventory-mcp. Returns (rows, error_msg).
+
+    Live data only — there are no inventory files to read. We tolerate
+    MCP being unavailable and surface the error as a string instead of
+    raising so the page renders an actionable banner.
+    """
+    try:
+        rows = inventory_list(query=None)
+        # Defensive filter: the multiselect only needs hostname + ip.
+        rows = [r for r in rows if (r.get("hostname") or r.get("device_id"))]
+        return rows, None
+    except MCPUnavailableError as e:
+        return [], f"Inventory service unavailable: {e}"
+    except MCPFormatError as e:
+        return [], f"non-MCP response: {str(e)[:300]}"
+    except MCPToolError as e:
+        return [], f"Inventory tool error: {e}"
+    except Exception as e:
+        return [], f"{type(e).__name__}: {e}"
 
 # Where the runner writes NDJSON (Card 2 mount). The streamlit shell has
 # /home/ansible/.hermes/logs/aiamsbs-streamlit set as LOKI_LOG_DIR — log
@@ -82,12 +123,10 @@ def _ss_init() -> None:
         "stage": 1,
         "playbook_path": None,  # Path relative to PLAYBOOK_ROOT
         "playbook_meta": None,  # {name, description}
-        "inventory_path": None,  # Path relative to INVENTORY_ROOT
-        "inventory_kind": None,  # "yaml" | "ini"
-        "inventory_hosts": [],
-        "inventory_groups": [],
-        "target_kind": "all",    # "all" | "group" | "host"
-        "target_value": None,
+        # Card 8: hosts come from inventory-mcp, not files. We keep a list
+        # of selected device dicts (each with hostname/ip_address) so the
+        # inline inventory string can be regenerated at Confirm time.
+        "selected_devices": [],   # list[dict] from inventory-mcp
         "mode": "check",         # "check" | "apply"
         "creds": {               # collected but never persisted
             "ssh_user": "",
@@ -117,9 +156,7 @@ def _reset_flow() -> None:
         if k.startswith("__") or k in {
             "authenticated", "user", "user_id",
             "stage", "playbook_path", "playbook_meta",
-            "inventory_path", "inventory_kind",
-            "inventory_hosts", "inventory_groups",
-            "target_kind", "target_value",
+            "selected_devices",
             "mode", "creds", "extra_vars",
             "run_id", "confirm_started", "run_error",
             "events_count", "final_exit_code", "auth_failed",
@@ -171,107 +208,6 @@ def _parse_playbook_meta(path: Path) -> dict:
     if isinstance(doc, dict):
         return {"name": doc.get("name"), "description": doc.get("description")}
     return {"name": None, "description": None}
-
-
-def _list_inventories() -> list[dict]:
-    """Return [{rel, abs_path, kind}] for both static/ and generated/."""
-    out: list[dict] = []
-    if not INVENTORY_ROOT.exists():
-        return out
-    for sub in ("static", "generated"):
-        base = INVENTORY_ROOT / sub
-        if not base.exists():
-            continue
-        for p in sorted(base.rglob("*")):
-            if p.is_file() and p.suffix in (".yml", ".yaml", ".ini"):
-                kind = "yaml" if p.suffix in (".yml", ".yaml") else "ini"
-                out.append({
-                    "rel": f"{sub}/{p.relative_to(base)}",
-                    "abs_path": str(p),
-                    "kind": kind,
-                })
-    return out
-
-
-def _parse_inventory(path: Path, kind: str) -> tuple[list[str], list[str]]:
-    """Best-effort inventory parser. Returns (hosts, groups).
-
-    Handles three shapes:
-      1. Bare key=value lines ("localhost ansible_connection=local") — every
-         non-comment non-empty line is a host.
-      2. INI: "[groupname]\nhost1\nhost2\n[other]\nhost3" — group headers
-         and host lines under each.
-      3. YAML: Ansible-inventory style. all.children / vars.children etc.
-         We pull .hosts from each group and from `all`.
-    """
-    hosts: set[str] = set()
-    groups: set[str] = set()
-    try:
-        text = path.read_text(encoding="utf-8")
-    except Exception:
-        return [], []
-
-    if kind == "yaml":
-        try:
-            doc = yaml.safe_load(text)
-        except Exception:
-            return [], []
-        if not isinstance(doc, dict):
-            return [], []
-
-        def _walk(node: dict) -> None:
-            if not isinstance(node, dict):
-                return
-            children = node.get("children", [])
-            if isinstance(children, list):
-                for c in children:
-                    if isinstance(c, dict):
-                        for gname, gbody in c.items():
-                            groups.add(gname)
-                            if isinstance(gbody, dict):
-                                h = gbody.get("hosts", {})
-                                if isinstance(h, dict):
-                                    hosts.update(h.keys())
-                                _walk(gbody)
-            h = node.get("hosts", {})
-            if isinstance(h, dict):
-                hosts.update(h.keys())
-
-        all_node = doc.get("all", {})
-        if isinstance(all_node, dict):
-            h = all_node.get("hosts", {})
-            if isinstance(h, dict):
-                hosts.update(h.keys())
-            _walk(all_node)
-        return sorted(hosts), sorted(groups)
-
-    # INI or bare key=value fallback (same parser handles both)
-    current_group: str | None = None
-    in_hosts_section = False
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or line.startswith(";"):
-            continue
-        if line.startswith("[") and line.endswith("]"):
-            header = line[1:-1].strip()
-            if header.endswith(":children"):
-                header = header[: -len(":children")]
-            current_group = header
-            in_hosts_section = (header == "all" or header == "localhost")
-            if current_group and current_group not in ("all", "localhost"):
-                groups.add(current_group)
-            continue
-        if "=" in line and " " in line:
-            # bare key=value with optional trailing attrs → host definition
-            host = line.split(None, 1)[0]
-            hosts.add(host)
-            in_hosts_section = False
-            continue
-        if in_hosts_section:
-            hosts.add(line)
-        else:
-            hosts.add(line)
-    return sorted(hosts), sorted(groups)
 
 
 # ---------------------------------------------------------------------------
@@ -331,52 +267,108 @@ def _stage1() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Stage 2: Inventory + target
+# Stage 2: Select hosts (live from inventory-mcp, no inventory file)
 # ---------------------------------------------------------------------------
 
+def _build_inline_inventory(devices: list[dict], ssh_user: str) -> str:
+    """Build the inline `-i` string for ansible-playbook.
+
+    Per Card 8 (BACKLOG #64 v1.0-private): no inventory files on disk.
+    Each selected device becomes a fragment
+        "{hostname} ansible_host={ip} ansible_user={ssh_user} ansible_connection=ssh"
+    Fragments joined with "," + a trailing ",". NO outer quotes.
+
+    The trailing comma is the Ansible convention for inline inventories: it
+    tells the parser "this is a comma-separated host list, not a filename
+    or a single bare hostname". Because the runner passes the value as a
+    single argv item to ansible-playbook (no shell in between), we do NOT
+    wrap the value in shell quotes — those would be parsed by Ansible as
+    part of the first host's name. The trailing comma is the only
+    disambiguator we need.
+
+    Returns "" if devices is empty. Caller is responsible for refusing to
+    POST when the result is empty.
+    """
+    if not devices:
+        return ""
+    ssh_user = (ssh_user or "").strip()
+    fragments: list[str] = []
+    for d in devices:
+        hostname = (d.get("hostname") or d.get("device_id") or "").strip()
+        ip = (d.get("ip_address") or "").strip()
+        if not hostname:
+            continue
+        # ansible_user defaults to "ansible" if user did not specify one —
+        # the credentials stage still asks for it explicitly so this is a
+        # safety net only. ansible_connection=ssh for everything in the
+        # current inventory (no Windows hosts discovered).
+        user = ssh_user or "ansible"
+        # Empty ip falls back to the hostname; ansible will then try to
+        # resolve the name via DNS. We keep this branch because some
+        # inventory rows have hostname but no ip (empty discovery runs).
+        ip_part = f" ansible_host={ip}" if ip else ""
+        fragments.append(
+            f"{hostname}{ip_part} ansible_user={user} ansible_connection=ssh"
+        )
+    if not fragments:
+        return ""
+    return ",".join(fragments) + ","
+
+
 def _stage2() -> None:
-    st.subheader("Stage 2 — Select inventory + target")
-    st.write(f"**Playbook:** `{_SS['playbook_path']}`  —  name=`{(_SS['playbook_meta'] or {}).get('name') or '?'}`")
+    st.subheader("Stage 2 — Select hosts")
+    st.write(
+        f"**Playbook:** `{_SS['playbook_path']}`  —  "
+        f"name=`{(_SS['playbook_meta'] or {}).get('name') or '?'}`"
+    )
     if st.button("← Back", key="inv_back"):
         _SS["stage"] = 1
         st.rerun()
 
-    inventories = _list_inventories()
-    if not inventories:
-        st.error("No inventories under `/ansible/inventory/{static,generated}/`.")
-        st.stop()
+    devices, err_msg = _device_universe()
+    if err_msg:
+        st.error(err_msg)
+        if st.button("Retry inventory fetch", key="inv_retry"):
+            st.cache_data.clear()
+            st.rerun()
+        return
 
-    rels = [i["rel"] for i in inventories]
-    inv_choice = st.selectbox("Inventory file", options=rels, key="inv_choice")
-    sel = next(i for i in inventories if i["rel"] == inv_choice)
-    _SS["inventory_path"] = sel["rel"]
-    _SS["inventory_kind"] = sel["kind"]
+    if not devices:
+        st.warning("Inventory returned no devices.")
+        return
 
-    hosts, groups = _parse_inventory(Path(sel["abs_path"]), sel["kind"])
-    _SS["inventory_hosts"] = hosts
-    _SS["inventory_groups"] = groups
+    # Build the display label: "hostname (ip)" — hostnames are unique
+    # because the inventory schema enforces that on insert. We index by
+    # hostname so a multiselect can return just the names; we then look
+    # up the matching dict at Confirm time.
+    device_by_host: dict[str, dict] = {}
+    labels: list[str] = []
+    for d in devices:
+        hn = d.get("hostname") or d.get("device_id")
+        if not hn:
+            continue
+        ip = d.get("ip_address") or "?"
+        label = f"{hn} ({ip})"
+        device_by_host[str(hn)] = d
+        labels.append(label)
 
-    st.caption(f"**Hosts parsed:** {len(hosts)}  •  **Groups parsed:** {len(groups)}")
+    st.caption(
+        f"**{len(devices)} device(s)** fetched from inventory-mcp "
+        f"(cached 30s). Pick one or more to run this playbook against."
+    )
 
-    target_options = [f"All hosts ({len(hosts)})"]
-    for g in groups:
-        target_options.append(f"Group: {g}")
-    for h in hosts:
-        target_options.append(f"Host: {h}")
+    selected = st.multiselect(
+        "Target hosts",
+        options=sorted(labels),
+        default=[],
+        key="inv_multiselect",
+        help="Each selected host becomes a fragment in the inline -i inventory.",
+    )
 
-    if len(target_options) == 1:
-        st.warning("This inventory parsed as empty. The runner will fail with no targets.")
-
-    target_choice = st.selectbox("Target", options=target_options, key="target_choice")
-    if target_choice.startswith("All hosts"):
-        _SS["target_kind"] = "all"
-        _SS["target_value"] = None
-    elif target_choice.startswith("Group:"):
-        _SS["target_kind"] = "group"
-        _SS["target_value"] = target_choice[len("Group: "):]
-    elif target_choice.startswith("Host:"):
-        _SS["target_kind"] = "host"
-        _SS["target_value"] = target_choice[len("Host: "):]
+    # Translate the label list back to hostname strings and resolve to
+    # the original device dicts.
+    selected_hosts = [s.split(" (")[0] for s in selected]
+    _SS["selected_devices"] = [device_by_host[h] for h in selected_hosts if h in device_by_host]
 
     cols = st.columns([1, 1, 4])
     with cols[0]:
@@ -384,13 +376,20 @@ def _stage2() -> None:
             _SS["stage"] = 1
             st.rerun()
     with cols[1]:
-        if st.button("Next →", key="inv_next", type="primary"):
+        # Next is disabled until at least one host is selected.
+        next_disabled = not _SS["selected_devices"]
+        if st.button(
+            "Next →",
+            key="inv_next",
+            type="primary",
+            disabled=next_disabled,
+            help="Select at least one host to continue." if next_disabled else None,
+        ):
             log_run_event(
                 "inventory_selected",
                 run_id=_SS["run_id"] or "(none-yet)",
-                inventory=sel["rel"],
-                target_kind=_SS["target_kind"],
-                target_value=_SS["target_value"],
+                host_count=len(_SS["selected_devices"]),
+                hosts=sorted(selected_hosts),
             )
             _SS["stage"] = 3
             st.rerun()
@@ -402,7 +401,16 @@ def _stage2() -> None:
 
 def _stage3() -> None:
     st.subheader("Stage 3 — Mode + credentials")
-    st.write(f"**Inventory:** `{_SS['inventory_path']}`  •  **Target:** `{_SS['target_kind']}` = `{_SS['target_value'] or 'all'}`")
+    selected = _SS["selected_devices"]
+    selected_hosts = sorted(
+        d.get("hostname") or d.get("device_id") or "?"
+        for d in selected
+    )
+    st.write(
+        f"**Targets:** {len(selected)} host(s) — "
+        + (", ".join(f"`{h}`" for h in selected_hosts)
+           if selected_hosts else "_none selected_")
+    )
     if st.button("← Back", key="cred_back"):
         _SS["stage"] = 2
         st.rerun()
@@ -423,10 +431,10 @@ def _stage3() -> None:
             "caused irreversible changes on customer hardware. Confirm you "
             "have a backup and rollback plan."
         )
-        if len(_SS["inventory_hosts"]) > 10:
+        if len(selected) > 10:
             st.error(
-                f"This will affect **{len(_SS['inventory_hosts'])} hosts** in "
-                "production. Verify the inventory filter above is intentional."
+                f"This will affect **{len(selected)} hosts** in "
+                "production. Verify the multiselect above is intentional."
             )
 
     st.markdown("**Credentials (for the inventory target)**")
@@ -498,19 +506,12 @@ def _stage3() -> None:
 
 def _render_summary_card() -> None:
     pb = _SS["playbook_path"]
-    inv = _SS["inventory_path"]
-    target = (
-        "all hosts"
-        if _SS["target_kind"] == "all"
-        else f"{_SS['target_kind']}={_SS['target_value']}"
+    selected = _SS["selected_devices"]
+    selected_hosts = sorted(
+        d.get("hostname") or d.get("device_id") or "?"
+        for d in selected
     )
     mode = _SS["mode"]
-    hosts = _SS["inventory_hosts"]
-    n_hosts = (
-        len(hosts)
-        if _SS["target_kind"] == "all"
-        else (1 if _SS["target_kind"] == "host" else "?")
-    )
 
     st.markdown("#### Review & confirm")
     with st.container(border=True):
@@ -520,8 +521,19 @@ def _render_summary_card() -> None:
             st.markdown(f"&nbsp;&nbsp;name: `{meta['name']}`")
         if meta.get("description"):
             st.markdown(f"&nbsp;&nbsp;description: _{meta['description']}_")
-        st.markdown(f"**Inventory:** `{inv}`")
-        st.markdown(f"**Target:** `{target}`  •  **~Hosts affected:** {n_hosts}")
+        st.markdown(f"**Inventory source:** `inventory-mcp` (live, MCP Streamable-HTTP)")
+        st.markdown(f"**Hosts selected:** {len(selected)}")
+        if selected_hosts:
+            st.markdown(
+                "&nbsp;&nbsp;" + ", ".join(f"`{h}`" for h in selected_hosts)
+            )
+        # Inline inventory preview — what will actually be passed as -i.
+        inline_preview = _build_inline_inventory(
+            selected, _SS["creds"].get("ssh_user", "")
+        )
+        if inline_preview:
+            with st.expander("Inline inventory preview (-i argument)", expanded=False):
+                st.code(inline_preview, language="text")
         st.markdown(f"**Mode:** `{mode}`" + ("  ⚠️ APPLY" if mode == "apply" else ""))
         if _SS["extra_vars"]:
             st.markdown("**--extra-vars:**")
@@ -544,6 +556,11 @@ def _stage4() -> None:
 
     _render_summary_card()
 
+    # Card 8: Run button is disabled when no hosts are selected. The label
+    # is also context-dependent so the operator sees what to do next.
+    has_hosts = bool(_SS["selected_devices"])
+    run_label = "Run Playbook" if has_hosts else "Select hosts to run"
+
     cols = st.columns([1, 1, 5])
     with cols[0]:
         # Cancel: explicit primary (blue), DEFAULT focus.
@@ -551,9 +568,18 @@ def _stage4() -> None:
             _reset_flow()
             st.rerun()
     with cols[1]:
-        # Confirm: explicit destructive (red). Requires a real click —
-        # streamlit's default focus is the first widget, which is now Cancel.
-        if st.button("Confirm & Run", key="conf_confirm", type="secondary", use_container_width=True):
+        # Run Playbook / Select hosts to run — disabled when empty.
+        # Requires a real click — streamlit's default focus is the first
+        # widget (Cancel) so the operator must consciously start the run.
+        if st.button(
+            run_label,
+            key="conf_confirm",
+            type="secondary",
+            use_container_width=True,
+            disabled=not has_hosts,
+            help="Select at least one host in Stage 2 to enable."
+            if not has_hosts else None,
+        ):
             if _SS["confirm_started"]:
                 st.warning("Run already in progress — wait for it to finish.")
             else:
@@ -622,16 +648,21 @@ def _run_in_progress() -> None:
     run_id = _SS["run_id"]
 
     # Persist the queued status_change event (run row already queued from Confirm click).
-    inv = _SS["inventory_path"]
     pb = _SS["playbook_path"]
-    target = (
-        "all" if _SS["target_kind"] == "all"
-        else f"{_SS['target_kind']}={_SS['target_value']}"
+    selected = _SS["selected_devices"]
+    selected_hosts = sorted(
+        d.get("hostname") or d.get("device_id") or "?"
+        for d in selected
+    )
+    # Card 8: build the inline inventory string now so it's logged in
+    # the queued event. ssh_user comes from stage 3 credentials.
+    inline_inventory = _build_inline_inventory(
+        selected, _SS["creds"].get("ssh_user", "")
     )
     runner_payload = {
-        "inventory": inv,
+        "inventory_source": "inventory-mcp",
+        "hosts": selected_hosts,
         "playbook": pb,
-        "target": target,
         "mode": _SS["mode"],
         "extra_vars": _extra_vars_with_creds(),
         "queued_at": time.time(),
@@ -639,14 +670,11 @@ def _run_in_progress() -> None:
     _insert_status_event(run_id, "status_change", {"status": "queued", **runner_payload})
     _SS["events_count"] = _SS.get("events_count", 0) + 1
 
-    target_path = (
-        f"{inv}#{_SS['target_value']}"
-        if _SS["target_kind"] in ("group", "host")
-        else inv
-    )
     extra_vars = _extra_vars_with_creds()
+    # Card 8: the runner consumes `inline_inventory` (REPLACES the old
+    # `inventory` field which used to be a file path on disk).
     runner_body = {
-        "inventory": target_path,
+        "inline_inventory": inline_inventory,
         "playbook": pb,
         "extra_vars": extra_vars,
         "check": _SS["mode"] == "check",
@@ -661,9 +689,13 @@ def _run_in_progress() -> None:
     _update_run_status(run_id, status="running", started_at=_now_iso())
     _insert_status_event(run_id, "status_change", {"status": "running"})
 
-    log_run_event("run_started", run_id=run_id,
-                  playbook=pb, inventory=inv, mode=_SS["mode"],
-                  target_kind=_SS["target_kind"], target_value=_SS["target_value"])
+    log_run_event(
+        "run_started",
+        run_id=run_id,
+        playbook=pb,
+        hosts=selected_hosts,
+        mode=_SS["mode"],
+    )
 
     # Stream from the runner, writing each NDJSON event to the DB.
     try:
@@ -819,19 +851,27 @@ def _prepare_run_row_on_confirm() -> str:
     """Insert the queued playbook_runs row. Called BEFORE we transition
     from stage 4 → stage 5, so the run exists with status=queued even
     before the actual POST. `cancel` would just update status to
-    `cancelled` later."""
+    `cancelled` later.
+
+    Card 8: the legacy `inventory` column (NOT NULL in the schema) now
+    stores a compact "inventory-mcp:<host1>,<host2>,..." label so
+    Run History / Run Detail pages still show something meaningful
+    instead of an old file path.
+    """
     run_id = new_run_id()
     user_id = st.session_state.get("user_id")
-    target_str = (
-        "all" if _SS["target_kind"] == "all"
-        else f"{_SS['target_kind']}={_SS['target_value']}"
+    selected_hosts = sorted(
+        d.get("hostname") or d.get("device_id") or "?"
+        for d in _SS["selected_devices"]
     )
+    inv_label = "inventory-mcp:" + ",".join(selected_hosts)
+    target_str = f"host={','.join(selected_hosts)}" if selected_hosts else "all"
     with db() as conn:
         conn.execute(
             "INSERT INTO playbook_runs "
             "(id, user_id, playbook, inventory, target, mode, status) "
             "VALUES (?, ?, ?, ?, ?, ?, 'queued')",
-            (run_id, user_id, _SS["playbook_path"], _SS["inventory_path"],
+            (run_id, user_id, _SS["playbook_path"], inv_label,
              target_str, _SS["mode"]),
         )
         conn.commit()
@@ -845,7 +885,7 @@ def _prepare_run_row_on_confirm() -> str:
 # stage 4 returns to stage 1 with NO row created (stage 5 hasn't run
 # yet). That matches the spec.
 if _SS["stage"] == 5 and not _SS["confirm_started"]:
-    # The "Confirm & Run" button set stage=5 + confirm_started=True. If
+    # The "Run Playbook" button set stage=5 + confirm_started=True. If
     # confirm_started is False we landed here some other way; just send
     # the user back.
     _SS["stage"] = 4
@@ -861,9 +901,16 @@ if _SS["stage"] == 4 and _SS["confirm_started"] is True and not _SS.get("run_id"
         st.stop()
     _SS["run_id"] = new_id
     _SS["stage"] = 5
-    log_run_event("run_queued", run_id=new_id,
-                  playbook=_SS["playbook_path"], inventory=_SS["inventory_path"],
-                  mode=_SS["mode"])
+    log_run_event(
+        "run_queued",
+        run_id=new_id,
+        playbook=_SS["playbook_path"],
+        hosts=sorted(
+            d.get("hostname") or d.get("device_id") or "?"
+            for d in _SS["selected_devices"]
+        ),
+        mode=_SS["mode"],
+    )
     st.rerun()
 
 # ---- Render current stage ----

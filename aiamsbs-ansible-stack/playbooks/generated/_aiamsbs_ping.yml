@@ -1,0 +1,20 @@
+# _aiamsbs_ping.yml — Card 4 (Run Playbook) "Test connection" button.
+#
+# Runs `ansible.builtin.ping` against every host in the inventory. Exit
+# code 0 iff every target responds; non-zero if any host is unreachable.
+# Used by 3_Run_Playbook.py's Stage 3 test-connection button (POSTs to
+# the runner with this playbook against the chosen inventory).
+#
+# Safe to run from any context — ping is read-only and times out fast.
+# The leading underscore in the filename pushes it to the top of
+# alphabetical order so it never lands at the bottom of the dropdown
+# next to a real customer playbook.
+- name: Connectivity test (Card 4)
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: ping
+      ansible.builtin.ping:
+    - name: report
+      ansible.builtin.debug:
+        msg: "ping ok on {{ inventory_hostname }}"
