@@ -282,48 +282,52 @@ def _stage1() -> None:
 # Stage 2: Select hosts (live from inventory-mcp, no inventory file)
 # ---------------------------------------------------------------------------
 
-def _build_inline_inventory(devices: list[dict], ssh_user: str) -> str:
+def _build_inline_inventory(devices: list[dict], ssh_user: str = "") -> str:
     """Build the inline `-i` string for ansible-playbook.
 
     Per Card 8 (BACKLOG #64 v1.0-private): no inventory files on disk.
-    Each selected device becomes a fragment
-        "{hostname} ansible_host={ip} ansible_user={ssh_user} ansible_connection=ssh"
-    Fragments joined with "," + a trailing ",". NO outer quotes.
+    The pattern is the one Ryland verified 2026-08-19:
+        ansible-playbook -i "host1,host2,host3," playbook.yml \\
+          -e "ansible_user=... ansible_password=*** ansible_connection=ssh"
+    Each selected device becomes a BARE hostname. No `ansible_host=`,
+    no `ansible_user=`, no `ansible_connection=` in the inline string —
+    vars ALL ride on `--extra-vars` (handled by the runner from
+    Stage 3 credentials + the extra-vars form).
 
-    The trailing comma is the Ansible convention for inline inventories: it
-    tells the parser "this is a comma-separated host list, not a filename
-    or a single bare hostname". Because the runner passes the value as a
-    single argv item to ansible-playbook (no shell in between), we do NOT
-    wrap the value in shell quotes — those would be parsed by Ansible as
-    part of the first host's name. The trailing comma is the only
-    disambiguator we need.
+    The trailing comma is mandatory: it tells ansible's host_list plugin
+    "this is a host list, not a filename". Without it (`host1,host2`),
+    ansible tries to open the string as a file path and reports
+    "Unable to parse /ansible/host1,host2 as an inventory source".
+
+    The `ssh_user` argument is kept for signature compatibility but is
+    IGNORED — per-host vars now flow through extra_vars. See
+    `_extra_vars_with_creds()` (Stage 3 credentials → runner body).
+
+    Verified 2026-08-19 by Ryland's pattern test (3 candidates: single host,
+    two hosts, IP-only — all parsed correctly by ansible).
 
     Returns "" if devices is empty. Caller is responsible for refusing to
     POST when the result is empty.
     """
     if not devices:
         return ""
-    ssh_user = (ssh_user or "").strip()
     fragments: list[str] = []
     for d in devices:
-        hostname = (d.get("hostname") or d.get("device_id") or "").strip()
-        ip = (d.get("ip_address") or "").strip()
+        # Prefer hostname if present. Fall back to ip_address only if
+        # hostname is missing — no native ansible_host support via -e
+        # (it would apply globally, not per-host). When hostname is empty
+        # but ip is present, the operator can run with `--check` only or
+        # edit the inventory row to add a hostname.
+        hostname = (d.get("hostname") or "").strip()
         if not hostname:
-            continue
-        # ansible_user defaults to "ansible" if user did not specify one —
-        # the credentials stage still asks for it explicitly so this is a
-        # safety net only. ansible_connection=ssh for everything in the
-        # current inventory (no Windows hosts discovered).
-        user = ssh_user or "ansible"
-        # Empty ip falls back to the hostname; ansible will then try to
-        # resolve the name via DNS. We keep this branch because some
-        # inventory rows have hostname but no ip (empty discovery runs).
-        ip_part = f" ansible_host={ip}" if ip else ""
-        fragments.append(
-            f"{hostname}{ip_part} ansible_user={user} ansible_connection=ssh"
-        )
+            ip = (d.get("ip_address") or "").strip()
+            if not ip:
+                continue
+            hostname = ip
+        fragments.append(hostname)
     if not fragments:
         return ""
+    # Bare hostnames, comma-separated, mandatory trailing comma.
     return ",".join(fragments) + ","
 
 
@@ -610,8 +614,15 @@ def _extra_vars_with_creds() -> dict:
     Anything in `creds` that the user filled in lands under
     ansible_ssh_user / ansible_ssh_pass / ansible_ssh_private_key_file /
     ansible_become_pass. Empty string → omit.
+
+    Always sets `ansible_connection=ssh` because the inline inventory
+    (Ryland's pattern, see _build_inline_inventory) is bare hostnames —
+    no per-host connection type is encoded. The runner passes this whole
+    dict via `--extra-vars '{...}'`. Without ansible_connection, ansible
+    defaults to `smart` which probes for Python on the target and fails
+    badly on network gear.
     """
-    out: dict[str, object] = {}
+    out: dict[str, object] = {"ansible_connection": "ssh"}
     creds = _SS["creds"]
     if creds.get("ssh_user"):
         out["ansible_user"] = creds["ssh_user"]
