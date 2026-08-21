@@ -281,8 +281,11 @@ services:
       - GRAFANA_URL=${GRAFANA_URL:-http://grafana:3000}
       - RUNNER_HMAC_SECRET=${RUNNER_HMAC_SECRET:-dev-secret-rotate-me}
       - AIAMSBS_CUSTOMER_NAME=${AIAMSBS_CUSTOMER_NAME:-dufour-int}
+      # Hermes gateway binds 0.0.0.0:8642 (BACKLOG #66 fix). The
+      # API_SERVER_KEY lives in /home/ansible/.hermes/.env on the host;
+      # bootstrap.sh reads it and exports it before `docker compose up -d`.
       - HERMES_API_BASE_URL=${HERMES_API_BASE_URL:-http://host.docker.internal:8642/v1}
-      - HERMES_API_KEY=${HERMES_API_KEY:-}
+      - HERMES_API_KEY=${HERMES_API_KEY:?HERMES_API_KEY is required for Agent Chat — bootstrap.sh must source it from /home/ansible/.hermes/.env's API_SERVER_KEY}
       - HERMES_MODEL=${HERMES_MODEL:-minimax/minimax-m3}
       - HERMES_PROFILE=${HERMES_PROFILE:-it_admin}
       - LOKI_LOG_DIR=/home/ansible/.hermes/logs/aiamsbs-streamlit

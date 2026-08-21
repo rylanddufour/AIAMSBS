@@ -504,6 +504,134 @@ EOF
 }
 
 # ============================================
+# Provision Hermes API server (BACKLOG #66)
+# ============================================
+#
+# The Hermes API server is a gateway platform that exposes the OpenAI
+# Responses API (`POST /v1/responses`, `/v1/chat/completions`, `/v1/models`)
+# on port 8642 with bearer-token auth. The streamlit-ui container's Agent
+# Chat page talks to it.
+#
+# Three things must be true for it to work on a fresh install:
+#   1. `API_SERVER_KEY` is set in `~/.hermes/.env` (16+ chars; we use 64 hex).
+#      The gateway platform only enrolls at startup when this is present.
+#   2. `api_server.host: 0.0.0.0` is in `~/.hermes/config.yaml` so the
+#      platform binds all interfaces, not just loopback. Default is 127.0.0.1
+#      which blocks connections from the streamlit-ui container (lives on
+#      the Docker monitoring bridge, can't reach loopback on the host).
+#   3. `docker compose up -d` is run with `HERMES_API_KEY` exported in the
+#      shell env (matches the API_SERVER_KEY value) so the streamlit-ui
+#      container receives it. See `docker-compose.yml`'s `${HERMES_API_KEY:?}`
+#      substitution — fail-loud if the bootstrap forgot to export it.
+#
+# All three are handled here. Idempotent: re-running on an already-configured
+# host preserves the existing key (doesn't rotate), preserves the existing
+# config.yaml block (just appends if missing), and re-exports the env var.
+provision_api_server_key() {
+    local env_file="$HERMES_HOME/.env"
+    local config_yaml="$HERMES_HOME/config.yaml"
+
+    # ---- 1. API_SERVER_KEY in ~/.hermes/.env ----
+    if [ ! -f "$env_file" ]; then
+        log_warn "$env_file does not exist; configure_hermes_api should run first. Skipping api_server provisioning."
+        return 0
+    fi
+
+    # Source the .env so API_SERVER_KEY (and everything else Hermes wrote) is
+    # in our shell, then re-export API_SERVER_KEY as HERMES_API_KEY for the
+    # docker-compose substitution below.
+    # shellcheck disable=SC1090
+    set -a
+    . "$env_file"
+    set +a
+
+    if [ -z "${API_SERVER_KEY:-}" ] || [ "${#API_SERVER_KEY}" -lt 16 ]; then
+        log_info "API_SERVER_KEY missing or weak in $env_file; generating fresh 64-char hex..."
+        local new_key
+        new_key=$(openssl rand -hex 32)
+        # Append (or replace) in-place. Use awk to avoid duplicates.
+        if grep -q '^API_SERVER_KEY=' "$env_file"; then
+            sed -i "s|^API_SERVER_KEY=.*|API_SERVER_KEY=$new_key|" "$env_file"
+        else
+            printf '\n# API server key (Hermes API gateway on port 8642; used by streamlit Agent Chat)\nAPI_SERVER_KEY=%s\n' "$new_key" >> "$env_file"
+        fi
+        export API_SERVER_KEY="$new_key"
+        log_success "API_SERVER_KEY generated and written to $env_file"
+    else
+        log_info "API_SERVER_KEY already present in $env_file (len=${#API_SERVER_KEY}); preserving"
+        export API_SERVER_KEY
+    fi
+
+    # Re-export as HERMES_API_KEY so the docker-compose.yml substitution
+    # `${HERMES_API_KEY:?}` resolves at `docker compose up -d` time.
+    export HERMES_API_KEY="$API_SERVER_KEY"
+
+    # ---- 2. api_server.host: 0.0.0.0 in ~/.hermes/config.yaml ----
+    if [ ! -f "$config_yaml" ]; then
+        log_warn "$config_yaml does not exist; skipping api_server host binding. Streamlit Agent Chat may not be reachable from the streamlit-ui container."
+        return 0
+    fi
+
+    if grep -qE '^[[:space:]]*api_server:[[:space:]]*$' "$config_yaml"; then
+        # Block exists. Check that host is set to something other than 127.0.0.1.
+        # We use a python-ish awk to find the `host:` line that follows `api_server:`
+        # and is within 5 lines of it (don't touch unrelated api_server blocks if
+        # they appear in nested contexts).
+        local host_value
+        host_value=$(awk '
+            /^[[:space:]]*api_server:[[:space:]]*$/ { in_block=1; next }
+            in_block && /^[[:space:]]*host:[[:space:]]*/ { print $2; exit }
+            in_block && /^[[:space:]]*[a-zA-Z_]+:[[:space:]]*$/ && !/^[[:space:]]*host:/ { exit }
+        ' "$config_yaml")
+        if [ "$host_value" = "0.0.0.0" ]; then
+            log_info "api_server.host already 0.0.0.0 in $config_yaml; preserving"
+        else
+            log_info "api_server.host is '$host_value' (not 0.0.0.0); updating so streamlit-ui container can reach :8642..."
+            # Replace the first 'host:' line that appears under 'api_server:' block.
+            # If no host: line exists in the block, insert one immediately after api_server:.
+            if [ -n "$host_value" ]; then
+                sed -i "/^[[:space:]]*api_server:[[:space:]]*$/,/^[[:space:]]*[a-zA-Z_]/ s|^[[:space:]]*host:[[:space:]]*.*|  host: 0.0.0.0|" "$config_yaml"
+            else
+                sed -i "/^[[:space:]]*api_server:[[:space:]]*$/a\\  host: 0.0.0.0\\n  port: 8642" "$config_yaml"
+            fi
+            log_success "api_server.host set to 0.0.0.0 in $config_yaml"
+        fi
+    else
+        # No api_server block. Append one. Use a heredoc so the YAML stays
+        # syntactically valid (no quoting surprises).
+        log_info "Adding api_server: {host: 0.0.0.0, port: 8642} block to $config_yaml..."
+        cat >> "$config_yaml" <<'YAML'
+
+# Hermes API server (BACKLOG #66 — streamlit Agent Chat)
+# Bound to 0.0.0.0 so the streamlit-ui container on the monitoring bridge
+# can reach :8642 (loopback 127.0.0.1 would block cross-container traffic).
+# API_SERVER_KEY in ~/.hermes/.env gates auth — same value exported as
+# HERMES_API_KEY for the docker-compose substitution.
+api_server:
+  host: 0.0.0.0
+  port: 8642
+YAML
+        log_success "api_server block appended to $config_yaml"
+    fi
+
+    # ---- 3. Restart hermes-gateway so the platform re-enrolls with the new key ----
+    # The platform only loads at startup (when _has_usable_api_server_key runs).
+    # We need to restart for the new key to take effect.
+    if command -v systemctl >/dev/null 2>&1 && sudo test -f /etc/systemd/system/hermes-gateway.service 2>/dev/null; then
+        log_info "Restarting hermes-gateway.service so api_server platform enrolls with the new key..."
+        if sudo systemctl restart hermes-gateway.service; then
+            log_success "hermes-gateway restarted"
+        else
+            log_warn "Failed to restart hermes-gateway; api_server platform may not enroll until next manual restart"
+        fi
+    else
+        log_warn "systemctl or hermes-gateway.service not available; skipping restart. Restart manually: sudo systemctl restart hermes-gateway.service"
+    fi
+
+    log_info "HERMES_API_KEY exported to this shell env; docker compose up -d will inherit it"
+}
+
+# ============================================
 # Configure skill safety gates
 # ============================================
 # Hardens AIAMSBS against agent self-modification of skill files. The
@@ -2275,6 +2403,34 @@ verify_installation() {
         verify_service_health "Inventory MCP"   "http://localhost:8001/mcp"                "200|406" || errors=$((errors+1))
         verify_service_health "Grafana MCP"     "http://localhost:8000/mcp"                "200|406" || errors=$((errors+1))
         verify_service_health "Hermes Dashboard" "http://localhost:$HERMES_PORT/"          "302"    || errors=$((errors+1))
+        # BACKLOG #66 — streamlit + the customer-facing services that PR #41
+        # folded into the default install. Also probe the Hermes API server
+        # that Agent Chat depends on (port 8642, bearer-token auth).
+        verify_service_health "Streamlit UI"    "http://localhost:8501/_stcore/health"    "200"    || errors=$((errors+1))
+        # Hermes API server: 200 with key, 401 without. We pass the key from
+        # the env (provision_api_server_key exported it earlier in main()).
+        local api_code
+        api_code=$(curl -s -o /dev/null --max-time 5 --connect-timeout 3 \
+            -w '%{http_code}' \
+            -H "Authorization: Bearer ${HERMES_API_KEY:-no-key-set}" \
+            http://localhost:8642/v1/models 2>/dev/null)
+        if [ "$api_code" = "200" ]; then
+            log_success "  ✓ Hermes API server (Agent Chat): HTTP 200"
+        else
+            log_warn "  ✗ Hermes API server (Agent Chat): HTTP $api_code (expected 200; check API_SERVER_KEY in ~/.hermes/.env and api_server.host: 0.0.0.0 in ~/.hermes/config.yaml)"
+            errors=$((errors+1))
+        fi
+        # Verify the streamlit container actually has HERMES_API_KEY (not
+        # just that the gateway is up). Catches the case where bootstrap
+        # ran but HERMES_API_KEY wasn't exported at docker compose up time.
+        local streamlit_key
+        streamlit_key=$(sg docker -c "docker exec streamlit-ui sh -c 'echo \"\${HERMES_API_KEY:-empty}\"'" 2>/dev/null | tr -d '[:space:]')
+        if [ -n "$streamlit_key" ] && [ "$streamlit_key" != "empty" ] && [ "${#streamlit_key}" -ge 16 ]; then
+            log_success "  ✓ Streamlit HERMES_API_KEY: set (len=${#streamlit_key})"
+        else
+            log_warn "  ✗ Streamlit HERMES_API_KEY: ${streamlit_key:-empty} — Agent Chat will fail. Re-run: docker compose up -d streamlit-ui with HERMES_API_KEY in env."
+            errors=$((errors+1))
+        fi
 
         log_info "Listening ports (AIAMSBS services):"
         list_listening_ports || true
@@ -2343,6 +2499,7 @@ main() {
     export INFRA_DIR
 
     configure_hermes_api
+    provision_api_server_key
     configure_skill_safety
     install_default_profile_soul
     install_it_admin_profile_soul
