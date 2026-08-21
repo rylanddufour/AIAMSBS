@@ -111,15 +111,25 @@ async def health():
     Returns 200 with the list of containers we expect to find via the
     docker socket. Used by docker-compose healthchecks and by Card 3
     (Streamlit) for pre-flight validation.
+
+    `ok` is true iff the ansible container exists AND is in the `running`
+    state. `docker stop` leaves the container around (state=`exited`),
+    which previously returned 200 because `.id` doesn't raise on a
+    stopped container — false-positive on a half-broken install.
     """
     containers: list[str] = []
+    ok = False
     try:
         c = ansible_container()
-        # .status can be "running", "exited", etc. Touch .id to force the
-        # API call so a NotFound is raised if the container is gone.
+        # .status can be "running", "exited", "paused", etc. Touch .id
+        # first to force the API call so a NotFound is raised if the
+        # container is gone, THEN check status.
         _ = c.id
-        containers.append(ANSIBLE_CONTAINER_NAME)
-        ok = True
+        if c.status == "running":
+            containers.append(ANSIBLE_CONTAINER_NAME)
+            ok = True
+        else:
+            containers.append(f"{ANSIBLE_CONTAINER_NAME} ({c.status})")
     except HTTPException:
         ok = False
     except APIError as exc:
