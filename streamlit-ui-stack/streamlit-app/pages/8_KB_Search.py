@@ -82,13 +82,27 @@ st.caption(
 
 
 # ---- Filter row + search input ----
+# Layout: search input spans 3 cols on row 1, then status/trust/tags
+# share a second row of 3 cols. The K0-K3 trust ladder explainer
+# lives in a st.popover() next to the trust-level multiselect so it
+# doesn't take screen real estate unless the user clicks it.
 fcol1, fcol2, fcol3 = st.columns([3, 2, 2])
 with fcol1:
     query = st.text_input(
         "Search",
         value=st.session_state.get("kb_search_query", ""),
-        placeholder="e.g. restart streamlit",
+        placeholder="e.g. restart streamlit  (or 'cisco*' for prefix, \"exact phrase\", OR)",
         key="kb_search_query_input",
+        help=(
+            "FTS5 syntax:\n"
+            "• Plain words match anywhere (e.g. `restart`).\n"
+            "• Last token auto-prefix-matches (e.g. `cisc` finds `cisco*`).\n"
+            "• Explicit wildcards: `cisco*` (prefix), `*switch` (suffix), `*sw*` (substring).\n"
+            "• Exact phrase: `\"streamlit restart\"`.\n"
+            "• Boolean: `cisco OR juniper`.\n"
+            "• Column restrict: `title:cisco` (matches only the title column).\n"
+            "Hyphens are NOT word separators — use spaces or quote the phrase."
+        ),
     )
 with fcol2:
     status_filter = st.multiselect(
@@ -98,16 +112,87 @@ with fcol2:
         key="kb_status_filter",
     )
 with fcol3:
-    trust_filter = st.multiselect(
-        "Trust level",
-        options=["K0", "K1", "K2", "K3", "all"],
-        default=["K0", "K1", "K2", "K3"],
-        key="kb_trust_filter",
-    )
+    tc1, tc2 = st.columns([4, 1])
+    with tc1:
+        trust_filter = st.multiselect(
+            "Trust level",
+            options=["K0", "K1", "K2", "K3", "all"],
+            default=["K0", "K1", "K2", "K3"],
+            key="kb_trust_filter",
+        )
+    with tc2:
+        # Trust ladder explainer. BACKLOG #69 (a). Shows on click,
+        # not on hover (more discoverable; doesn't clutter the row).
+        with st.popover("?", help="Trust ladder explained"):
+            st.markdown(
+                "**K0** ⚪ — *agent-written, pending review.* Default trust "
+                "for any entry the Hermes agent creates. Not yet human-reviewed.\n\n"
+                "**K1** 🟡 — *agent-written, lightly reviewed.* A human has "
+                "skimmed it and confirmed no obvious garbage, but hasn't "
+                "fully validated the content.\n\n"
+                "**K2** 🔵 — *customer-written or fully-reviewed.* Authored "
+                "by a human operator, OR an agent entry that's been deeply "
+                "reviewed and validated against the live system.\n\n"
+                "**K3** 🟢 — *customer-written and approved.* Authored by "
+                "the customer themselves (not the agent) and explicitly "
+                "approved. Highest trust.\n\n"
+                "*Trust level is set at entry creation (`trust_level_at_creation`) "
+                "and does not change on subsequent edits.*"
+            )
 
 search_clicked = st.button(
     "Search", type="primary", use_container_width=False, key="kb_search_btn"
 )
+
+
+# ---- Tag filter (client-side, BACKLOG #69 (c)) ----
+# We compute the union of all tags from the visible result set so the
+# multiselect only shows tags that actually appear. This avoids fetching
+# a separate kb_list call (kb-mcp's kb_search already returns tags per
+# row) and avoids listing stale tags from deleted entries. Multi-select
+# uses AND semantics: an entry must have ALL selected tags to match.
+# If no results yet (page just loaded), the options list is empty and
+# the multiselect renders disabled — that's fine.
+@st.cache_data(ttl=30, show_spinner=False)
+def _all_tags_from_results(rows: list[dict]) -> list[str]:
+    """Return sorted unique tag union across the given rows.
+
+    Cached on the input rows (by id() — Streamlit's @st.cache_data
+    keys on the actual list, so each call with new results recomputes).
+    """
+    tags: set[str] = set()
+    for r in rows or []:
+        for t in (r.get("tags") or []):
+            if t:
+                tags.add(str(t))
+    return sorted(tags)
+
+
+# Tag filter row. We render it BEFORE the search runs by deriving
+# available tags from the previous result set (or empty on first load).
+# The filter applies client-side after the search returns.
+_tag_options: list[str] = []
+if "results" in st.session_state and st.session_state.results:
+    _tag_options = _all_tags_from_results(
+        list(st.session_state.results)  # cache key stable across reruns
+    )
+
+tagcol1, tagcol2 = st.columns([3, 1])
+with tagcol1:
+    tag_filter = st.multiselect(
+        "Tags (AND — entry must have ALL selected)",
+        options=_tag_options,
+        default=[],
+        key="kb_tag_filter",
+        help=(
+            "Filter by tags assigned to entries. AND semantics — an entry "
+            "must carry every selected tag. Options refresh 30s after each "
+            "search; if empty, run a Search first to populate the tag list."
+        ),
+    )
+with tagcol2:
+    if _tag_options:
+        st.caption(f"{len(_tag_options)} tag(s) available")
 
 
 # ---- Helpers ----
@@ -138,14 +223,25 @@ def _status_badge(status: str | None) -> str:
     return f"{_STATUS_COLORS.get(s, '⚪')} {s}"
 
 
-def _matches_filters(entry: dict, statuses: list[str], trusts: list[str]) -> bool:
-    """Return True iff entry passes the user-selected filters."""
+def _matches_filters(
+    entry: dict, statuses: list[str], trusts: list[str],
+    tags: list[str] | None = None,
+) -> bool:
+    """Return True iff entry passes the user-selected filters.
+
+    Tag filter is AND — entry must carry every selected tag. Empty/None
+    means "no tag filter applied".
+    """
     if statuses and "all" not in statuses:
         if (entry.get("status") or "").lower() not in statuses:
             return False
     if trusts and "all" not in trusts:
         k = f"K{entry.get('trust_level_at_creation', 0)}"
         if k not in trusts:
+            return False
+    if tags:
+        entry_tags = set(t for t in (entry.get("tags") or []) if t)
+        if not set(tags).issubset(entry_tags):
             return False
     return True
 
@@ -169,6 +265,10 @@ if query or search_clicked:
     try:
         with st.spinner("Searching KB…"):
             results = kb_search(query=query, k=20)
+        # Persist for the tag-options derivation on next rerun (BACKLOG #69 (c)).
+        # We store the raw result list so the multiselect's options refresh
+        # from the most recent successful search.
+        st.session_state["results"] = list(results)
     except MCPUnavailableError as e:
         err_msg = f"KB service unavailable: {e}"
     except MCPFormatError as e:
@@ -197,6 +297,7 @@ if query or search_clicked:
         result_count=len(results),
         status_filter=",".join(status_filter),
         trust_filter=",".join(trust_filter),
+        tag_filter=",".join(tag_filter),
     )
 
 if err_msg and query:
@@ -204,7 +305,10 @@ if err_msg and query:
 
 
 # ---- Apply client-side filters then render ----
-filtered = [r for r in results if _matches_filters(r, status_filter, trust_filter)]
+filtered = [
+    r for r in results
+    if _matches_filters(r, status_filter, trust_filter, tag_filter)
+]
 
 st.caption(f"**{len(filtered)}** of {len(results)} result(s)")
 
