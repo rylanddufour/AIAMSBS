@@ -58,15 +58,19 @@ st.markdown("---")
 
 
 # ---- Health snapshot (calls each backend's /health) ----
-def _check_one(name: str, base_url: str, timeout: float = 2.0) -> tuple[bool, int | None]:
+def _check_one(name: str, base_url: str, health_path: str = "/health", timeout: float = 2.0) -> tuple[bool, int | None]:
     """Return (reachable, latency_ms).
 
     Same semantics as the old Health page: reachable = any HTTP response,
     not just 200. Connection errors mean unreachable.
+
+    `health_path` defaults to `/health` but each backend may declare its
+    own readiness endpoint (Prometheus: `/-/ready`, Grafana: `/api/health`).
+    BACKLOG #68 — per-backend health paths enable Prometheus + Grafana tiles.
     """
     start = time.perf_counter()
     try:
-        r = httpx.get(f"{base_url.rstrip('/')}/health", timeout=timeout)
+        r = httpx.get(f"{base_url.rstrip('/')}{health_path}", timeout=timeout)
         ok = True  # any HTTP response = reachable
     except Exception:
         ok = False
@@ -78,8 +82,8 @@ def _check_one(name: str, base_url: str, timeout: float = 2.0) -> tuple[bool, in
 def _health_snapshot() -> list[dict]:
     """Cached for 10s so a refresh doesn't hammer every backend."""
     rows = []
-    for name, url in load_settings().backends:
-        ok, latency = _check_one(name, url)
+    for name, url, health_path in load_settings().backends:
+        ok, latency = _check_one(name, url, health_path)
         rows.append({"backend": name, "ok": ok, "latency_ms": latency})
     return rows
 

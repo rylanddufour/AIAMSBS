@@ -41,8 +41,9 @@ class Settings:
     kb_url: str
     inventory_url: str
     loki_url: str
-    ansible_runner_url: str
+    prometheus_url: str
     grafana_url: str
+    ansible_runner_url: str
     # Quick Links (browser-facing, host IP)
     open_hermes_url: str
     open_grafana_url: str
@@ -50,18 +51,27 @@ class Settings:
     open_inventory_url: str
 
     @property
-    def backends(self) -> list[tuple[str, str]]:
-        """List of (display_name, base_url) for the health probe.
+    def backends(self) -> list[tuple[str, str, str]]:
+        """List of (display_name, base_url, health_path) for the health probe.
 
         Uses Backend URLs (container-internal hostnames), NOT the
-        Quick Links group.
+        Quick Links group. Each backend declares its own `health_path`
+        suffix because the convention varies across services:
+        - /health (most apps; includes ansible-runner, kb-mcp, etc. — many
+          return 404/302 but `_check_one` treats any HTTP response as reachable)
+        - /-/ready (Prometheus 2.x; returns 200 when ready to serve)
+        - /api/health (Grafana; returns 200 with build info)
+
+        BACKLOG #68 — added Prometheus + Grafana (previously missing).
         """
         return [
-            ("Hermes Dashboard", self.hermes_url),
-            ("KB MCP", self.kb_url),
-            ("Inventory MCP", self.inventory_url),
-            ("Loki", self.loki_url),
-            ("Ansible Runner", self.ansible_runner_url),
+            ("Hermes Dashboard", self.hermes_url, "/health"),
+            ("KB MCP", self.kb_url, "/health"),
+            ("Inventory MCP", self.inventory_url, "/health"),
+            ("Loki", self.loki_url, "/health"),
+            ("Prometheus", self.prometheus_url, "/-/ready"),
+            ("Grafana", self.grafana_url, "/api/health"),
+            ("Ansible Runner", self.ansible_runner_url, "/health"),
         ]
 
     @property
@@ -108,6 +118,9 @@ def load() -> Settings:
         ),
         loki_url=_env_or(
             "LOKI_URL", "http://loki:3100",
+        ),
+        prometheus_url=_env_or(
+            "PROMETHEUS_URL", "http://prometheus:9090",
         ),
         ansible_runner_url=_env_or(
             "ANSIBLE_RUNNER_URL", "http://aiamsbs-ansible-runner:8000",
@@ -178,6 +191,15 @@ EDITABLE_FIELDS: list[dict] = [
         "label": "Loki",
         "default": "http://loki:3100",
         "help": "Internal URL for the /health probe. Container-internal.",
+    },
+    {
+        "key": "PROMETHEUS_URL",
+        "group": "Backend URLs",
+        "label": "Prometheus",
+        "default": "http://prometheus:9090",
+        "help": "Internal URL for the /-/ready probe. Container-internal; "
+                "usually http://prometheus:9090. Note: the Home page probes "
+                "this URL at /-/ready (Prometheus's readiness endpoint).",
     },
     {
         "key": "ANSIBLE_RUNNER_URL",
