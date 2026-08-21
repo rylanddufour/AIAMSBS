@@ -20,17 +20,33 @@ ENV PYTHONUNBUFFERED=1 \
 # System packages: ssh client for inventory + minimal deps for ansible
 # collections (cisco.ios needs basic crypto libs; community.general pulls
 # in jmespath/etc).
+#
+# BACKLOG #67 follow-up: sshpass is REQUIRED for SSH password auth (without
+# it ansible reports "to use the 'ssh' connection type with passwords or
+# pkcs11_provider, you must install the sshpass program"). The Windows
+# WinRM tool chain (pywinrm + requests-ntlm + requests-kerberos) needs
+# gcc + libkrb5-dev at build time to compile the gssapi C extension.
+# Both are purged after pip install to keep the image lean.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         openssh-client \
         ca-certificates \
         procps \
         tini \
+        sshpass \
+        gcc \
+        libkrb5-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install ansible-core via pip (matches python:3.12-slim; avoids apt's older
 # version). Pin a known-good version for reproducibility.
 RUN pip install --no-cache-dir \
-        ansible-core==2.16.3
+        ansible-core==2.16.3 \
+        pywinrm \
+        requests-ntlm \
+        requests-kerberos \
+    && apt-get purge -y gcc libkrb5-dev \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
 
 # OEM collections. v1.0 starter set — keep this minimal. Add more only if
 # a real customer playbook needs them.
