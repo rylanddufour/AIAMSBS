@@ -2407,6 +2407,33 @@ verify_installation() {
         # folded into the default install. Also probe the Hermes API server
         # that Agent Chat depends on (port 8642, bearer-token auth).
         verify_service_health "Streamlit UI"    "http://localhost:8501/_stcore/health"    "200"    || errors=$((errors+1))
+        # BACKLOG #65 — ansible-runner /health probe. The runner listens on
+        # 8000 INSIDE the monitoring network but has NO host port mapping
+        # (intentional — streamlit talks to it via aiamsbs-ansible-runner:8000
+        # on the docker network, no host exposure needed). We probe it from
+        # the host via `docker exec python3 -c "urllib..."` since the runner
+        # image is minimal (no curl/wget; just python:3.12-slim + tini +
+        # fastapi/uvicorn/docker/httpx). The runner's /health returns 200
+        # iff the aiamsbs-ansible container is reachable via the docker
+        # socket — catching both runner-down AND ansible-container-down.
+        local runner_code
+        runner_code=$(sg docker -c "docker exec aiamsbs-ansible-runner python3 -c 'import urllib.request,urllib.error,sys
+try:
+    r=urllib.request.urlopen(\"http://127.0.0.1:8000/health\",timeout=5)
+    sys.stdout.write(str(r.status))
+except urllib.error.HTTPError as e:
+    sys.stdout.write(str(e.code))
+except Exception:
+    sys.exit(1)' 2>/dev/null" || echo "000")
+        if [ "$runner_code" = "200" ]; then
+            log_success "  ✓ Ansible Runner (Run Playbook backend): HTTP 200"
+        elif [ "$runner_code" = "503" ]; then
+            log_warn "  ✗ Ansible Runner: HTTP 503 (degraded — aiamsbs-ansible container not reachable via docker socket; check 'docker ps | grep aiamsbs-ansible')"
+            errors=$((errors+1))
+        else
+            log_warn "  ✗ Ansible Runner: HTTP $runner_code (expected 200; check 'docker ps | grep aiamsbs-ansible-runner' and runner logs at /home/ansible/.hermes/logs/aiamsbs-ansible/runner.log)"
+            errors=$((errors+1))
+        fi
         # Hermes API server: 200 with key, 401 without. We pass the key from
         # the env (provision_api_server_key exported it earlier in main()).
         local api_code
