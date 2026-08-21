@@ -91,17 +91,20 @@ with fcol1:
     query = st.text_input(
         "Search",
         value=st.session_state.get("kb_search_query", ""),
-        placeholder="e.g. restart streamlit  (or 'cisco*' for prefix, \"exact phrase\", OR)",
+        placeholder="e.g. restart streamlit  (or 'cisc' for prefix-match, \"exact phrase\", OR)",
         key="kb_search_query_input",
         help=(
-            "FTS5 syntax:\n"
-            "• Plain words match anywhere (e.g. `restart`).\n"
-            "• Last token auto-prefix-matches (e.g. `cisc` finds `cisco*`).\n"
-            "• Explicit wildcards: `cisco*` (prefix), `*switch` (suffix), `*sw*` (substring).\n"
-            "• Exact phrase: `\"streamlit restart\"`.\n"
-            "• Boolean: `cisco OR juniper`.\n"
+            "FTS5 syntax (kb-mcp's flavor):\n"
+            "• Plain words match anywhere. The LAST token is auto-prefix-matched "
+            "(e.g. `cisc` finds `Cisco`, `Cisco switch SSH`).\n"
+            "• Explicit prefix: `cisco*` matches anything starting with `cisco`.\n"
+            "• Multiple prefixes: `cisco* OR juniper*`.\n"
+            "• Exact phrase: `\"streamlit restart\"` (the quotes keep the words together).\n"
             "• Column restrict: `title:cisco` (matches only the title column).\n"
-            "Hyphens are NOT word separators — use spaces or quote the phrase."
+            "• FTS5 is PREFIX-ONLY — `*sco`, `*lit`, `*sw*` and `?isco` are NOT supported "
+            "(the FTS5 engine only does `prefix*`, not suffix or substring). "
+            "For suffix/substring matching, fall back to plain words "
+            "(last-token auto-prefix still applies) or use multiple `prefix*` terms joined with OR."
         ),
     )
 with fcol2:
