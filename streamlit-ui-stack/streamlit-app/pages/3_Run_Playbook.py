@@ -121,7 +121,13 @@ _SS = st.session_state
 def _ss_init() -> None:
     defaults = {
         "stage": 1,
-        "playbook_path": None,  # Path relative to PLAYBOOK_ROOT
+        # Runner-relative path: what the aiamsbs-ansible-runner needs in its
+        # POST body. The runner `docker exec`s into the ansible container
+        # with workdir=/ansible, so it expects paths like
+        # "playbooks/generated/hello.yml" — NOT picker-relative
+        # "generated/hello.yml" (BACKLOG #67 fix).
+        "playbook_path": None,
+        "playbook_display": None,  # picker-relative ("generated/hello.yml") for UI
         "playbook_meta": None,  # {name, description}
         # Card 8: hosts come from inventory-mcp, not files. We keep a list
         # of selected device dicts (each with hostname/ip_address) so the
@@ -258,7 +264,13 @@ def _stage1() -> None:
     cols = st.columns([1, 4])
     with cols[0]:
         if st.button("Next →", key="pb_next", type="primary"):
-            _SS["playbook_path"] = sel["rel"]
+            # BACKLOG #67: prefix with "playbooks/" so the runner's
+            # workdir=/ansible resolves the file correctly. The previous
+            # version stored the picker-relative path (e.g. "generated/foo.yml")
+            # which made the runner's `ansible-playbook generated/foo.yml`
+            # fail with "the file was not found".
+            _SS["playbook_path"] = f"playbooks/{sel['rel']}"
+            _SS["playbook_display"] = sel["rel"]
             _SS["playbook_meta"] = meta
             log_run_event("playbook_selected", run_id=_SS["run_id"] or "(none-yet)",
                           playbook=sel["rel"], name=meta.get("name"))
@@ -318,7 +330,7 @@ def _build_inline_inventory(devices: list[dict], ssh_user: str) -> str:
 def _stage2() -> None:
     st.subheader("Stage 2 — Select hosts")
     st.write(
-        f"**Playbook:** `{_SS['playbook_path']}`  —  "
+        f"**Playbook:** `{_SS['playbook_display'] or _SS['playbook_path']}`  —  "
         f"name=`{(_SS['playbook_meta'] or {}).get('name') or '?'}`"
     )
     if st.button("← Back", key="inv_back"):
@@ -515,7 +527,7 @@ def _render_summary_card() -> None:
 
     st.markdown("#### Review & confirm")
     with st.container(border=True):
-        st.markdown(f"**Playbook:** `{pb}`")
+        st.markdown(f"**Playbook:** `{_SS.get('playbook_display') or pb}`")
         meta = _SS.get("playbook_meta") or {}
         if meta.get("name"):
             st.markdown(f"&nbsp;&nbsp;name: `{meta['name']}`")
