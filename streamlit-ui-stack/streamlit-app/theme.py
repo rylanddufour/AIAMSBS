@@ -794,11 +794,22 @@ a.aiamsbs-icon-button .ms {
     margin-bottom: 1rem;
 }
 .aiamsbs-cyberpunk-row .ms {
-    font-size: 32px;
+    /* Match the cyberpunk title's apparent visual height (~2.2rem
+       = 35px baseline + glow + stroke). 44px lands visually balanced
+       with the outlined title's letterforms without dwarfing it. */
+    font-size: 44px;
     color: var(--aiamsbs-accent);
     text-shadow:
         0 0 8px rgba(0, 212, 255, 0.65),
         0 0 16px rgba(200, 0, 255, 0.40);
+}
+/* Smaller variant: when the title uses size='sm' (1.4rem = ~22px),
+   the icon should also shrink proportionally to keep balance.
+   Note: cyberpunk_title() emits icon-then-title in the row, so we
+   use :has() to detect the sm-title class on a child element and
+   shrink the icon. */
+.aiamsbs-cyberpunk-row:has(.aiamsbs-cyberpunk-sm) .ms {
+    font-size: 28px;
 }
 /* Solid-cyan fallback for browsers without -webkit-text-stroke.
    Still neon-ish, just less gradient. */
