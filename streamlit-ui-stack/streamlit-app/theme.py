@@ -252,34 +252,36 @@ h1 {
     background-color: var(--aiamsbs-accent-dim) !important;
 }
 
-/* Checkbox + radio: amber for active state (matches the
-   selection-color rule on Run History / KB Search multiselect
-   pills). Cyan is reserved for nav + page titles; amber is for
-   "this is selected / this is active" affordances. */
-.stCheckbox label span[data-checked="true"],
-.stRadio label span[data-checked="true"] {
-    background-color: var(--aiamsbs-warn) !important;
-    border-color: var(--aiamsbs-warn) !important;
-}
+/* Checkbox + radio: amber comes from config.toml primaryColor
+   (Streamlit derives the active-state color from it). Cyan is
+   reserved for nav + page titles; amber is for "this is selected". */
 
 /* ============================================================
-   Multiselect pill chips — were screaming cyan, now amber.
-   Matches the design reference's "active selection" palette.
+   Multiselect pill chips — color comes from config.toml
+   primaryColor (amber). CSS targets kept as a safety net so
+   that if primaryColor is ever flipped back to cyan, the chips
+   still inherit a dimmed active style instead of screaming.
    ============================================================ */
-[data-baseweb="tag"] {
+[data-baseweb="tag"],
+[data-baseweb="tag"] * {
     background-color: #3a2807 !important;
-    border: 1px solid var(--aiamsbs-warn-dim) !important;
     color: var(--aiamsbs-warn) !important;
+    border-color: var(--aiamsbs-warn-dim) !important;
+    fill: var(--aiamsbs-warn) !important;
+}
+[data-baseweb="tag"] {
+    border: 1px solid var(--aiamsbs-warn-dim) !important;
     border-radius: 4px !important;
 }
 [data-baseweb="tag"] span,
-[data-baseweb="tag"] [data-baseweb="tag-closeIcon"] svg {
+[data-baseweb="tag"] [data-baseweb="tag-closeIcon"] svg,
+[data-baseweb="tag"] svg {
     color: var(--aiamsbs-warn) !important;
     fill: var(--aiamsbs-warn) !important;
 }
 
-/* Selectbox focused border — cyan was overpowering. Amber border
-   signals "you're focused here, ready to pick" without screaming. */
+/* Selectbox focused border: primaryColor drives this. Amber
+   border signals "you're focused here, ready to pick". */
 [data-baseweb="select"] > div {
     border-color: var(--aiamsbs-warn-dim) !important;
 }

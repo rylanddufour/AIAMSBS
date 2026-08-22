@@ -15,7 +15,7 @@
 
 [theme]
 base = "dark"
-primaryColor = "#00d4ff"                 # cyan accent
+primaryColor = "#f7a800"                 # amber for selection-state UI (multiselect pills, checkbox/radio, selectbox focused border)
 backgroundColor = "#0b1220"              # deep navy (was #ffffff)
 secondaryBackgroundColor = "#0f1b2e"     # panel surface
 textColor = "#e6edf3"                    # light slate
