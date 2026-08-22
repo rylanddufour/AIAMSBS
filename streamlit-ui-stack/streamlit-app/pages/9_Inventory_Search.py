@@ -35,6 +35,7 @@ from mcp_client import (
     loki_query,
 )
 from settings import load as load_settings
+from theme import apply_theme
 
 st.set_page_config(
     page_title="Inventory Search — AIAMSBS",
@@ -44,6 +45,11 @@ st.set_page_config(
 
 if not require_auth():
     st.stop()
+
+# Theme (BACKLOG #72 — Dark Cyber palette). Applied AFTER
+# auth so the login form is the only place the default
+# light theme bleeds through.
+apply_theme()
 
 settings = load_settings()
 user_id: int = int(st.session_state.get("user_id") or 0)

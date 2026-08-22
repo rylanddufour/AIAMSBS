@@ -28,11 +28,17 @@ from auth import require_auth, render_logout_button
 from db import db
 from hermes_client import redact_secrets, short_run_id
 from settings import load as load_settings
+from theme import apply_theme
 
 st.set_page_config(page_title="Run Detail — AIAMSBS", page_icon="🔎", layout="wide")
 
 if not require_auth():
     st.stop()
+
+# Theme (BACKLOG #72 — Dark Cyber palette). Applied AFTER
+# auth so the login form is the only place the default
+# light theme bleeds through.
+apply_theme()
 
 settings = load_settings()
 

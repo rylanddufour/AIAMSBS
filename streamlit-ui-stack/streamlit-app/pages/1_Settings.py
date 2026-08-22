@@ -17,11 +17,17 @@ from db import (
     set_ui_settings,
 )
 from settings import EDITABLE_FIELDS, load as load_settings
+from theme import apply_theme
 
 st.set_page_config(page_title="Settings — AIAMSBS", page_icon="⚙️", layout="wide")
 
 if not require_auth():
     st.stop()
+
+# Theme (BACKLOG #72 — Dark Cyber palette). Applied AFTER
+# auth so the login form is the only place the default
+# light theme bleeds through.
+apply_theme()
 
 settings = load_settings()
 
