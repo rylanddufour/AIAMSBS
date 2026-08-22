@@ -174,15 +174,25 @@ h1 {
 }
 .stButton > button[kind="primary"],
 .stFormSubmitButton > button {
-    background-color: var(--aiamsbs-accent);
-    color: #001520;
-    border-color: var(--aiamsbs-accent);
+    /* Tone the primary button down — was full accent fill (screaming
+       cyan). Now: low-saturation cyan-tinted panel + accent border +
+       accent text. Reads as "primary action" without competing with
+       the page title. The accent ring only appears on hover/focus. */
+    background-color: #0a2a3d;
+    color: var(--aiamsbs-accent);
+    border: 1px solid var(--aiamsbs-accent-dim);
     font-weight: 600;
 }
 .stButton > button[kind="primary"]:hover,
 .stFormSubmitButton > button:hover {
-    background-color: #33dfff;
-    border-color: #33dfff;
+    background-color: #0f3a52;
+    border-color: var(--aiamsbs-accent);
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30);
+}
+.stButton > button[kind="primary"]:focus,
+.stFormSubmitButton > button:focus {
+    outline: 2px solid var(--aiamsbs-accent);
+    outline-offset: 1px;
 }
 .stButton > button:disabled,
 .stFormSubmitButton > button:disabled {

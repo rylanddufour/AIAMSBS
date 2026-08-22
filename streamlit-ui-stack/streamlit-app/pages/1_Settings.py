@@ -105,11 +105,11 @@ with st.form("settings_form"):
     save_cols = st.columns([1, 1, 6])
     with save_cols[0]:
         save = st.form_submit_button(
-            "💾 Save", type="primary", use_container_width=True,
+            "Save", type="primary", use_container_width=True,
         )
     with save_cols[1]:
         reset = st.form_submit_button(
-            "🧹 Reset all to defaults",
+            "Reset all to defaults",
             use_container_width=True,
         )
 
@@ -127,7 +127,7 @@ if save:
         else:
             to_persist[key] = new
     set_ui_settings(to_persist)
-    st.success(f"✅ Saved {sum(1 for v in to_persist.values() if v != '')} override(s).")
+    st.success(f"Saved {sum(1 for v in to_persist.values() if v != '')} override(s).")
     st.rerun()
 
 if reset:
