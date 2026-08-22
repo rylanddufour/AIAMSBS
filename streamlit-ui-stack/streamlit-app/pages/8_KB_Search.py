@@ -32,12 +32,11 @@ from mcp_client import (
     kb_search,
 )
 from settings import load as load_settings
-from theme import apply_theme
+from theme import AIAMSBS_FAVICON, apply_theme, page_header
 
 st.set_page_config(
     page_title="KB Search — AIAMSBS",
-    page_icon="📚",
-    layout="wide",
+    page_icon=AIAMSBS_FAVICON, layout="wide",
 )
 
 if not require_auth():
@@ -80,7 +79,7 @@ def _log(event: str, **fields) -> None:
         pass
 
 
-st.title("📚 KB Search")
+page_header("KB Search", "kb_search")
 st.caption(
     "Search the knowledge base. Drill into an entry to see full "
     "content. Add new entries via the **+ Add** button."

@@ -17,9 +17,9 @@ from db import (
     set_ui_settings,
 )
 from settings import EDITABLE_FIELDS, load as load_settings
-from theme import apply_theme
+from theme import AIAMSBS_FAVICON, apply_theme, page_header
 
-st.set_page_config(page_title="Settings — AIAMSBS", page_icon="⚙️", layout="wide")
+st.set_page_config(page_title="Settings — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
 if not require_auth():
     st.stop()
@@ -31,7 +31,7 @@ apply_theme()
 
 settings = load_settings()
 
-st.title("⚙️ Settings")
+page_header("Settings", "settings")
 st.caption(
     "Edit URLs to point at the host IP (e.g. http://192.168.0.220:9119) "
     "instead of the docker-internal hostname. Values persist in the local "

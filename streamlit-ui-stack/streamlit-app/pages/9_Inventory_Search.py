@@ -35,12 +35,11 @@ from mcp_client import (
     loki_query,
 )
 from settings import load as load_settings
-from theme import apply_theme
+from theme import AIAMSBS_FAVICON, apply_theme, page_header
 
 st.set_page_config(
     page_title="Inventory Search — AIAMSBS",
-    page_icon="🖧",
-    layout="wide",
+    page_icon=AIAMSBS_FAVICON, layout="wide",
 )
 
 if not require_auth():
@@ -77,7 +76,7 @@ def _log(event: str, **fields) -> None:
         pass
 
 
-st.title("🖧 Inventory Search")
+page_header("Inventory Search", "inventory_search")
 st.caption(
     "Search and inspect devices in the inventory. Read-only in v1.0."
 )

@@ -38,6 +38,16 @@ _STATUS_GRAY = "#7f8c8d"
 # Avoid `!important` overrides of Streamlit internals — we use higher-
 # specificity selectors instead.
 _CSS = """
+<!-- Material Symbols Outlined (MIT, Google Fonts CDN).
+     Used for inline page-level icons + status glyphs. Loaded once
+     via theme.py so we don't have to wire the <link> into every
+     page. Style matches the BACKLOG #72 follow-up reference: thin
+     strokes, no fill, ~24px, glows on hover. FALLBACK-FRIENDLY:
+     if the CDN is unreachable the text inside <span class="ms"> ...
+     </span> still renders as the icon name so the layout doesn't
+     collapse. -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&display=swap" rel="stylesheet">
+
 <style>
 /* ============================================================
    AIAMSBS Dark Cyber — design tokens (BACKLOG #72)
@@ -361,6 +371,97 @@ def apply_theme() -> None:
     has no side effects on a second call.
     """
     st.markdown(_CSS, unsafe_allow_html=True)
+    st.markdown(_ICON_CSS, unsafe_allow_html=True)
+
+
+# ============================================================
+# AIAMSBS page-icon registry
+# ============================================================
+# Single source of truth for which Material Symbols name maps to
+# which page / element. Edit here when adding a new page; no
+# per-page hardcoded glyph names. Names are the standard Material
+# Symbols icon names (https://fonts.google.com/icons).
+_PAGE_ICONS: dict[str, str] = {
+    "home":            "dashboard",          # central system status
+    "settings":        "settings",           # gear
+    "agent_chat":      "forum",              # speech bubble (single convo)
+    "chat_sessions":   "forum",              # speech bubble (sessions list)
+    "run_playbook":    "play_circle",        # play triangle, outlined
+    "run_history":     "history",            # clock-with-arrow
+    "run_detail":      "manage_search",      # search/inspect
+    "kb_search":       "lightbulb",          # knowledge (NOT a stack of books)
+    "inventory_search": "deployed_code",      # hexagon grid of devices
+}
+
+# Inline glyph helper. Returns the HTML for a Material Symbols
+# icon; render with st.markdown(..., unsafe_allow_html=True).
+def icon(name: str, size: str = "", status: str = "") -> str:
+    """Render a Material Symbols icon as HTML.
+
+    Args:
+        name:   icon name (e.g. "home", "settings", "lightbulb").
+        size:   optional size variant — "" (24px default), "sm" (16),
+                "lg" (32), or "xl" (48).
+        status: optional status tint — "", "up", "warn", "down",
+                "info", or "unknown".
+
+    Usage:
+        st.markdown(icon("home"), unsafe_allow_html=True)
+        st.markdown(icon("home", size="lg", status="up"), unsafe_allow_html=True)
+    """
+    classes = ["ms"]
+    if size:
+        classes.append(f"ms-{size}")
+    if status:
+        classes.append(f"ms-{status}")
+    glyph = _PAGE_ICONS.get(name, name)
+    return f'<span class="{" ".join(classes)}">{glyph}</span>'
+
+
+def page_header(title: str, icon_name: str) -> None:
+    """Render a page-header row (icon + title + accent underline).
+
+    Use this INSTEAD of st.title() for consistency with the theme.
+    Drop-in replacement — same call shape as st.title().
+
+    Usage:
+        page_header("Agent Chat", "agent_chat")
+    """
+    glyph = _PAGE_ICONS.get(icon_name, icon_name)
+    st.markdown(
+        f'<div class="aiamsbs-page-header">'
+        f'<span class="ms">{glyph}</span>'
+        f'<h1>{title}</h1>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# AIAMSBS favicon. Inline SVG (data: URL) so the browser tab +
+# bookmarks show the same glyph on every page. Drop-in for
+# st.set_page_config(page_icon=AIAMSBS_FAVICON).
+# Glyph: stylized "A" inside a shield — matches the dark-cyber
+# palette. Rendered as 32x32 SVG, base64-encoded.
+import base64 as _base64
+_FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+    '<defs>'
+    '<linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+    '<stop offset="0%" stop-color="#00d4ff"/>'
+    '<stop offset="100%" stop-color="#008db3"/>'
+    '</linearGradient>'
+    '</defs>'
+    '<path d="M16 2 L29 7 V16 C29 23 22 28 16 30 C10 28 3 23 3 16 V7 Z" '
+    'fill="#0b1220" stroke="url(#g)" stroke-width="2"/>'
+    '<path d="M9 23 L16 8 L23 23 M12 19 H20" '
+    'stroke="#00d4ff" stroke-width="2.5" fill="none" '
+    'stroke-linecap="round" stroke-linejoin="round"/>'
+    '</svg>'
+)
+AIAMSBS_FAVICON = (
+    "data:image/svg+xml;base64,"
+    + _base64.b64encode(_FAVICON_SVG.encode()).decode()
+)
 
 
 def status_pill(status: str, label: str | None = None) -> str:
@@ -395,3 +496,108 @@ def status_pill(status: str, label: str | None = None) -> str:
 def render_pill(status: str, label: str | None = None) -> None:
     """Convenience: call as render_pill("up", "Grafana · 12 ms")."""
     st.markdown(status_pill(status, label), unsafe_allow_html=True)
+
+
+# ============================================================
+# Icon system (BACKLOG #72 follow-up)
+# ============================================================
+# Replaces the emoji set on every page (🛡️⚙️💬📚📜🔎▶️) with Material
+# Symbols Outlined — the same outlined-icon font the design reference
+# uses. Style: thin strokes, no fill, 24px default, subtle cyan glow
+# on hover. License: MIT (Google Fonts).
+#
+# Usage (inline):
+#     st.markdown(icon("home"), unsafe_allow_html=True)   # renders the home glyph
+#     page_header("Agent Chat", "chat")                    # title row with icon + glow
+#
+# Usage (page_config): drop the emoji from set_page_config.page_icon
+# entirely — Streamlit's own favicon handling works fine without one,
+# and the browser tab will fall back to a generic Streamlit logo if
+# you pass an empty string. The inline glyphs are what users see in
+# the page body / sidebar.
+
+# CSS for the icon font: keep it appended to the existing _CSS so
+# apply_theme() injects everything in one call.
+_ICON_CSS = """
+/* ============================================================
+   Material Symbols — outlined glyphs (BACKLOG #72 follow-up).
+   Replaces the emoji icon set with a uniform outlined-icon font
+   that matches the design reference. Material Symbols renders
+   the literal text between <span class="ms">...</span> as a
+   glyph (font ligature). Fallback: if the CDN didn't load, the
+   literal name still shows — layout doesn't collapse.
+   ============================================================ */
+.material-symbols-outlined,
+.ms {
+    font-family: 'Material Symbols Outlined';
+    font-weight: 300;        /* match design reference: thin strokes */
+    font-style: normal;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    /* Default appearance: cyan-tinted, 24px, vertical-aligned to text */
+    color: var(--aiamsbs-accent);
+    font-size: 24px;
+    vertical-align: middle;
+    transition: text-shadow 120ms ease, color 120ms ease;
+}
+.ms:hover {
+    color: #66e3ff;
+    text-shadow: 0 0 8px rgba(0, 212, 255, 0.55);
+}
+
+/* Icon-size variants. Use ms-lg, ms-sm, ms-xl to scale. */
+.ms-sm { font-size: 16px; }
+.ms-lg { font-size: 32px; }
+.ms-xl { font-size: 48px; }
+
+/* Status-tinted icons: color the glyph instead of the surrounding
+   pill. Useful when an icon IS the indicator (e.g. status glyph
+   next to a backend name on the Home health snapshot). */
+.ms-up      { color: var(--status-up); }
+.ms-warn    { color: var(--status-warn); }
+.ms-down    { color: var(--status-down); }
+.ms-info    { color: var(--status-info); }
+.ms-unknown { color: var(--status-unknown); }
+
+/* Page-header row: icon + title inline, with a subtle glow on the
+   icon. Pages call page_header() to get this layout for free. */
+.aiamsbs-page-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--aiamsbs-accent);
+}
+.aiamsbs-page-header .ms {
+    font-size: 32px;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.45);
+}
+.aiamsbs-page-header h1 {
+    margin: 0;
+    padding: 0;
+    border: none;       /* the row already has the accent underline */
+    font-size: 1.6rem;
+    font-weight: 600;
+}
+
+/* Sidebar nav icons (rendered next to st.page_link entries). Smaller
+   size so they sit inline with the link text. */
+[data-testid="stSidebarNavLink"] .ms,
+[data-testid="stSidebarNav"] .ms {
+    font-size: 18px;
+    margin-right: 0.4rem;
+    vertical-align: -3px;
+}
+
+/* The browser-tab favicon doesn't get our CSS — it's set via
+   set_page_config(page_icon=...). We ship a small inline SVG as a
+   consistent favicon across all pages so the browser tab always
+   shows the AIAMSBS glyph (a stylized "A" shield). */
+"""

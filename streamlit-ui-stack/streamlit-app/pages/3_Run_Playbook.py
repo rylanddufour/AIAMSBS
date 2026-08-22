@@ -54,9 +54,9 @@ from mcp_client import (
     inventory_list,
 )
 from settings import load as load_settings
-from theme import apply_theme
+from theme import AIAMSBS_FAVICON, apply_theme, page_header
 
-st.set_page_config(page_title="Run Playbook — AIAMSBS", page_icon="▶️", layout="wide")
+st.set_page_config(page_title="Run Playbook — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
 if not require_auth():
     st.stop()
@@ -74,7 +74,7 @@ with st.sidebar:
     st.markdown("---")
     render_logout_button()
 
-st.title("▶️ Run Playbook")
+page_header("Run Playbook", "run_playbook")
 st.caption(
     "Pick a playbook, choose target inventory, confirm credentials, "
     "then **review and confirm** before the runner executes."

@@ -28,9 +28,9 @@ from auth import require_auth, render_logout_button
 from db import db
 from hermes_client import redact_secrets, short_run_id
 from settings import load as load_settings
-from theme import apply_theme
+from theme import AIAMSBS_FAVICON, apply_theme, page_header
 
-st.set_page_config(page_title="Run Detail — AIAMSBS", page_icon="🔎", layout="wide")
+st.set_page_config(page_title="Run Detail — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
 if not require_auth():
     st.stop()
@@ -48,7 +48,7 @@ with st.sidebar:
     st.markdown("---")
     render_logout_button()
 
-st.title("🔎 Run Detail")
+page_header("Run Detail", "run_detail")
 
 # Read run_id from URL (?run_id=<uuid>) or session state fallback
 run_id = st.query_params.get("run_id")

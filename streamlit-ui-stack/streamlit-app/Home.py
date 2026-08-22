@@ -15,12 +15,11 @@ import streamlit as st
 from auth import require_auth, render_logout_button
 from db import db, init_schema
 from settings import load as load_settings
-from theme import apply_theme
+from theme import AIAMSBS_FAVICON, apply_theme, page_header
 
 st.set_page_config(
     page_title="AIAMSBS v1.0",
-    page_icon="🛡️",
-    layout="wide",
+    page_icon=AIAMSBS_FAVICON, layout="wide",
     initial_sidebar_state="expanded",
 )
 
@@ -41,7 +40,7 @@ settings = load_settings()
 
 # ---- Sidebar ----
 # ---- Header ----
-st.title(f"AIAMSBS v1.0 — Customer {settings.customer_name}")
+page_header(f"AIAMSBS v1.0 — Customer {settings.customer_name}", "home")
 st.caption(
     "Private deployment dashboard. Backends below run on the AIAMSBS host. "
     "Pages (Settings, Run Playbook, Agent Chat, etc.) are in the sidebar. "

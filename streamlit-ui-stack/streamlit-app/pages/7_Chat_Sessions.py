@@ -32,10 +32,10 @@ from db import (
     update_chat_session_response,
 )
 from settings import load as load_settings
-from theme import apply_theme
+from theme import AIAMSBS_FAVICON, apply_theme, page_header
 
 st.set_page_config(
-    page_title="Chat Sessions — AIAMSBS", page_icon="💬", layout="wide",
+    page_title="Chat Sessions — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide",
 )
 
 if not require_auth():
@@ -144,7 +144,7 @@ except Exception as exc:
 # ============================================================
 # Pages heading
 # ============================================================
-st.markdown("# 📚 Chat Sessions")
+page_header("Chat Sessions", "chat_sessions")
 st.caption(
     "Filter by days back, pick a session from the dropdown, then "
     "continue the conversation below."
