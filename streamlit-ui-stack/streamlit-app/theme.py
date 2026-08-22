@@ -37,8 +37,12 @@ _STATUS_GRAY = "#7f8c8d"
 # CSS kept small + scoped to data-test attributes Streamlit ships with.
 # Avoid `!important` overrides of Streamlit internals — we use higher-
 # specificity selectors instead.
-_CSS = """
-<style>
+#
+# IMPORTANT: this constant holds INNER CSS only — no <style> wrapper.
+# apply_theme() injects ONE <style> block containing _CSS_INNER + _ICON_CSS
+# concatenated, because Streamlit renders a SECOND <style> block as
+# visible body text instead of injecting it as a style tag.
+_CSS_INNER = """
 /* ============================================================
    AIAMSBS Dark Cyber — design tokens (BACKLOG #72)
    Edit this block to swap palettes. Keep in sync with config.toml.
@@ -356,19 +360,21 @@ pre, [data-testid="stCodeBlock"] {
 .stSpinner > div {
     border-top-color: var(--aiamsbs-accent) !important;
 }
-</style>
 """
 
 
 def apply_theme() -> None:
     """Inject the AIAMSBS custom CSS into the current page.
 
-    Call once per page after st.set_page_config + auth. Idempotent —
-    Streamlit dedupes the <style> tag by content, but the CSS itself
-    has no side effects on a second call.
+    Call once per page after st.set_page_config + auth. Idempotent.
+
+    Note: Streamlit handles the FIRST <style> block well but tends
+    to render subsequent <style> blocks as visible body text. So we
+    combine _CSS + _ICON_CSS into ONE <style> block and call
+    st.markdown ONCE.
     """
-    st.markdown(_CSS, unsafe_allow_html=True)
-    st.markdown(_ICON_CSS, unsafe_allow_html=True)
+    combined = f"<style>{_CSS_INNER}{_ICON_CSS}</style>"
+    st.markdown(combined, unsafe_allow_html=True)
 
 
 # ============================================================
@@ -559,8 +565,12 @@ def render_pill(status: str, label: str | None = None) -> None:
 # you pass an empty string. The inline glyphs are what users see in
 # the page body / sidebar.
 
-# CSS for the icon font: keep it appended to the existing _CSS so
-# apply_theme() injects everything in one call.
+# CSS for the icon font. We keep the actual style content in
+# _ICON_CSS (no <style> wrapper) and wrap it at injection time —
+# see apply_theme() below. Combining with _CSS into one <style>
+# block keeps Streamlit happy: a SECOND st.markdown(..., style ...)
+# call after the first tends to render its content as visible body
+# text instead of injecting a style tag, so we concatenate.
 _ICON_CSS = """
 /* ============================================================
    Material Symbols — outlined glyphs (BACKLOG #72 follow-up).
