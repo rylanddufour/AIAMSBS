@@ -810,11 +810,13 @@ a.aiamsbs-icon-button .ms {
         0 0 8px rgba(0, 212, 255, 0.65),
         0 0 16px rgba(200, 0, 255, 0.40);
     /* Material Symbols has a built-in descender buffer that pushes
-       the glyph UP relative to the em-square center. Drop the icon
-       ~1px so its visual center sits on the title's cap-line center.
-       (Tried 4px down — icon too low. 2px down — icon too high.
-       1px down is the sweet spot.) */
-    transform: translateY(1px);
+       the glyph DOWN relative to the em-square center (visible as
+       the icon sitting lower than the title's cap-line). Lift the
+       icon UP ~5px so its visual center aligns with the title.
+       Tried: 4px down — too low. 1px down — still too low. Baseline
+       alignment — too low. 0px — too low. Negative is the right
+       direction. */
+    transform: translateY(-5px);
 }
 /* Smaller variant: when the title uses size='sm' (1.4rem = ~22px),
    the icon should also shrink proportionally to keep balance.
