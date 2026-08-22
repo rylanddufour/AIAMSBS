@@ -793,7 +793,7 @@ a.aiamsbs-icon-button .ms {
 }
 .aiamsbs-cyberpunk-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.7rem;
     padding-bottom: 0.4rem;
     border-bottom: 2px solid var(--aiamsbs-accent);
@@ -809,13 +809,13 @@ a.aiamsbs-icon-button .ms {
     text-shadow:
         0 0 8px rgba(0, 212, 255, 0.65),
         0 0 16px rgba(200, 0, 255, 0.40);
-    /* Baseline alignment ties the icon's glyph baseline to the
-       title's baseline. Material Symbols has a small descender
-       buffer that pushes the glyph UP relative to Latin caps;
-       align-items: baseline compensates automatically.
-       Previous translateY attempts fought this — baseline alignment
-       is the right primitive for pairing icon fonts with text. */
-    align-self: baseline;
+    /* Material Symbols has a built-in descender buffer that pushes
+       the glyph UP relative to the em-square center. Drop the icon
+       ~4px so its visual center sits on the title's cap-line center.
+       (Tried baseline alignment — over-corrected. Tried translateY(2px)
+       with center alignment — under-corrected. 4px with center
+       alignment lands in the middle.) */
+    transform: translateY(4px);
 }
 /* Smaller variant: when the title uses size='sm' (1.4rem = ~22px),
    the icon should also shrink proportionally to keep balance.
