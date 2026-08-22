@@ -35,7 +35,7 @@ from mcp_client import (
     loki_query,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, page_header
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
 
 st.set_page_config(
     page_title="Inventory Search — AIAMSBS",
@@ -76,7 +76,7 @@ def _log(event: str, **fields) -> None:
         pass
 
 
-page_header("Inventory Search", "inventory_search")
+cyberpunk_title("Inventory Search", "inventory_search")
 st.caption(
     "Search and inspect devices in the inventory. Read-only in v1.0."
 )

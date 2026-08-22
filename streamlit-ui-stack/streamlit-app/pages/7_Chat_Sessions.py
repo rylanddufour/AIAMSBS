@@ -32,7 +32,7 @@ from db import (
     update_chat_session_response,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, page_header
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
 
 st.set_page_config(
     page_title="Chat Sessions — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide",
@@ -144,7 +144,7 @@ except Exception as exc:
 # ============================================================
 # Pages heading
 # ============================================================
-page_header("Chat Sessions", "chat_sessions")
+cyberpunk_title("Chat Sessions", "chat_sessions")
 st.caption(
     "Filter by days back, pick a session from the dropdown, then "
     "continue the conversation below."

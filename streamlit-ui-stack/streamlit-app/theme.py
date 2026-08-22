@@ -54,6 +54,7 @@ _CSS_INNER = """
    unreachable, the literal name still renders inside <span class="ms">
    so layout doesn't collapse. */
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&display=swap');
 :root {
     --aiamsbs-bg:           #0b1220;
     --aiamsbs-panel:        #0f1b2e;
@@ -61,6 +62,8 @@ _CSS_INNER = """
     --aiamsbs-border:       #1f3a5c;
     --aiamsbs-accent:       #00d4ff;
     --aiamsbs-accent-dim:   #008db3;
+    --aiamsbs-magenta:      #ff00ff;
+    --aiamsbs-magenta-dim:  #b300b3;
     --aiamsbs-text:         #e6edf3;
     --aiamsbs-text-muted:   #8b9bb4;
     --aiamsbs-mono:         "JetBrains Mono", "Fira Code", "SF Mono",
@@ -486,6 +489,38 @@ def page_link_button(
     )
 
 
+def cyberpunk_title(title: str, icon_name: str = "", size: str = "") -> None:
+    """Render a page title in cyberpunk neon style.
+
+    Drop-in replacement for page_header() when you want the synthwave/
+    cyberpunk HUD look from the BACKLOG #72 follow-up design reference:
+    outlined letterforms with a cyan -> magenta gradient stroke and a
+    multi-layer glow + outer bloom.
+
+    Args:
+        title:     The title text.
+        icon_name: Optional Material Symbols icon name (key into
+                   _PAGE_ICONS or a raw name). Empty string = no icon.
+        size:      "" (default 2.2rem) or "sm" (1.4rem) for subheadings.
+
+    Usage:
+        cyberpunk_title("Agent Chat", "agent_chat")
+        cyberpunk_title("Recent playbook runs", size="sm")
+    """
+    glyph_html = ""
+    if icon_name:
+        glyph = _PAGE_ICONS.get(icon_name, icon_name)
+        glyph_html = f'<span class="ms">{glyph}</span>'
+    size_class = " aiamsbs-cyberpunk-sm" if size == "sm" else ""
+    st.markdown(
+        f'<div class="aiamsbs-cyberpunk-row">'
+        f'{glyph_html}'
+        f'<span class="aiamsbs-cyberpunk{size_class}">{title}</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
 # AIAMSBS favicon. Inline SVG (data: URL) so the browser tab +
 # bookmarks show the same glyph on every page. Drop-in for
 # st.set_page_config(page_icon=AIAMSBS_FAVICON).
@@ -691,5 +726,96 @@ a.aiamsbs-icon-button .ms {
     font-size: 18px;
     vertical-align: -3px;
     color: var(--aiamsbs-accent);
+}
+
+/* ============================================================
+   Cyberpunk neon title — BACKLOG #72 follow-up.
+   Outlined letterforms with a cyan -> magenta gradient stroke
+   and a multi-layer glow + outer bloom. Matches the design
+   reference (synthwave/cyberpunk HUD style).
+
+   Technique:
+     - `-webkit-text-stroke` paints the gradient stroke on each
+       glyph. The stroke color uses the cyan + magenta tokens via
+       a linear-gradient applied as `background` and clipped to
+       the text via `-webkit-background-clip: text`.
+     - `color: transparent` makes the glyph fill invisible so the
+       gradient shows through.
+     - `text-shadow` stack = inner glow (sharp, colored) + outer
+       bloom (wider, fading) for the neon halo.
+     - Fallback for older browsers without `-webkit-text-stroke`:
+       `.cyberpunk-fallback` class uses a solid cyan stroke instead.
+
+   Usage: cyberpunk_title("Agent Chat", "agent_chat")
+   ============================================================ */
+.aiamsbs-cyberpunk {
+    display: inline-block;
+    font-family: 'Orbitron', 'Rajdhani', 'Audiowide', system-ui,
+                 -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 700;
+    font-size: 2.2rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.1;
+    /* Outline effect: gradient stroke + transparent fill */
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    background: linear-gradient(
+        90deg,
+        var(--aiamsbs-accent) 0%,
+        #c800ff 50%,
+        var(--aiamsbs-magenta) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    /* The actual stroke — modern WebKit / Blink render this; the
+       fallback path in older browsers shows a solid cyan outline. */
+    -webkit-text-stroke: 1.5px var(--aiamsbs-accent);
+    /* Multi-layer text-shadow = inner glow + outer bloom.
+       Stack order: tight inner cyan glow -> wider outer bloom
+       fading to transparent. The exact reference has BOTH a
+       sharp inner magenta tint AND a soft outer magenta bloom. */
+    text-shadow:
+        0 0 4px rgba(0, 212, 255, 0.85),
+        0 0 8px rgba(0, 212, 255, 0.55),
+        0 0 18px rgba(200, 0, 255, 0.45),
+        0 0 36px rgba(255, 0, 255, 0.30),
+        0 0 60px rgba(255, 0, 255, 0.18);
+    /* Padding so the bloom doesn't get clipped by the row bounds */
+    padding: 0.3rem 0;
+    margin: 0 0 1rem 0;
+}
+.aiamsbs-cyberpunk-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--aiamsbs-accent);
+    margin-bottom: 1rem;
+}
+.aiamsbs-cyberpunk-row .ms {
+    font-size: 32px;
+    color: var(--aiamsbs-accent);
+    text-shadow:
+        0 0 8px rgba(0, 212, 255, 0.65),
+        0 0 16px rgba(200, 0, 255, 0.40);
+}
+/* Solid-cyan fallback for browsers without -webkit-text-stroke.
+   Still neon-ish, just less gradient. */
+.aiamsbs-cyberpunk-fallback {
+    color: var(--aiamsbs-accent);
+    -webkit-text-fill-color: var(--aiamsbs-accent);
+    background: none;
+    -webkit-text-stroke: 0;
+    font-weight: 800;
+    text-shadow:
+        0 0 6px rgba(0, 212, 255, 0.85),
+        0 0 14px rgba(255, 0, 255, 0.45);
+}
+
+/* Smaller variant for subheadings / inline labels (e.g. the
+   "Recent playbook runs" rows on Home). */
+.aiamsbs-cyberpunk-sm {
+    font-size: 1.4rem;
 }
 """

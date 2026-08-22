@@ -15,7 +15,7 @@ import streamlit as st
 from auth import require_auth, render_logout_button
 from db import db, init_schema
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, page_header
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
 
 st.set_page_config(
     page_title="AIAMSBS v1.0",
@@ -40,7 +40,7 @@ settings = load_settings()
 
 # ---- Sidebar ----
 # ---- Header ----
-page_header(f"AIAMSBS v1.0 — Customer {settings.customer_name}", "home")
+cyberpunk_title(f"AIAMSBS v1.0 — Customer {settings.customer_name}", "home")
 st.caption(
     "Private deployment dashboard. Backends below run on the AIAMSBS host. "
     "Pages (Settings, Run Playbook, Agent Chat, etc.) are in the sidebar. "

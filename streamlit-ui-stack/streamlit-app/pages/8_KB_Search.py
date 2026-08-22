@@ -32,7 +32,7 @@ from mcp_client import (
     kb_search,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, page_header
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
 
 st.set_page_config(
     page_title="KB Search — AIAMSBS",
@@ -79,7 +79,7 @@ def _log(event: str, **fields) -> None:
         pass
 
 
-page_header("KB Search", "kb_search")
+cyberpunk_title("KB Search", "kb_search")
 st.caption(
     "Search the knowledge base. Drill into an entry to see full "
     "content. Add new entries via the **+ Add** button."

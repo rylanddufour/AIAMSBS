@@ -54,7 +54,7 @@ from mcp_client import (
     inventory_list,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, page_header, page_link_button
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
 
 st.set_page_config(page_title="Run Playbook — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
@@ -74,7 +74,7 @@ with st.sidebar:
     st.markdown("---")
     render_logout_button()
 
-page_header("Run Playbook", "run_playbook")
+cyberpunk_title("Run Playbook", "run_playbook")
 st.caption(
     "Pick a playbook, choose target inventory, confirm credentials, "
     "then **review and confirm** before the runner executes."
