@@ -64,6 +64,8 @@ _CSS_INNER = """
     --aiamsbs-accent-dim:   #008db3;
     --aiamsbs-magenta:      #ff00ff;
     --aiamsbs-magenta-dim:  #b300b3;
+    --aiamsbs-warn:         #f7a800;
+    --aiamsbs-warn-dim:     #b37800;
     --aiamsbs-text:         #e6edf3;
     --aiamsbs-text-muted:   #8b9bb4;
     --aiamsbs-mono:         "JetBrains Mono", "Fira Code", "SF Mono",
@@ -150,10 +152,12 @@ h1 {
 }
 
 /* ============================================================
-   Buttons: accent on primary, panel for secondary.
+   Buttons: dimmed primary (low-saturation cyan-tinted panel +
+   accent border + accent text), panel for plain secondary. The
+   link button is styled like the primary (CTA-style external
+   link) since these are typically the main action on a page.
    ============================================================ */
 .stButton > button,
-.stLinkButton a,
 .stDownloadButton > button {
     background-color: var(--aiamsbs-panel);
     color: var(--aiamsbs-text);
@@ -167,8 +171,29 @@ h1 {
     border-color: var(--aiamsbs-accent-dim);
 }
 .stButton > button:focus,
-.stLinkButton a:focus,
 .stDownloadButton > button:focus {
+    outline: 2px solid var(--aiamsbs-accent);
+    outline-offset: 1px;
+}
+
+/* Link button: dimmed-primary style. Matches the new form
+   submit / primary button look. */
+.stLinkButton a {
+    background-color: #0a2a3d;
+    color: var(--aiamsbs-accent);
+    border: 1px solid var(--aiamsbs-accent-dim);
+    border-radius: 6px;
+    font-weight: 600;
+    transition: background-color 120ms ease, border-color 120ms ease,
+                box-shadow 120ms ease;
+}
+.stLinkButton a:hover {
+    background-color: #0f3a52;
+    border-color: var(--aiamsbs-accent);
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30);
+    text-decoration: none;
+}
+.stLinkButton a:focus {
     outline: 2px solid var(--aiamsbs-accent);
     outline-offset: 1px;
 }
@@ -227,11 +252,41 @@ h1 {
     background-color: var(--aiamsbs-accent-dim) !important;
 }
 
-/* Checkbox + radio accent */
+/* Checkbox + radio: amber for active state (matches the
+   selection-color rule on Run History / KB Search multiselect
+   pills). Cyan is reserved for nav + page titles; amber is for
+   "this is selected / this is active" affordances. */
 .stCheckbox label span[data-checked="true"],
 .stRadio label span[data-checked="true"] {
-    background-color: var(--aiamsbs-accent) !important;
-    border-color: var(--aiamsbs-accent) !important;
+    background-color: var(--aiamsbs-warn) !important;
+    border-color: var(--aiamsbs-warn) !important;
+}
+
+/* ============================================================
+   Multiselect pill chips — were screaming cyan, now amber.
+   Matches the design reference's "active selection" palette.
+   ============================================================ */
+[data-baseweb="tag"] {
+    background-color: #3a2807 !important;
+    border: 1px solid var(--aiamsbs-warn-dim) !important;
+    color: var(--aiamsbs-warn) !important;
+    border-radius: 4px !important;
+}
+[data-baseweb="tag"] span,
+[data-baseweb="tag"] [data-baseweb="tag-closeIcon"] svg {
+    color: var(--aiamsbs-warn) !important;
+    fill: var(--aiamsbs-warn) !important;
+}
+
+/* Selectbox focused border — cyan was overpowering. Amber border
+   signals "you're focused here, ready to pick" without screaming. */
+[data-baseweb="select"] > div {
+    border-color: var(--aiamsbs-warn-dim) !important;
+}
+[data-baseweb="select"]:focus-within > div,
+[data-baseweb="select"] > div:focus-within {
+    border-color: var(--aiamsbs-warn) !important;
+    box-shadow: 0 0 0 1px var(--aiamsbs-warn) !important;
 }
 
 /* ============================================================
@@ -266,6 +321,18 @@ h1 {
     color: var(--aiamsbs-text);
     padding: 0.4rem 0.75rem;
     border-bottom: 1px solid rgba(31, 58, 92, 0.5);
+}
+
+/* Data editor + dataframe selected cell highlight: Glide DataGrid
+   uses a CSS class to mark selected cells. Was bright cyan; we
+   switch to a low-saturation amber ring + fill that reads as
+   "this row is active" without screaming. */
+.dg-cell-selected,
+.glide-data-editor .dg-cell-selected,
+[data-testid="stDataFrame"] .dg-cell-selected {
+    background-color: rgba(247, 168, 0, 0.18) !important;
+    border-left: 2px solid var(--aiamsbs-warn) !important;
+    border-right: 2px solid var(--aiamsbs-warn) !important;
 }
 
 /* ============================================================

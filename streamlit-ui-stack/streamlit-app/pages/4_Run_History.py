@@ -15,7 +15,7 @@ from auth import require_auth, render_logout_button
 from db import db
 from hermes_client import short_run_id
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, section_header
 
 st.set_page_config(page_title="Run History — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
@@ -37,11 +37,6 @@ with st.sidebar:
 
 cyberpunk_title("Run History", "run_history")
 st.caption("Every playbook execution Card 4 has queued. Click a row to drill in.")
-
-# ---- New run link ----
-top_cols = st.columns([1, 6])
-with top_cols[0]:
-    page_link_button("pages/3_Run_Playbook.py", "➕ New run", "run_playbook", use_container_width=True)
 
 
 # ---- Load + cache the rows ----
@@ -69,7 +64,7 @@ except Exception as exc:
     st.stop()
 
 if not rows:
-    st.info("No runs yet. Use the **New run** button above to start one.")
+    st.info("No runs yet. Open **Run Playbook** from the sidebar to start one.")
     st.stop()
 
 # ---- Filter UI ----

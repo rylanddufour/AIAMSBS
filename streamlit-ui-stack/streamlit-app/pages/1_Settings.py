@@ -102,15 +102,14 @@ with st.form("settings_form"):
         st.markdown("")
 
     st.markdown("---")
-    save_cols = st.columns([1, 1, 6])
+    save_cols = st.columns(2)
     with save_cols[0]:
         save = st.form_submit_button(
             "Save", type="primary", use_container_width=True,
         )
     with save_cols[1]:
         reset = st.form_submit_button(
-            "Reset all to defaults",
-            use_container_width=True,
+            "Reset", use_container_width=True,
         )
 
 if save:
