@@ -756,7 +756,13 @@ a.aiamsbs-icon-button .ms {
     font-size: 2.2rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    line-height: 1.1;
+    /* Tight line-height + zero padding so the bounding box matches
+       the visible glyph height. Combined with align-items: center
+       on the row, this puts the icon and title on the same baseline.
+       (Previously line-height: 1.1 added 10% extra space below the
+       glyphs, which dropped the visual center.) */
+    line-height: 1;
+    padding: 0;
     /* Outline effect: gradient stroke + transparent fill */
     color: transparent;
     -webkit-text-fill-color: transparent;
@@ -802,6 +808,11 @@ a.aiamsbs-icon-button .ms {
     text-shadow:
         0 0 8px rgba(0, 212, 255, 0.65),
         0 0 16px rgba(200, 0, 255, 0.40);
+    /* Material Symbols glyphs sit slightly above their baseline vs
+       uppercase Latin caps. translateY(6px) drops the icon so its
+       visual center matches the title's. (Common pitfall when
+       pairing an icon font with custom typography in a flex row.) */
+    transform: translateY(2px);
 }
 /* Smaller variant: when the title uses size='sm' (1.4rem = ~22px),
    the icon should also shrink proportionally to keep balance.
