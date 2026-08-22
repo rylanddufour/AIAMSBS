@@ -15,6 +15,7 @@ import streamlit as st
 from auth import require_auth, render_logout_button
 from db import db, init_schema
 from settings import load as load_settings
+from theme import apply_theme
 
 st.set_page_config(
     page_title="AIAMSBS v1.0",
@@ -31,6 +32,10 @@ init_schema()
 # Auth gate.
 if not require_auth():
     st.stop()
+
+# Theme (BACKLOG #72 — Dark Cyber palette). Applied AFTER auth so the
+# login form is the only place the default light theme bleeds through.
+apply_theme()
 
 settings = load_settings()
 
