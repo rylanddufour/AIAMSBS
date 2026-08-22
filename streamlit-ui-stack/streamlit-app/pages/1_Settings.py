@@ -17,7 +17,7 @@ from db import (
     set_ui_settings,
 )
 from settings import EDITABLE_FIELDS, load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
 st.set_page_config(page_title="Settings — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
@@ -53,7 +53,7 @@ def _current_value(field: dict) -> str:
 
 
 # ---- Editable form ----
-st.subheader("Editable configuration")
+section_header("Editable configuration")
 
 with st.form("settings_form"):
     new_values: dict[str, str] = {}
@@ -138,7 +138,7 @@ if reset:
 
 # ---- Read-only display of current effective values ----
 st.markdown("---")
-st.subheader("Current effective values")
+section_header("Current effective values")
 st.caption("What the rest of the app sees right now (override > env > default).")
 for group_name in sorted({f.get("group", "Other") for f in EDITABLE_FIELDS}):
     group_fields = [

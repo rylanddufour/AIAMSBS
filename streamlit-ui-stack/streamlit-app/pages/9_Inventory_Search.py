@@ -35,7 +35,7 @@ from mcp_client import (
     loki_query,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
 st.set_page_config(
     page_title="Inventory Search — AIAMSBS",
@@ -253,7 +253,7 @@ if drill:
     # Recent alerts: pull from Loki. We search job=aiamsbs-anomaly OR
     # any log whose line mentions the hostname. Per the card's open
     # questions, this is "pull from Loki for v1.0".
-    st.markdown("#### Recent alerts (Loki, last 24h)")
+    section_header("Recent alerts (Loki, last 24h)")
     try:
         hostname_q = (drill.get("hostname") or drill.get("device_id") or "").replace(
             '"', '\\"'
@@ -279,7 +279,7 @@ if drill:
         st.caption("_(Loki unavailable — recent alerts skipped)_")
 
     # Related KB entries: kb_search(query=hostname).
-    st.markdown("#### Related KB entries")
+    section_header("Related KB entries")
     try:
         kb_rows = kb_search(
             query=(drill.get("hostname") or drill.get("device_id") or "").strip(),

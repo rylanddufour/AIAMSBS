@@ -521,6 +521,28 @@ def cyberpunk_title(title: str, icon_name: str = "", size: str = "") -> None:
     )
 
 
+def section_header(title: str) -> None:
+    """Render an in-page section heading (subheader).
+
+    Same Orbitron font family as cyberpunk_title() so the typography
+    stays consistent, but solid cyan fill, no glow, no gradient
+    stroke — reads as "data" rather than "title". Use for in-page
+    subheadings like "Quick links", "Stage 1 — Select playbook",
+    "Recent playbook runs".
+
+    Drop-in replacement for st.subheader(). The .aiamsbs-section-header
+    class also works as a fallback — if you must use raw st.markdown
+    or st.subheader, add the class to the rendered HTML.
+
+    Usage:
+        section_header("Stage 1 — Select playbook")
+    """
+    st.markdown(
+        f'<div class="aiamsbs-section-header">{title}</div>',
+        unsafe_allow_html=True,
+    )
+
+
 # AIAMSBS favicon. Inline SVG (data: URL) so the browser tab +
 # bookmarks show the same glyph on every page. Drop-in for
 # st.set_page_config(page_icon=AIAMSBS_FAVICON).
@@ -844,4 +866,52 @@ a.aiamsbs-icon-button .ms {
 .aiamsbs-cyberpunk-sm {
     font-size: 1.4rem;
 }
+
+/* ============================================================
+   Section header — for in-page subheadings ("Quick links",
+   "Stage 1 — Select playbook", etc). Same Orbitron font family
+   as the cyberpunk title so the typography line stays consistent,
+   but solid cyan fill (no gradient stroke), no glow, no bloom.
+   This reads as "data" rather than "title" — the page title
+   does the heavy neon lifting and section headers stay readable.
+   ============================================================ */
+.aiamsbs-section-header {
+    font-family: 'Orbitron', 'Rajdhani', system-ui, -apple-system,
+                 BlinkMacSystemFont, sans-serif;
+    font-weight: 600;
+    font-size: 1.15rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--aiamsbs-accent);
+    /* Solid fill — no gradient, no stroke, no glow. The accent
+       underline border gives visual continuity with the cyberpunk
+       title's bordered row above. */
+    -webkit-text-fill-color: var(--aiamsbs-accent);
+    background: none;
+    -webkit-text-stroke: 0;
+    text-shadow: none;
+    margin: 1.25rem 0 0.6rem 0;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--aiamsbs-accent-dim);
+}
+
+/* Override Streamlit's native h2 / h3 styling so any remaining
+   st.subheader() or st.markdown("## ...") calls also pick up the
+   theme. Less aggressive than .aiamsbs-section-header (no border)
+   so it doesn't add noise where the developer chose not to use
+   section_header(). */
+h2, h3,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3 {
+    font-family: 'Orbitron', 'Rajdhani', system-ui, -apple-system,
+                 BlinkMacSystemFont, sans-serif !important;
+    color: var(--aiamsbs-accent) !important;
+    -webkit-text-fill-color: var(--aiamsbs-accent) !important;
+    text-shadow: none !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.03em !important;
+    text-transform: uppercase !important;
+}
+h2 { font-size: 1.15rem !important; }
+h3 { font-size: 1.0rem !important; }
 """

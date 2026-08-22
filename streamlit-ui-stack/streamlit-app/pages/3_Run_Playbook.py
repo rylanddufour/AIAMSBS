@@ -54,7 +54,7 @@ from mcp_client import (
     inventory_list,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
 st.set_page_config(page_title="Run Playbook — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
@@ -227,7 +227,7 @@ def _parse_playbook_meta(path: Path) -> dict:
 # ---------------------------------------------------------------------------
 
 def _stage1() -> None:
-    st.subheader("Stage 1 — Select playbook")
+    section_header("Stage 1 — Select playbook")
     playbooks = _list_playbooks()
     if not playbooks:
         st.error(
@@ -338,7 +338,7 @@ def _build_inline_inventory(devices: list[dict], ssh_user: str = "") -> str:
 
 
 def _stage2() -> None:
-    st.subheader("Stage 2 — Select hosts")
+    section_header("Stage 2 — Select hosts")
     st.write(
         f"**Playbook:** `{_SS['playbook_display'] or _SS['playbook_path']}`  —  "
         f"name=`{(_SS['playbook_meta'] or {}).get('name') or '?'}`"
@@ -422,7 +422,7 @@ def _stage2() -> None:
 # ---------------------------------------------------------------------------
 
 def _stage3() -> None:
-    st.subheader("Stage 3 — Mode + credentials")
+    section_header("Stage 3 — Mode + credentials")
     selected = _SS["selected_devices"]
     selected_hosts = sorted(
         d.get("hostname") or d.get("device_id") or "?"
@@ -535,7 +535,7 @@ def _render_summary_card() -> None:
     )
     mode = _SS["mode"]
 
-    st.markdown("#### Review & confirm")
+    section_header("Review & confirm")
     with st.container(border=True):
         st.markdown(f"**Playbook:** `{_SS.get('playbook_display') or pb}`")
         meta = _SS.get("playbook_meta") or {}
@@ -571,7 +571,7 @@ def _render_summary_card() -> None:
 
 
 def _stage4() -> None:
-    st.subheader("Stage 4 — Confirmation")
+    section_header("Stage 4 — Confirmation")
     if st.button("← Back", key="conf_back"):
         _SS["stage"] = 3
         st.rerun()
@@ -673,7 +673,7 @@ def _update_run_status(run_id: str, **fields) -> None:
 def _run_in_progress() -> None:
     """Owns the actual POST + DB write loop. On entry, _SS has run_id,
     confirm_started=True, stage=5."""
-    st.subheader("Stage 5 — Running")
+    section_header("Stage 5 — Running")
     run_id = _SS["run_id"]
 
     # Persist the queued status_change event (run row already queued from Confirm click).

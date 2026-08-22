@@ -15,7 +15,7 @@ from auth import require_auth, render_logout_button
 from db import db
 from hermes_client import short_run_id
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
 st.set_page_config(page_title="Run History — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
@@ -166,7 +166,7 @@ st.dataframe(
 
 # ---- Drill-in ----
 st.markdown("---")
-st.subheader("Open a run")
+section_header("Open a run")
 options = [f"{row['_full_id']}  ({row['playbook']}, {row['status']})"
            for row in table_rows]
 selected = st.selectbox(
