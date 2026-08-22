@@ -38,21 +38,18 @@ _STATUS_GRAY = "#7f8c8d"
 # Avoid `!important` overrides of Streamlit internals — we use higher-
 # specificity selectors instead.
 _CSS = """
-<!-- Material Symbols Outlined (MIT, Google Fonts CDN).
-     Used for inline page-level icons + status glyphs. Loaded once
-     via theme.py so we don't have to wire the <link> into every
-     page. Style matches the BACKLOG #72 follow-up reference: thin
-     strokes, no fill, ~24px, glows on hover. FALLBACK-FRIENDLY:
-     if the CDN is unreachable the text inside <span class="ms"> ...
-     </span> still renders as the icon name so the layout doesn't
-     collapse. -->
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&display=swap" rel="stylesheet">
-
 <style>
 /* ============================================================
    AIAMSBS Dark Cyber — design tokens (BACKLOG #72)
    Edit this block to swap palettes. Keep in sync with config.toml.
    ============================================================ */
+/* Material Symbols Outlined font (MIT, Google Fonts CDN) — loaded
+   via @import so the entire injection is one <style> block. Style
+   matches the BACKLOG #72 follow-up reference: thin strokes, no
+   fill, ~24px, glows on hover. FALLBACK-FRIENDLY: if the CDN is
+   unreachable, the literal name still renders inside <span class="ms">
+   so layout doesn't collapse. */
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&display=swap');
 :root {
     --aiamsbs-bg:           #0b1220;
     --aiamsbs-panel:        #0f1b2e;
