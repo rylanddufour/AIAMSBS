@@ -54,7 +54,7 @@ from mcp_client import (
     inventory_list,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, page_header
+from theme import AIAMSBS_FAVICON, apply_theme, page_header, page_link_button
 
 st.set_page_config(page_title="Run Playbook — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
@@ -848,8 +848,7 @@ def _run_in_progress() -> None:
             _reset_flow()
             st.rerun()
     with cols[1]:
-        st.page_link("pages/4_Run_History.py", label="View run history →",
-                     icon="📜", use_container_width=True)
+        page_link_button("pages/4_Run_History.py", "View run history →", "run_history", use_container_width=True)
 
     # Re-enable the form for another attempt on this same playbook (but
     # we leave the runs in place). Setting confirm_started=False would

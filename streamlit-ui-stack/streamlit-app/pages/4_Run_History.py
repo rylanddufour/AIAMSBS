@@ -15,7 +15,7 @@ from auth import require_auth, render_logout_button
 from db import db
 from hermes_client import short_run_id
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, page_header
+from theme import AIAMSBS_FAVICON, apply_theme, page_header, page_link_button
 
 st.set_page_config(page_title="Run History — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
@@ -41,8 +41,7 @@ st.caption("Every playbook execution Card 4 has queued. Click a row to drill in.
 # ---- New run link ----
 top_cols = st.columns([1, 6])
 with top_cols[0]:
-    st.page_link("pages/3_Run_Playbook.py", label="➕ New run", icon="▶️",
-                 use_container_width=True)
+    page_link_button("pages/3_Run_Playbook.py", "➕ New run", "run_playbook", use_container_width=True)
 
 
 # ---- Load + cache the rows ----

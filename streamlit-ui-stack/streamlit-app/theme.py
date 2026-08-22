@@ -434,6 +434,52 @@ def page_header(title: str, icon_name: str) -> None:
     )
 
 
+def page_link_button(
+    page_path: str,
+    label: str,
+    icon_name: str,
+    *,
+    use_container_width: bool = False,
+) -> None:
+    """Render a Material-Symbol icon + label as a styled nav button.
+
+    Drop-in replacement for st.page_link when you want a Material
+    Symbol glyph instead of an emoji. Streamlit's native page_link
+    escapes the `icon=` argument so HTML can't pass through it; this
+    helper builds the same look manually via st.markdown.
+
+    Args:
+        page_path: Streamlit page path relative to the app root,
+                   e.g. "pages/4_Run_History.py" or just the page
+                   title like "Run_History".
+        label:     Link text.
+        icon_name: Either a key from _PAGE_ICONS (e.g. "run_history")
+                   or a raw Material Symbols name (e.g. "history").
+        use_container_width: Match st.page_link's kwarg (currently
+                   informational; CSS handles width via parent block).
+
+    Usage:
+        page_link_button("pages/4_Run_History.py", "Back to Run History", "run_history")
+    """
+    glyph = _PAGE_ICONS.get(icon_name, icon_name)
+    # Streamlit routes by the page name, not the .py path. The /<name>
+    # URL is what set_page_config uses for the title. We accept either
+    # the .py file path OR the bare page name and normalize.
+    if page_path.startswith("pages/") and page_path.endswith(".py"):
+        href = "/" + page_path[len("pages/"):-len(".py")]
+    elif "/" in page_path:
+        href = "/" + page_path
+    else:
+        href = "/" + page_path
+    st.markdown(
+        f'<a href="{href}" class="aiamsbs-icon-button">'
+        f'<span class="ms">{glyph}</span>'
+        f'<span>{label}</span>'
+        f'</a>',
+        unsafe_allow_html=True,
+    )
+
+
 # AIAMSBS favicon. Inline SVG (data: URL) so the browser tab +
 # bookmarks show the same glyph on every page. Drop-in for
 # st.set_page_config(page_icon=AIAMSBS_FAVICON).
@@ -597,4 +643,43 @@ _ICON_CSS = """
    set_page_config(page_icon=...). We ship a small inline SVG as a
    consistent favicon across all pages so the browser tab always
    shows the AIAMSBS glyph (a stylized "A" shield). */
+
+/* ============================================================
+   Icon button (drop-in replacement for st.page_link when the icon
+   argument must be a Material Symbol, not an emoji). Streamlit's
+   page_link escapes the icon arg so we can't pass HTML through it;
+   page_link_button() below renders the same look manually via
+   st.markdown(unsafe_allow_html=True). The href uses Streamlit's
+   internal page URL routing so navigation still works.
+   ============================================================ */
+a.aiamsbs-icon-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    background-color: var(--aiamsbs-panel);
+    color: var(--aiamsbs-text);
+    border: 1px solid var(--aiamsbs-border);
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 120ms ease, border-color 120ms ease,
+                box-shadow 120ms ease;
+    vertical-align: middle;
+}
+a.aiamsbs-icon-button:hover {
+    background-color: var(--aiamsbs-panel-hover);
+    border-color: var(--aiamsbs-accent-dim);
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30);
+    text-decoration: none;
+}
+a.aiamsbs-icon-button:focus {
+    outline: 2px solid var(--aiamsbs-accent);
+    outline-offset: 1px;
+}
+a.aiamsbs-icon-button .ms {
+    font-size: 18px;
+    vertical-align: -3px;
+    color: var(--aiamsbs-accent);
+}
 """
