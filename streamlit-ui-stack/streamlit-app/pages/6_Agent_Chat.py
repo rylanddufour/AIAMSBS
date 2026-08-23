@@ -32,13 +32,19 @@ from db import (
     update_chat_session_response,
 )
 from settings import load as load_settings
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
 
 st.set_page_config(
-    page_title="Agent Chat — AIAMSBS", page_icon="💬", layout="wide",
+    page_title="Agent Chat — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide",
 )
 
 if not require_auth():
     st.stop()
+
+# Theme (BACKLOG #72 — Dark Cyber palette). Applied AFTER
+# auth so the login form is the only place the default
+# light theme bleeds through.
+apply_theme()
 
 settings = load_settings()
 user_id: int = int(st.session_state.get("user_id") or 0)
@@ -58,7 +64,7 @@ active_session_id: str | None = st.session_state.get("_active_chat_session_id")
 # chat is already saved to chat_sessions + chat_messages — pick up
 # later from /Chat_Sessions).
 # Title on its own line — full width, no column fiddling.
-st.title("💬 Agent Chat")
+cyberpunk_title("Agent Chat", "agent_chat")
 st.caption(
     "Type a question below and press Enter. Your conversation "
     "stays here — no jumping between pages."

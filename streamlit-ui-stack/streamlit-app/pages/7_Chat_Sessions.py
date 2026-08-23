@@ -32,13 +32,19 @@ from db import (
     update_chat_session_response,
 )
 from settings import load as load_settings
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
 
 st.set_page_config(
-    page_title="Chat Sessions — AIAMSBS", page_icon="💬", layout="wide",
+    page_title="Chat Sessions — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide",
 )
 
 if not require_auth():
     st.stop()
+
+# Theme (BACKLOG #72 — Dark Cyber palette). Applied AFTER
+# auth so the login form is the only place the default
+# light theme bleeds through.
+apply_theme()
 
 settings = load_settings()
 user_id: int = int(st.session_state.get("user_id") or 0)
@@ -138,7 +144,7 @@ except Exception as exc:
 # ============================================================
 # Pages heading
 # ============================================================
-st.markdown("# 📚 Chat Sessions")
+cyberpunk_title("Chat Sessions", "chat_sessions")
 st.caption(
     "Filter by days back, pick a session from the dropdown, then "
     "continue the conversation below."

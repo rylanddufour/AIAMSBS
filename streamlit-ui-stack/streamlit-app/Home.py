@@ -15,11 +15,11 @@ import streamlit as st
 from auth import require_auth, render_logout_button
 from db import db, init_schema
 from settings import load as load_settings
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
 st.set_page_config(
     page_title="AIAMSBS v1.0",
-    page_icon="🛡️",
-    layout="wide",
+    page_icon=AIAMSBS_FAVICON, layout="wide",
     initial_sidebar_state="expanded",
 )
 
@@ -32,11 +32,15 @@ init_schema()
 if not require_auth():
     st.stop()
 
+# Theme (BACKLOG #72 — Dark Cyber palette). Applied AFTER auth so the
+# login form is the only place the default light theme bleeds through.
+apply_theme()
+
 settings = load_settings()
 
 # ---- Sidebar ----
 # ---- Header ----
-st.title(f"AIAMSBS v1.0 — Customer {settings.customer_name}")
+cyberpunk_title(f"AIAMSBS v1.0 — Customer {settings.customer_name}", "home")
 st.caption(
     "Private deployment dashboard. Backends below run on the AIAMSBS host. "
     "Pages (Settings, Run Playbook, Agent Chat, etc.) are in the sidebar. "
@@ -47,7 +51,7 @@ st.caption(
 # Uses the Quick Links group (browser-facing, host IP) from Settings,
 # NOT the Backend URLs (container-internal). Edit these on the
 # Settings page if the host IP changes.
-st.subheader("Quick links")
+section_header("Quick links")
 ql1, ql2, ql3 = st.columns(3)
 quicklinks = dict(settings.quicklinks)
 ql1.link_button("Open Grafana", quicklinks.get("Open Grafana", settings.grafana_url), use_container_width=True)
@@ -88,7 +92,7 @@ def _health_snapshot() -> list[dict]:
     return rows
 
 
-st.subheader("Health snapshot")
+section_header("Health snapshot")
 snapshot = _health_snapshot()
 hcols = st.columns(len(snapshot))
 for col, row in zip(hcols, snapshot):
@@ -106,7 +110,7 @@ st.markdown("---")
 # ---- Recent activity (placeholders for Card 4/5) ----
 ra1, ra2 = st.columns(2)
 with ra1:
-    st.subheader("Recent playbook runs")
+    section_header("Recent playbook runs")
     with db() as conn:
         rows = conn.execute(
             "SELECT id, playbook, status, created_at FROM playbook_runs "
@@ -118,7 +122,7 @@ with ra1:
         st.info("No playbook runs yet. The Run Playbook page (Card 4) lands here.")
 
 with ra2:
-    st.subheader("Recent chat sessions")
+    section_header("Recent chat sessions")
     with db() as conn:
         rows = conn.execute(
             "SELECT id, title, last_active FROM chat_sessions "

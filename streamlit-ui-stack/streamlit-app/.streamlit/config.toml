@@ -1,12 +1,24 @@
 # Streamlit runtime config. Theme + telemetry. Server flags live in the
 # Dockerfile ENTRYPOINT (so they show up in `docker inspect`).
+#
+# Theme: AIAMSBS "Dark Cyber" (BACKLOG #72).
+#   * Operator constraint: NO white background. Pre-#72 the background
+#     was #ffffff (Streamlit default). Now flipped to deep-navy.
+#   * primaryColor = cyan accent for buttons / focus rings.
+#   * secondaryBackgroundColor = panel surface (cards, sidebar, widgets).
+#   * textColor = light slate (high contrast on dark navy).
+#   * Status colors (success/warn/danger) live in theme.py so they stay
+#     consistent across pages.
+#
+# To swap palettes later, edit these 4 lines + the :root vars in
+# theme.py — nothing else. Page code never references colors directly.
 
 [theme]
-base = "light"
-primaryColor = "#0a3d62"      # AIAMSBS-blue (BACKLOG #64 design)
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f0f2f6"
-textColor = "#262730"
+base = "dark"
+primaryColor = "#d68a00"                 # softened amber for selection-state UI (multiselect pills, checkbox/radio, selectbox focused border)
+backgroundColor = "#0b1220"              # deep navy (was #ffffff)
+secondaryBackgroundColor = "#0f1b2e"     # panel surface
+textColor = "#e6edf3"                    # light slate
 font = "sans serif"
 
 [server]

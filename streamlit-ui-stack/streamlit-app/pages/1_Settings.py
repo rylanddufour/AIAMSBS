@@ -17,15 +17,21 @@ from db import (
     set_ui_settings,
 )
 from settings import EDITABLE_FIELDS, load as load_settings
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
-st.set_page_config(page_title="Settings — AIAMSBS", page_icon="⚙️", layout="wide")
+st.set_page_config(page_title="Settings — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
 if not require_auth():
     st.stop()
 
+# Theme (BACKLOG #72 — Dark Cyber palette). Applied AFTER
+# auth so the login form is the only place the default
+# light theme bleeds through.
+apply_theme()
+
 settings = load_settings()
 
-st.title("⚙️ Settings")
+cyberpunk_title("Settings", "settings")
 st.caption(
     "Edit URLs to point at the host IP (e.g. http://192.168.0.220:9119) "
     "instead of the docker-internal hostname. Values persist in the local "
@@ -47,7 +53,7 @@ def _current_value(field: dict) -> str:
 
 
 # ---- Editable form ----
-st.subheader("Editable configuration")
+section_header("Editable configuration")
 
 with st.form("settings_form"):
     new_values: dict[str, str] = {}
@@ -96,15 +102,14 @@ with st.form("settings_form"):
         st.markdown("")
 
     st.markdown("---")
-    save_cols = st.columns([1, 1, 6])
+    save_cols = st.columns(2)
     with save_cols[0]:
         save = st.form_submit_button(
-            "💾 Save", type="primary", use_container_width=True,
+            "Save", type="primary", use_container_width=True,
         )
     with save_cols[1]:
         reset = st.form_submit_button(
-            "🧹 Reset all to defaults",
-            use_container_width=True,
+            "Reset", use_container_width=True,
         )
 
 if save:
@@ -121,7 +126,7 @@ if save:
         else:
             to_persist[key] = new
     set_ui_settings(to_persist)
-    st.success(f"✅ Saved {sum(1 for v in to_persist.values() if v != '')} override(s).")
+    st.success(f"Saved {sum(1 for v in to_persist.values() if v != '')} override(s).")
     st.rerun()
 
 if reset:
@@ -132,7 +137,7 @@ if reset:
 
 # ---- Read-only display of current effective values ----
 st.markdown("---")
-st.subheader("Current effective values")
+section_header("Current effective values")
 st.caption("What the rest of the app sees right now (override > env > default).")
 for group_name in sorted({f.get("group", "Other") for f in EDITABLE_FIELDS}):
     group_fields = [

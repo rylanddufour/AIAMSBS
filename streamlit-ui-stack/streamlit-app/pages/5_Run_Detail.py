@@ -28,11 +28,17 @@ from auth import require_auth, render_logout_button
 from db import db
 from hermes_client import redact_secrets, short_run_id
 from settings import load as load_settings
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
 
-st.set_page_config(page_title="Run Detail — AIAMSBS", page_icon="🔎", layout="wide")
+st.set_page_config(page_title="Run Detail — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
 if not require_auth():
     st.stop()
+
+# Theme (BACKLOG #72 — Dark Cyber palette). Applied AFTER
+# auth so the login form is the only place the default
+# light theme bleeds through.
+apply_theme()
 
 settings = load_settings()
 
@@ -42,14 +48,13 @@ with st.sidebar:
     st.markdown("---")
     render_logout_button()
 
-st.title("🔎 Run Detail")
+cyberpunk_title("Run Detail", "run_detail")
 
 # Read run_id from URL (?run_id=<uuid>) or session state fallback
 run_id = st.query_params.get("run_id")
 if not run_id:
     st.warning("No run_id in the URL. Open a run from Run History.")
-    st.page_link("pages/4_Run_History.py", label="← Back to Run History",
-                 icon="📜")
+    page_link_button("pages/4_Run_History.py", "← Back to Run History", "run_history")
     st.stop()
 
 # ---- Load the run row ----
@@ -217,8 +222,6 @@ with tab_l:
 st.markdown("---")
 nav_cols = st.columns([1, 1, 6])
 with nav_cols[0]:
-    st.page_link("pages/4_Run_History.py", label="← Run History",
-                 icon="📜", use_container_width=True)
+    page_link_button("pages/4_Run_History.py", "← Run History", "run_history", use_container_width=True)
 with nav_cols[1]:
-    st.page_link("pages/3_Run_Playbook.py", label="➕ New run",
-                 icon="▶️", use_container_width=True)
+    page_link_button("pages/3_Run_Playbook.py", "➕ New run", "run_playbook", use_container_width=True)

@@ -15,11 +15,17 @@ from auth import require_auth, render_logout_button
 from db import db
 from hermes_client import short_run_id
 from settings import load as load_settings
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, section_header
 
-st.set_page_config(page_title="Run History — AIAMSBS", page_icon="📜", layout="wide")
+st.set_page_config(page_title="Run History — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
 if not require_auth():
     st.stop()
+
+# Theme (BACKLOG #72 — Dark Cyber palette). Applied AFTER
+# auth so the login form is the only place the default
+# light theme bleeds through.
+apply_theme()
 
 settings = load_settings()
 
@@ -29,14 +35,8 @@ with st.sidebar:
     st.markdown("---")
     render_logout_button()
 
-st.title("📜 Run History")
+cyberpunk_title("Run History", "run_history")
 st.caption("Every playbook execution Card 4 has queued. Click a row to drill in.")
-
-# ---- New run link ----
-top_cols = st.columns([1, 6])
-with top_cols[0]:
-    st.page_link("pages/3_Run_Playbook.py", label="➕ New run", icon="▶️",
-                 use_container_width=True)
 
 
 # ---- Load + cache the rows ----
@@ -64,7 +64,7 @@ except Exception as exc:
     st.stop()
 
 if not rows:
-    st.info("No runs yet. Use the **New run** button above to start one.")
+    st.info("No runs yet. Open **Run Playbook** from the sidebar to start one.")
     st.stop()
 
 # ---- Filter UI ----
@@ -161,7 +161,7 @@ st.dataframe(
 
 # ---- Drill-in ----
 st.markdown("---")
-st.subheader("Open a run")
+section_header("Open a run")
 options = [f"{row['_full_id']}  ({row['playbook']}, {row['status']})"
            for row in table_rows]
 selected = st.selectbox(
