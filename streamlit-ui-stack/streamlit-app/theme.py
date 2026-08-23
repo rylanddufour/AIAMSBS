@@ -64,8 +64,8 @@ _CSS_INNER = """
     --aiamsbs-accent-dim:   #008db3;
     --aiamsbs-magenta:      #ff00ff;
     --aiamsbs-magenta-dim:  #b300b3;
-    --aiamsbs-warn:         #f7a800;
-    --aiamsbs-warn-dim:     #b37800;
+    --aiamsbs-warn:         #d68a00;
+    --aiamsbs-warn-dim:     #8f5d00;
     --aiamsbs-text:         #e6edf3;
     --aiamsbs-text-muted:   #8b9bb4;
     --aiamsbs-mono:         "JetBrains Mono", "Fira Code", "SF Mono",
@@ -264,7 +264,7 @@ h1 {
    ============================================================ */
 [data-baseweb="tag"],
 [data-baseweb="tag"] * {
-    background-color: #3a2807 !important;
+    background-color: #2d1f06 !important;
     color: var(--aiamsbs-warn) !important;
     border-color: var(--aiamsbs-warn-dim) !important;
     fill: var(--aiamsbs-warn) !important;
@@ -332,7 +332,7 @@ h1 {
 .dg-cell-selected,
 .glide-data-editor .dg-cell-selected,
 [data-testid="stDataFrame"] .dg-cell-selected {
-    background-color: rgba(247, 168, 0, 0.18) !important;
+    background-color: rgba(214, 138, 0, 0.18) !important;
     border-left: 2px solid var(--aiamsbs-warn) !important;
     border-right: 2px solid var(--aiamsbs-warn) !important;
 }
