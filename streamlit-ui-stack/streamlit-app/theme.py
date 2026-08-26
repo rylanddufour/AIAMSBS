@@ -202,27 +202,105 @@ h1 {
     /* Tone the primary button down — was full accent fill (screaming
        cyan). Now: low-saturation cyan-tinted panel + accent border +
        accent text. Reads as "primary action" without competing with
-       the page title. The accent ring only appears on hover/focus. */
-    background-color: #0a2a3d;
-    color: var(--aiamsbs-accent);
-    border: 1px solid var(--aiamsbs-accent-dim);
-    font-weight: 600;
+       the page title. The accent ring only appears on hover/focus.
+
+       `!important` + matching `:disabled` clause (BACKLOG #73 item 1
+       fix, 2026-08-26): Streamlit's PRIMARY styled-component (el831t61)
+       uses `e.colors.primary` (= amber #d68a00 from config.toml) for
+       the background, and the Emotion-injected class-based rule beats
+       our plain selector on specificity. Adding !important and
+       covering the :disabled state keeps the dimmed-cyan look
+       consistent across enabled/disabled and across all primary
+       buttons. */
+    background-color: #0a2a3d !important;
+    color: var(--aiamsbs-accent) !important;
+    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    font-weight: 600 !important;
+}
+/* Ultra-specific fallback: bypass the stButton > button > kind chain
+   entirely. Use the data-testid Streamlit adds to every button. Matches
+   even when Streamlit changes its class-name generation or wraps the
+   button in additional divs. BACKLOG #73 item 1 — verified 2026-08-26
+   that the plain kind="primary" selector alone wasn't enough on
+   disabled buttons on .220.
+
+   Streamlit sets `data-testid="stBaseButton-<kind>"` on every BaseButton
+   (see streamlit/BaseButton.eTlHCX_j.js: `data-testid: e['data-testid']
+   ?? \`stBaseButton-${S}\``). So `stBaseButton-primary` is what the DOM
+   has on the inner <button> for our type="primary" buttons. */
+button[data-testid="stBaseButton-primary"] {
+    background-color: #0a2a3d !important;
+    color: var(--aiamsbs-accent) !important;
+    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    font-weight: 600 !important;
+}
+button[data-testid="stBaseButton-primary"]:hover {
+    background-color: #0f3a52 !important;
+    border-color: var(--aiamsbs-accent) !important;
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30) !important;
+}
+button[data-testid="stBaseButton-primary"]:focus {
+    outline: 2px solid var(--aiamsbs-accent) !important;
+    outline-offset: 1px !important;
+}
+button[data-testid="stBaseButton-primary"][disabled],
+button[data-testid="stBaseButton-primary"]:disabled {
+    background-color: #0a2a3d !important;
+    color: var(--aiamsbs-accent) !important;
+    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+}
+
+/* Nuclear fallback: use the universal selector with high specificity
+   (not actually universal — only matches buttons). BACKLOG #73 item 1,
+   2026-08-26. If the data-testid approach above didn't work either,
+   the only remaining cause is that Streamlit is wrapping the button
+   in a styled wrapper that paints over our background. This selector
+   covers that case by matching the button regardless of where it sits
+   in the React tree. Two attribute selectors (kind="primary" AND
+   data-testid starting with "stBaseButton-") = specificity (0,3,1). */
+button[kind="primary"][data-testid^="stBaseButton-"] {
+    background-color: #0a2a3d !important;
+    color: var(--aiamsbs-accent) !important;
+    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    font-weight: 600 !important;
+}
+button[kind="primary"][data-testid^="stBaseButton-"]:hover {
+    background-color: #0f3a52 !important;
+    border-color: var(--aiamsbs-accent) !important;
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30) !important;
+}
+button[kind="primary"][data-testid^="stBaseButton-"][disabled],
+button[kind="primary"][data-testid^="stBaseButton-"]:disabled {
+    background-color: #0a2a3d !important;
+    color: var(--aiamsbs-accent) !important;
+    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
 }
 .stButton > button[kind="primary"]:hover,
 .stFormSubmitButton > button:hover {
-    background-color: #0f3a52;
-    border-color: var(--aiamsbs-accent);
-    box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30);
+    background-color: #0f3a52 !important;
+    border-color: var(--aiamsbs-accent) !important;
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30) !important;
 }
 .stButton > button[kind="primary"]:focus,
 .stFormSubmitButton > button:focus {
-    outline: 2px solid var(--aiamsbs-accent);
-    outline-offset: 1px;
+    outline: 2px solid var(--aiamsbs-accent) !important;
+    outline-offset: 1px !important;
 }
 .stButton > button:disabled,
 .stFormSubmitButton > button:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
+    /* Match the dimmed-primary look for disabled primary buttons —
+       without this, the disabled state reverts to Streamlit's default
+       amber-transparent combo which reads as "broken UI" rather than
+       "intentionally inactive". */
+    background-color: #0a2a3d !important;
+    color: var(--aiamsbs-accent) !important;
+    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
 }
 
 /* ============================================================

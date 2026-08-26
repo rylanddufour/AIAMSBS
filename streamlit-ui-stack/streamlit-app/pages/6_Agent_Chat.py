@@ -70,21 +70,21 @@ st.caption(
     "stays here — no jumping between pages."
 )
 
-# New Session button: right-aligned, full available width. Only shown
-# when there's an active session. Putting it below the title (not in
-# a column beside it) avoids Streamlit's column-width quirks that
-# caused the button to silently disappear in v3.2.
-# Always-render the button; disable when no active session.
-# This avoids Streamlit's conditional-widget edge case where a
-# button conditional on session_state disappears after a chat_input
-# rerun until the user navigates away and back.
-btn_l, btn_r = st.columns([5, 2])
+# New Session button: small, right-aligned, dimmed-primary style
+# (BACKLOG #73 item 1). No icon — text-only "New Session". Always
+# render; disable when no active session to avoid Streamlit's
+# conditional-widget edge case where a button conditional on
+# session_state disappears after a chat_input rerun until the user
+# navigates away and back.
+# Column split [9, 1] pushes the button to the far right without
+# giving it the full width the [5, 2] split did (which read as
+# "primary action competing with the page title").
+_, btn_r = st.columns([9, 1])
 with btn_r:
     new_btn = st.button(
-        "🆕 New Session",
+        "New Session",
         key="new_session_top",
         type="primary",
-        use_container_width=True,
         disabled=(active_session_id is None),
         help=(
             "End this conversation and start a new one. "
@@ -147,7 +147,7 @@ def _render_message(m: dict) -> None:
 # ---- Body: empty vs. active ----
 if active_session_id is None:
     st.info(
-        "🆕 This is a fresh conversation. Type your question below and "
+        "This is a fresh conversation. Type your question below and "
         "press Enter to start it."
     )
 else:
