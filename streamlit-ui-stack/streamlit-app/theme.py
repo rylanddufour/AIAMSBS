@@ -847,6 +847,34 @@ _ICON_CSS = """
 .ms-info    { color: var(--status-info); }
 .ms-unknown { color: var(--status-unknown); }
 
+/* Health snapshot tiles: uniform height (BACKLOG #73 item 6), status-tinted
+   left border, no success/error box so there's only ONE icon (the user
+   spec said "Check or X then Name of Service. Latency."). Each tile is one
+   div; consumer renders the glyph + name + latency manually. */
+.aiamsbs-health-tile {
+    min-height: 88px;
+    padding: 0.7rem 0.9rem;
+    border-radius: 6px;
+    border-left: 4px solid var(--aiamsbs-border);
+    background-color: var(--aiamsbs-panel);
+    box-shadow: var(--shadow-card);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.aiamsbs-health-tile-up   { border-left-color: var(--status-up);   }
+.aiamsbs-health-tile-down { border-left-color: var(--status-down); }
+.aiamsbs-health-tile .name {
+    font-weight: 600;
+    color: var(--aiamsbs-text);
+    margin-bottom: 0.15rem;
+}
+.aiamsbs-health-tile .latency {
+    font-family: var(--aiamsbs-mono);
+    font-size: 0.85rem;
+    color: var(--aiamsbs-text-muted);
+}
+
 /* Page-header row: icon + title inline, with a subtle glow on the
    icon. Pages call page_header() to get this layout for free. */
 .aiamsbs-page-header {
