@@ -69,9 +69,6 @@ apply_theme()
 settings = load_settings()
 
 with st.sidebar:
-    st.markdown(f"### AIAMSBS\n**Customer:** `{settings.customer_name}`")
-    st.markdown(f"**User:** `{st.session_state.get('user', '?')}`")
-    st.markdown("---")
     render_logout_button()
 
 cyberpunk_title("Run Playbook", "run_playbook")
