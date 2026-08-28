@@ -28,7 +28,7 @@ from auth import require_auth, render_logout_button
 from db import db
 from hermes_client import redact_secrets, short_run_id
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header
 
 st.set_page_config(page_title="Run Detail — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
 
@@ -50,8 +50,7 @@ cyberpunk_title("Run Detail", "run_detail")
 # Read run_id from URL (?run_id=<uuid>) or session state fallback
 run_id = st.query_params.get("run_id")
 if not run_id:
-    st.warning("No run_id in the URL. Open a run from Run History.")
-    page_link_button("pages/4_Run_History.py", "← Back to Run History", "run_history")
+    st.warning("No run_id in the URL. Open a run from Run History.")  # use sidebar nav to leave
     st.stop()
 
 # ---- Load the run row ----
@@ -216,9 +215,3 @@ with tab_l:
     except Exception as exc:
         st.caption(f"Loki not reachable from this container ({type(exc).__name__}) — use the Grafana link.")
 
-st.markdown("---")
-nav_cols = st.columns([1, 1, 6])
-with nav_cols[0]:
-    page_link_button("pages/4_Run_History.py", "← Run History", "run_history", use_container_width=True)
-with nav_cols[1]:
-    page_link_button("pages/3_Run_Playbook.py", "➕ New run", "run_playbook", use_container_width=True)

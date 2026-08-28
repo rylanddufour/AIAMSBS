@@ -628,15 +628,30 @@ def page_link_button(
         page_link_button("pages/4_Run_History.py", "Back to Run History", "run_history")
     """
     glyph = _PAGE_ICONS.get(icon_name, icon_name)
-    # Streamlit routes by the page name, not the .py path. The /<name>
-    # URL is what set_page_config uses for the title. We accept either
-    # the .py file path OR the bare page name and normalize.
-    if page_path.startswith("pages/") and page_path.endswith(".py"):
-        href = "/" + page_path[len("pages/"):-len(".py")]
-    elif "/" in page_path:
-        href = "/" + page_path
-    else:
-        href = "/" + page_path
+    # Streamlit routes by the page's urlPathname, which is derived
+    # from the bare page name (the filename minus any leading
+    # numeric prefix and the .py extension). "pages/4_Run_History.py"
+    # => urlPathname "Run_History" => URL "/Run_History". The numeric
+    # prefix is the streamlit-default filename ordering, NOT part of
+    # the route. (Verified on .220 2026-08-28: /4_Run_History also
+    # serves 200 but loses the SPA's React state on full reload;
+    # /Run_History is the canonical URL the React router pushes
+    # via pushState.)
+    #
+    # We accept: "pages/4_Run_History.py", "pages/Run_History.py",
+    # "Run_History", or "4_Run_History" — and emit "/Run_History"
+    # in all cases.
+    import re as _re
+    name = page_path
+    if name.endswith(".py"):
+        name = name[:-3]
+    if "/" in name:
+        name = name.rsplit("/", 1)[-1]
+    # Strip streamlit's default numeric filename prefix (e.g. "4_" in
+    # "4_Run_History.py"). Streamlit uses these for file-ordering,
+    # not routing.
+    name = _re.sub(r"^[0-9]+_", "", name)
+    href = "/" + name
     st.markdown(
         f'<a href="{href}" class="aiamsbs-icon-button">'
         f'<span class="ms">{glyph}</span>'
