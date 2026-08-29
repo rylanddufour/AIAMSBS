@@ -24,6 +24,8 @@ import json
 
 import streamlit as st
 
+import pandas as pd  # for st.dataframe at results body
+
 from auth import require_auth, render_logout_button
 from mcp_client import (
     MCPFormatError,
@@ -322,27 +324,26 @@ elif not filtered and auto_run:
 elif not filtered:
     st.info("Click Search (or wait — first-load auto-runs) to load devices.")
 
+_grid_rows = []
 for d in filtered:
-    did = d.get("device_id") or d.get("hostname") or "?"
-    cols = st.columns([4, 2, 3, 3, 1, 2])
-    with cols[0]:
-        if st.button(
-            f"🖧 {d.get('hostname') or did}",
-            key=f"inv_host_{did}",
-            use_container_width=True,
-        ):
-            st.query_params["device_id"] = str(did)
-            st.rerun()
-    with cols[1]:
-        st.code(d.get("ip_address", "—"), language=None)
-    with cols[2]:
-        st.caption(f"`{d.get('os', '—')} {d.get('os_version', '')}`".rstrip())
-    with cols[3]:
-        st.caption(f"`{d.get('role', '—')} · {d.get('vendor', '—')}`")
-    with cols[4]:
-        st.markdown(_status_badge(d.get("status")))
-    with cols[5]:
-        st.caption(f"`{d.get('last_seen', '—')}`")
+    os_str = " ".join(filter(None, [d.get("os"), d.get("os_version")])) or "—"
+    _grid_rows.append({
+        "Hostname":  d.get("hostname") or d.get("device_id") or "—",
+        "IP":        d.get("ip_address") or "—",
+        "OS":        os_str,
+        "Role":      d.get("role") or "—",
+        "Vendor":    d.get("vendor") or "—",
+        "Status":    _status_badge(d.get("status")),  # e.g. "🟢 up"
+        "Last seen": d.get("last_seen") or "—",
+    })
+st.dataframe(pd.DataFrame(_grid_rows), use_container_width=True, hide_index=True)
+# Backlog #73 item 8 (kept simple for now): no row-click affordance in the
+# table. The earlier per-row st.button("🖧 hostname") read as a broken link
+# to users (streamlit button styling doesn't look like a hyperlink in a
+# table row, and the URL change isn't visible in streamlit's iframe URL
+# bar). Drill-down via ?device_id=<id> still works -- operators can paste
+# the URL or use a future button per row (BACKLOG follow-up, not part of
+# this PR).
 
 
 # ---- Logout (moved from sidebar to page body) ----
