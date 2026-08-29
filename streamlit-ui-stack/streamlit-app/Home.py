@@ -96,11 +96,23 @@ section_header("Health snapshot")
 snapshot = _health_snapshot()
 hcols = st.columns(len(snapshot))
 for col, row in zip(hcols, snapshot):
+    status_class = "aiamsbs-health-tile-up" if row["ok"] else "aiamsbs-health-tile-down"
+    # Material Symbols shortcodes are NOT used here (those are sidebar/page
+    # icon glyphs); for health-tile status we render the literal Material
+    # Symbols name inside <span class="ms ms-up|ms-down"> so it inherits the
+    # theme tint. check_circle = ✓ shape; cancel = ✗ shape.
+    glyph = "check_circle" if row["ok"] else "cancel"
+    ms_class = "ms-up" if row["ok"] else "ms-down"
+    latency = f"{row['latency_ms']} ms" if row["latency_ms"] is not None else "—"
     with col:
-        if row["ok"]:
-            st.success(f"✅ {row['backend']}\n{row['latency_ms']} ms", icon="✅")
-        else:
-            st.error(f"❌ {row['backend']}\n—", icon="❌")
+        st.markdown(
+            f'<div class="aiamsbs-health-tile {status_class}">'
+            f'<span class="name"><span class="ms {ms_class}">{glyph}</span> '
+            f'{row["backend"]}</span>'
+            f'<span class="latency">{latency}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
 st.caption("Refreshed every 10s. Full diagnostics below.")
 
