@@ -52,11 +52,15 @@ st.caption(
 # NOT the Backend URLs (container-internal). Edit these on the
 # Settings page if the host IP changes.
 section_header("Quick links")
-ql1, ql2, ql3 = st.columns(3)
+ql1, ql2 = st.columns(2)
 quicklinks = dict(settings.quicklinks)
 ql1.link_button("Open Grafana", quicklinks.get("Open Grafana", settings.grafana_url), use_container_width=True)
 ql2.link_button("Open Hermes Dashboard", quicklinks.get("Open Hermes Dashboard", settings.hermes_url), use_container_width=True)
-ql3.link_button("Open KB MCP", quicklinks.get("Open KB MCP", settings.kb_url), use_container_width=True)
+# BACKLOG #73 item 6b: Open KB MCP button removed. KB is a v1.0 read-only
+# inventory of the agent's playbooks/notes; surfacing the raw MCP endpoint
+# at the operator didn't earn its keep (operators go through KB Search in
+# the sidebar instead). The 3rd column slot is freed -- if we add a third
+# Quick Link later we re-introduce it here.
 
 st.markdown("---")
 
