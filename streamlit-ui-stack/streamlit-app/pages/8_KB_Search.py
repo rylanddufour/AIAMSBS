@@ -88,7 +88,7 @@ st.caption(
 
 # ---- Filter row + search input ----
 # Layout: search input spans 3 cols on row 1, then status/trust/tags
-# share a second row of 3 cols. The K0-K3 trust ladder explainer
+# share a second row of 3 cols. The TL0-TL3 trust ladder explainer
 # lives in a st.popover() next to the trust-level multiselect so it
 # doesn't take screen real estate unless the user clicks it.
 fcol1, fcol2, fcol3 = st.columns([3, 2, 2])
@@ -120,33 +120,28 @@ with fcol2:
         key="kb_status_filter",
     )
 with fcol3:
-    tc1, tc2 = st.columns([4, 1])
-    with tc1:
-        trust_filter = st.multiselect(
-            "Trust level",
-            options=["K0", "K1", "K2", "K3", "all"],
-            default=["K0", "K1", "K2", "K3"],
-            key="kb_trust_filter",
-        )
-    with tc2:
-        # Trust ladder explainer. BACKLOG #69 (a). Shows on click,
-        # not on hover (more discoverable; doesn't clutter the row).
-        with st.popover("?", help="Trust ladder explained"):
-            st.markdown(
-                "**K0** ⚪ — *agent-written, pending review.* Default trust "
-                "for any entry the Hermes agent creates. Not yet human-reviewed.\n\n"
-                "**K1** 🟡 — *agent-written, lightly reviewed.* A human has "
-                "skimmed it and confirmed no obvious garbage, but hasn't "
-                "fully validated the content.\n\n"
-                "**K2** 🔵 — *customer-written or fully-reviewed.* Authored "
-                "by a human operator, OR an agent entry that's been deeply "
-                "reviewed and validated against the live system.\n\n"
-                "**K3** 🟢 — *customer-written and approved.* Authored by "
-                "the customer themselves (not the agent) and explicitly "
-                "approved. Highest trust.\n\n"
-                "*Trust level is set at entry creation (`trust_level_at_creation`) "
-                "and does not change on subsequent edits.*"
-            )
+    # Trust ladder explainer becomes the multiselect's own help tooltip
+    # (BACKLOG #73 item 5): same ? icon as the Search box above, no
+    # separate popover button needed. Tooltip text is plain — no markdown
+    # rendering in tooltips — so the bold/italics and the SQL field-name
+    # reference are dropped; emojis + TL labels stay so the visual ladder
+    # still reads the same as before.
+    trust_filter = st.multiselect(
+        "Trust level",
+        options=["TL0", "TL1", "TL2", "TL3", "all"],
+        default=["TL0", "TL1", "TL2", "TL3"],
+        key="kb_trust_filter",
+        help=(
+            # Each TL is intentionally one short line so the tooltip's word-wrap
+            # never combines the tail of one TL with the start of the next.
+            # Blank line between blocks gives a clear visual separator.
+            "TL0 ⚪ — agent-written, pending review.\n\n"
+            "TL1 🟡 — agent-written, lightly reviewed.\n\n"
+            "TL2 🔵 — customer-written or fully reviewed.\n\n"
+            "TL3 🟢 — customer-written and approved.\n\n"
+            "Set when the entry is first written; does not change on later edits."
+        ),
+    )
 
 search_clicked = st.button(
     "Search", type="primary", use_container_width=False, key="kb_search_btn"
@@ -211,18 +206,18 @@ _STATUS_COLORS = {
 }
 
 _TRUST_COLORS = {
-    "K0": "⚪",  # pending, agent-written
-    "K1": "🟡",
-    "K2": "🔵",
-    "K3": "🟢",  # customer-written, approved
+    "TL0": "⚪",  # pending, agent-written
+    "TL1": "🟡",
+    "TL2": "🔵",
+    "TL3": "🟢",  # customer-written, approved
 }
 
 
 def _trust_badge(level: int | None) -> str:
-    """Render a trust-level K0..K3 badge from the int trust_level_at_creation."""
+    """Render a trust-level TL0..TL3 badge from the int trust_level_at_creation."""
     if level is None:
         return "⚪ K?"
-    k = f"K{int(level)}"
+    k = f"TL{int(level)}"
     return f"{_TRUST_COLORS.get(k, '⚪')} {k}"
 
 
@@ -244,7 +239,7 @@ def _matches_filters(
         if (entry.get("status") or "").lower() not in statuses:
             return False
     if trusts and "all" not in trusts:
-        k = f"K{entry.get('trust_level_at_creation', 0)}"
+        k = f"TL{entry.get('trust_level_at_creation', 0)}"
         if k not in trusts:
             return False
     if tags:
