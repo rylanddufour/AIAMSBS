@@ -388,7 +388,6 @@ if drill_entry:
 
 # ---- Results table ----
 section_header("Results")
-st.markdown("---")
 if not filtered and (query or search_clicked or tag_filter or status_filter or trust_filter):
     st.info("No KB entries match your search + filters.")
 elif not filtered:
@@ -416,7 +415,7 @@ for r in filtered:
 
 
 # ---- "Add new KB entry" modal ----
-st.markdown("---")
+section_header("New KB Entry")
 with st.expander("➕ Add new KB entry", expanded=False):
     with st.form("kb_add_form", clear_on_submit=True):
         new_title = st.text_input(
