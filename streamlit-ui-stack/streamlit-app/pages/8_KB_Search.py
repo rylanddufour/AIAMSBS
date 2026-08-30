@@ -388,15 +388,6 @@ st.caption(f"**{len(filtered)}** of {len(results)} result(s)")
 
 
 # ---- Results table ----
-# Per Streamlit docs, st.dialog must be invoked on the top-level
-# script run, not from a button callback. The '📖 Read more' button
-# stores the chosen entry in session_state['kb_dialog_entry'] and
-# reruns; this block calls _show_full_entry() on the next run so
-# the modal opens cleanly. We pop the key after triggering so
-# subsequent normal navigations don't re-trigger the modal.
-if st.session_state.get("kb_dialog_entry"):
-    _pending = st.session_state.pop("kb_dialog_entry")
-    _show_full_entry(_pending)
 section_header("Results")
 if not filtered and (query or search_clicked or tag_filter or status_filter or trust_filter):
     st.info("No KB entries match your search + filters.")
@@ -416,17 +407,30 @@ for r in filtered:
         if r.get("content"):
             # Per Streamlit docs: st.dialog must be invoked on the
             # top-level script run, not from a button callback. So
-            # store the entry in session_state and rerun; the
-            # top-level block above opens the modal on the next pass.
+            # we store the entry in session_state; the top-level
+            # block above opens the modal later in the SAME script
+            # run. We do NOT call st.rerun() — that would schedule
+            # a follow-up run with no kb_dialog_entry (results
+            # would clear and the modal would never appear).
             if st.button("📖 Read more", key=f"kb_read_more_{rid}"):
                 st.session_state["kb_dialog_entry"] = r
-                st.rerun()
     with cols[1]:
         st.markdown(_status_badge(r.get("status")))
     with cols[2]:
         st.markdown(_trust_badge(r.get("trust_level_at_creation")))
     with cols[3]:
         st.caption(f"`{r.get('updated_at', '?')}`")
+
+
+# Per Streamlit docs, st.dialog must be invoked on the top-level
+# script run, not from a button callback. We placed the trigger
+# block AFTER the results for-loop so it runs once, on the same
+# script pass where the button click set kb_dialog_entry. The key
+# is popped after triggering so subsequent navigations don't
+# re-trigger the modal.
+if st.session_state.get("kb_dialog_entry"):
+    _pending = st.session_state.pop("kb_dialog_entry")
+    _show_full_entry(_pending)
 
 
 # ---- "Add new KB entry" modal ----
