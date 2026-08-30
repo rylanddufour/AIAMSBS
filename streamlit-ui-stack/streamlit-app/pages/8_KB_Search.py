@@ -29,6 +29,7 @@ from mcp_client import (
     MCPUnavailableError,
     MCPToolError,
     kb_add,
+    kb_get,
     kb_list,
     kb_search,
 )
@@ -361,10 +362,27 @@ st.caption(f"**{len(filtered)}** of {len(results)} result(s)")
 url_entry_id = st.query_params.get("entry_id", None)
 drill_entry: dict | None = None
 if url_entry_id:
-    for r in filtered:
+    # Look in the currently-filtered results first. If the user just
+    # clicked a title, the rerun resets `results` to [] (we don't
+    # auto-search), so `filtered` is empty. Fall back to the most
+    # recent successful search in session_state so the drill-down
+    # works after a click without forcing the user to re-run Search.
+    # As a last resort (cold-load via shared URL), call kb_get() to
+    # fetch the entry by id.
+    candidates = list(filtered)
+    if not candidates:
+        candidates = list(st.session_state.get("results") or [])
+    for r in candidates:
         if str(r.get("id")) == str(url_entry_id):
             drill_entry = r
             break
+    if not drill_entry:
+        try:
+            fetched = kb_get(url_entry_id)
+            if fetched:
+                drill_entry = fetched
+        except Exception:
+            pass
 
 if drill_entry:
     st.markdown("---")
