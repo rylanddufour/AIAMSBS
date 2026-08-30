@@ -83,8 +83,8 @@ def _log(event: str, **fields) -> None:
 
 cyberpunk_title("KB Search", "kb_search")
 st.caption(
-    "Search the knowledge base. Click **📖 Read more** on any result "
-    "to view the full content in a modal. Add new entries via the "
+    "Search the knowledge base. Click **📖 Read more** under any "
+    "result to expand the full content. Add new entries via the "
     "**+ Add** button."
 )
 
@@ -288,24 +288,13 @@ def _preview(content: str, n: int = 200) -> str:
     return flat[:n] + ("…" if len(flat) > n else "")
 
 
-@st.dialog("KB Entry", width="large")
-def _show_full_entry(entry: dict) -> None:
-    """Modal dialog rendering the full markdown content of one entry.
+def _full_content_block(entry: dict) -> None:
+    """Render the full markdown content of one KB entry.
 
-    Triggered by the '📖 Read more' button on each result row. The
-    dialog is decorated at module level (Streamlit requirement) and
-    reads everything it needs from the passed-in dict. Closes when
-    the user clicks the X or outside the dialog.
-
-    IMPORTANT: must be invoked on the TOP-LEVEL script run (not
-    inside a button callback or loop). The '📖 Read more' button
-    stores the entry in session_state['kb_dialog_entry'] and calls
-    st.rerun(); the top-level block below then calls this function
-    on the next rerun. Calling it from inside the button handler
-    causes the dialog to clear the page state.
+    Used inside the per-row 'Read more' expander below. Pulled out
+    so the same render logic can be reused if we ever need it from
+    another place (e.g. a future detail page).
     """
-    title = entry.get("title", "(no title)")
-    st.markdown(f"### 📄 {title}")
     st.markdown(
         f"{_status_badge(entry.get('status'))} · "
         f"{_trust_badge(entry.get('trust_level_at_creation'))} · "
@@ -313,6 +302,20 @@ def _show_full_entry(entry: dict) -> None:
     )
     content_md = entry.get("content", "") or ""
     st.markdown(content_md)
+
+
+@st.dialog("KB Entry", width="large")
+def _show_full_entry(entry: dict) -> None:
+    """Modal dialog rendering the full markdown content of one entry.
+
+    DEPRECATED — replaced by per-row st.expander('Read more').
+    Kept around as a reference; the @st.dialog call no longer fires
+    because nothing invokes _show_full_entry anywhere in the page.
+    Safe to delete in a future cleanup pass.
+    """
+    title = entry.get("title", "(no title)")
+    st.markdown(f"### 📄 {title}")
+    _full_content_block(entry)
     _log("entry_viewed", entry_id=entry.get("id"))
 
 
@@ -400,37 +403,20 @@ for r in filtered:
     with cols[0]:
         # Title is plain text (no button) — the preview below shows
         # the first 200 chars of content. Full content lives in the
-        # 'Read more' modal so long entries don't push other results
-        # down the page.
+        # 'Read more' expander below each row so long entries don't
+        # crowd other results (expander stays collapsed by default).
         st.markdown(f"**📄 {r.get('title', '(no title)')}**")
         st.caption(_preview(r.get("content", "")))
         if r.get("content"):
-            # Per Streamlit docs: st.dialog must be invoked on the
-            # top-level script run, not from a button callback. So
-            # we store the entry in session_state; the top-level
-            # block above opens the modal later in the SAME script
-            # run. We do NOT call st.rerun() — that would schedule
-            # a follow-up run with no kb_dialog_entry (results
-            # would clear and the modal would never appear).
-            if st.button("📖 Read more", key=f"kb_read_more_{rid}"):
-                st.session_state["kb_dialog_entry"] = r
+            with st.expander("📖 Read more", expanded=False):
+                _full_content_block(r)
+                _log("entry_viewed", entry_id=r.get("id"))
     with cols[1]:
         st.markdown(_status_badge(r.get("status")))
     with cols[2]:
         st.markdown(_trust_badge(r.get("trust_level_at_creation")))
     with cols[3]:
         st.caption(f"`{r.get('updated_at', '?')}`")
-
-
-# Per Streamlit docs, st.dialog must be invoked on the top-level
-# script run, not from a button callback. We placed the trigger
-# block AFTER the results for-loop so it runs once, on the same
-# script pass where the button click set kb_dialog_entry. The key
-# is popped after triggering so subsequent navigations don't
-# re-trigger the modal.
-if st.session_state.get("kb_dialog_entry"):
-    _pending = st.session_state.pop("kb_dialog_entry")
-    _show_full_entry(_pending)
 
 
 # ---- "Add new KB entry" modal ----
