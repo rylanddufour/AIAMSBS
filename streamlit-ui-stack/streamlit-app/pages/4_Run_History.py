@@ -171,5 +171,10 @@ if selected != "—":
     full_id = selected.split("  ", 1)[0]
     if st.button(f"Open run `{short_run_id(full_id)}`", key="rh_open",
                  type="primary"):
-        st.query_params["run_id"] = full_id
-        st.switch_page("pages/5_Run_Detail.py")
+        # Pass the run_id to 5_Run_Detail via st.switch_page's query_params
+        # arg (Streamlit 1.39+). Setting st.query_params["run_id"] = ...
+        # before switch_page would only set it on the CURRENT page (Run
+        # History), and the URL would not carry it to the next page —
+        # so 5_Run_Detail would see no run_id and show 'No run_id in the
+        # URL.' (BACKLOG #73).
+        st.switch_page("pages/5_Run_Detail.py", query_params={"run_id": full_id})
