@@ -258,7 +258,7 @@ services:
     image: aiamsbs_streamlit-ui
     container_name: streamlit-ui
     ports:
-      - "0.0.0.0:8501:8501"
+      - "0.0.0.0:80:8501"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -267,6 +267,18 @@ services:
       - ./streamlit-ui-stack/data:/data/streamlit-ui:rw
       - /home/ansible/.hermes/logs/aiamsbs-streamlit:/home/ansible/.hermes/logs/aiamsbs-streamlit:rw
       - ./streamlit-ui-stack/streamlit-app:/app/streamlit-app:ro
+      # loki_logger.py is Card 2's shared log-shipper module. The
+      # ./streamlit-ui-stack/streamlit-app directory contains a SYMLINK
+      # at loki_logger.py pointing to ../../aiamsbs-ansible-stack/loki_logger.py.
+      # On the host that resolves correctly. Inside the container, Python's
+      # import machinery can't resolve the symlink's relative target (it
+      # crosses a bind-mount boundary), so we mount the file at the
+      # resolved path AND set PYTHONPATH below to point at the mounted
+      # target dir. We mount JUST this one file (not the whole
+      # aiamsbs-ansible-stack dir) to keep Card 2's other internals out
+      # of the streamlit-ui container. Source-of-truth:
+      # ~/AIAMSBS/aiamsbs-ansible-stack/loki_logger.py exists on .220.
+      - ./aiamsbs-ansible-stack/loki_logger.py:/app/aiamsbs-ansible-stack/loki_logger.py:ro
       - ./aiamsbs-ansible-stack/playbooks:/ansible/playbooks:ro
       - ./aiamsbs-ansible-stack/inventory:/ansible/inventory:ro
     environment:
@@ -289,6 +301,10 @@ services:
       - HERMES_MODEL=${HERMES_MODEL:-minimax/minimax-m3}
       - HERMES_PROFILE=${HERMES_PROFILE:-it_admin}
       - LOKI_LOG_DIR=/home/ansible/.hermes/logs/aiamsbs-streamlit
+      # PYTHONPATH for the bind-mounted loki_logger.py (see volumes
+      # block above). Without this, `from loki_logger import log_event`
+      # raises ModuleNotFoundError on the Home page (BACKLOG #73 fix).
+      - PYTHONPATH=/app/aiamsbs-ansible-stack
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8501/_stcore/health"]
       interval: 30s
