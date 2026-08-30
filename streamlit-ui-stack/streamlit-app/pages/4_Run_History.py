@@ -116,6 +116,7 @@ if not filtered:
     st.stop()
 
 # ---- Render table ----
+section_header("Results")
 table_rows: list[dict] = []
 for r in filtered:
     started = _parse_dt(r["started_at"])
@@ -157,7 +158,6 @@ st.dataframe(
 )
 
 # ---- Drill-in ----
-st.markdown("---")
 section_header("Open a run")
 options = [f"{row['_full_id']}  ({row['playbook']}, {row['status']})"
            for row in table_rows]
