@@ -136,7 +136,6 @@ if reset:
 
 
 # ---- Read-only display of current effective values ----
-st.markdown("---")
 section_header("Current effective values")
 st.caption("What the rest of the app sees right now (override > env > default).")
 for group_name in sorted({f.get("group", "Other") for f in EDITABLE_FIELDS}):
@@ -172,5 +171,4 @@ except Exception:
 
 
 # ---- Logout (moved from sidebar to page body) ----
-st.markdown("---")
 render_logout_button()
