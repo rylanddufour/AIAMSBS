@@ -143,9 +143,8 @@ with fcol3:
         ),
     )
 
-search_clicked = st.button(
-    "Search", type="primary", use_container_width=False, key="kb_search_btn"
-)
+# Search button moved under the Tags row (BACKLOG #73 item 5b).
+# Render order below is: filter widgets → tags → Search button → results.
 
 
 # ---- Tag filter (client-side, BACKLOG #69 (c)) ----
@@ -196,6 +195,13 @@ with tagcol1:
 with tagcol2:
     if _tag_options:
         st.caption(f"{len(_tag_options)} tag(s) available")
+
+# Search button — left-aligned, immediately under the Tags row.
+_btncol1, _btncol2 = st.columns([1, 4])
+with _btncol1:
+    search_clicked = st.button(
+        "Search", type="primary", use_container_width=True, key="kb_search_btn"
+    )
 
 
 # ---- Helpers ----
