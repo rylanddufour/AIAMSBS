@@ -62,6 +62,18 @@ services:
       # without needing a separate nested bind mount (which fails because
       # /app/streamlit-app is read-only).
       - ./streamlit-app:/app/streamlit-app:ro
+      # loki_logger.py is Card 2's shared log-shipper module. The
+      # ./streamlit-app directory contains a SYMLINK at loki_logger.py
+      # pointing to ../../aiamsbs-ansible-stack/loki_logger.py. On the
+      # host that resolves correctly. Inside the container, though,
+      # Python's import machinery can't resolve the symlink's relative
+      # target (the symlink target crosses a bind-mount boundary), so
+      # we set PYTHONPATH below to point at the mounted target dir.
+      # Mounting JUST this one file (not the whole aiamsbs-ansible-stack
+      # dir) keeps Card 2's other internals out of the streamlit-ui
+      # container. Source-of-truth: ~/AIAMSBS/aiamsbs-ansible-stack/loki_logger.py
+      # exists on .220 (Card 2 created it).
+      - ../aiamsbs-ansible-stack/loki_logger.py:/app/aiamsbs-ansible-stack/loki_logger.py:ro
       # Card 4 (Run Playbook) needs read-only access to the playbook and
       # inventory trees so the dropdown can list filenames without
       # `docker exec` into aiamsbs-ansible. The Card 2 stack bind-mounts
@@ -122,6 +134,14 @@ services:
       # streamlit events → NDJSON file → alloy tails → Loki with labels
       # {job="aiamsbs-streamlit", source="aiamsbs_host"}.
       - LOKI_LOG_DIR=/home/ansible/.hermes/logs/aiamsbs-streamlit
+      # ---- PYTHONPATH for the bind-mounted loki_logger.py ----
+      # The symlink at ./streamlit-app/loki_logger.py doesn't resolve
+      # inside the container (its target crosses a bind-mount boundary).
+      # We bind-mount loki_logger.py into /app/aiamsbs-ansible-stack/
+      # and add that dir to PYTHONPATH so the `from loki_logger import
+      # log_event` calls in Home.py / auth.py / KB_Search / etc. find it.
+      # See the bind-mount comment for the full root-cause notes.
+      - PYTHONPATH=/app/aiamsbs-ansible-stack
     healthcheck:
       # Same probe as the Dockerfile HEALTHCHECK, but reachable from the
       # host (Docker's HEALTHCHECK runs inside the container network ns).
