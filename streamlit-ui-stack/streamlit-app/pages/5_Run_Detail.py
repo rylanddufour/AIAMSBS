@@ -170,16 +170,39 @@ with tab_l:
     # Docker-internal hostname. The container-internal URL is still
     # correct for the Settings page's /health probe — different concern.
     grafana_base = settings.open_grafana_url.rstrip("/")
-    # Loki datasource UID on the AIAMSBS host varies. v1.0 customers use
-    # the default Grafana Loki datasource which Grafana auto-creates
-    # with a uuid — but the "Data sources" filter in Explore works without
-    # the UID (Grafana prompts on click). Build a query that works on
-    # both — start with the pipeline filter.
+    # Loki datasource UID is provisioned by Grafana's datasources.yml
+    # (see /etc/grafana/provisioning/datasources/datasources.yml on the
+    # container). Hard-coded to 'aiamsbs-loki' to match the v1.0 customer
+    # stack. If the operator renames the datasource, this link will
+    # still open Explore (Grafana falls back to the default Loki
+    # datasource if the UID isn't found) but the pre-filled query
+    # will be lost. Not worth a setting for an internal-only field.
+    loki_uid = "aiamsbs-loki"
+    # Grafana 9+ uses the `panes` + `schemaVersion` URL format. The
+    # older `left` format (which this file used to use) is rejected by
+    # Grafana 13 with 'Could not parse Explore URL' (BACKLOG #73).
+    # The new format wraps each pane in a JSON object under the "xl"
+    # key (the active split layout; "l" / "m" / "xl" correspond to
+    # collapsed / split / full layouts).
     query = f'{{job="aiamsbs-streamlit"}} |= "run_id={run_id}"'
+    panes_obj = {
+        "xl": {
+            "datasource": {"type": "loki", "uid": loki_uid},
+            "queries": [{
+                "refId": "A",
+                "datasource": {"type": "loki", "uid": loki_uid},
+                "expr": query,
+                "queryType": "range",
+            }],
+            "range": {"from": "now-1h", "to": "now"},
+        }
+    }
+    panes_json = json.dumps(panes_obj, separators=(",", ":"))
+    panes_encoded = quote(panes_json, safe="")
     explore_url = (
-        f"{grafana_base}/explore?orgId=1&left="
-        f"%5B%22now-1h%22%2C%22now%22%2C%22Loki%22%2C%7B%22expr%22%3A"
-        f"{quote(query)}%7D%5D"
+        f"{grafana_base}/explore?schemaVersion=1"
+        f"&panes={panes_encoded}"
+        f"&orgId=1"
     )
     st.markdown(
         f"[Open in Grafana Explore →]({explore_url})  \n"
