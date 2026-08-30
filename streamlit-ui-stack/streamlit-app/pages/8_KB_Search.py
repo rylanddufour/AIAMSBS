@@ -296,6 +296,13 @@ def _show_full_entry(entry: dict) -> None:
     dialog is decorated at module level (Streamlit requirement) and
     reads everything it needs from the passed-in dict. Closes when
     the user clicks the X or outside the dialog.
+
+    IMPORTANT: must be invoked on the TOP-LEVEL script run (not
+    inside a button callback or loop). The '📖 Read more' button
+    stores the entry in session_state['kb_dialog_entry'] and calls
+    st.rerun(); the top-level block below then calls this function
+    on the next rerun. Calling it from inside the button handler
+    causes the dialog to clear the page state.
     """
     title = entry.get("title", "(no title)")
     st.markdown(f"### 📄 {title}")
@@ -381,6 +388,15 @@ st.caption(f"**{len(filtered)}** of {len(results)} result(s)")
 
 
 # ---- Results table ----
+# Per Streamlit docs, st.dialog must be invoked on the top-level
+# script run, not from a button callback. The '📖 Read more' button
+# stores the chosen entry in session_state['kb_dialog_entry'] and
+# reruns; this block calls _show_full_entry() on the next run so
+# the modal opens cleanly. We pop the key after triggering so
+# subsequent normal navigations don't re-trigger the modal.
+if st.session_state.get("kb_dialog_entry"):
+    _pending = st.session_state.pop("kb_dialog_entry")
+    _show_full_entry(_pending)
 section_header("Results")
 if not filtered and (query or search_clicked or tag_filter or status_filter or trust_filter):
     st.info("No KB entries match your search + filters.")
@@ -398,8 +414,13 @@ for r in filtered:
         st.markdown(f"**📄 {r.get('title', '(no title)')}**")
         st.caption(_preview(r.get("content", "")))
         if r.get("content"):
+            # Per Streamlit docs: st.dialog must be invoked on the
+            # top-level script run, not from a button callback. So
+            # store the entry in session_state and rerun; the
+            # top-level block above opens the modal on the next pass.
             if st.button("📖 Read more", key=f"kb_read_more_{rid}"):
-                _show_full_entry(r)
+                st.session_state["kb_dialog_entry"] = r
+                st.rerun()
     with cols[1]:
         st.markdown(_status_badge(r.get("status")))
     with cols[2]:
