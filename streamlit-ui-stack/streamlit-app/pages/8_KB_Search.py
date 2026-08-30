@@ -14,8 +14,8 @@
 # - Top: search input, status multi-select, trust_level multi-select,
 #   result count.
 # - Submit -> kb_search(query, k=20) -> results table (each result
-#   shows a title preview + status/trust badges; no drill-down — the
-#   preview below the title already conveys the content).
+#   shows a 200-char preview + 'Read more' button that opens a modal
+#   dialog with the full markdown content).
 # - "Add new KB entry" modal -> kb_add -> refresh list.
 # - Loki events: {stream="kb", event="search|add", user_id, query_len,
 #   result_count} (no query body).
@@ -83,8 +83,9 @@ def _log(event: str, **fields) -> None:
 
 cyberpunk_title("KB Search", "kb_search")
 st.caption(
-    "Search the knowledge base. Drill into an entry to see full "
-    "content. Add new entries via the **+ Add** button."
+    "Search the knowledge base. Click **📖 Read more** on any result "
+    "to view the full content in a modal. Add new entries via the "
+    "**+ Add** button."
 )
 
 
@@ -287,6 +288,27 @@ def _preview(content: str, n: int = 200) -> str:
     return flat[:n] + ("…" if len(flat) > n else "")
 
 
+@st.dialog("KB Entry", width="large")
+def _show_full_entry(entry: dict) -> None:
+    """Modal dialog rendering the full markdown content of one entry.
+
+    Triggered by the '📖 Read more' button on each result row. The
+    dialog is decorated at module level (Streamlit requirement) and
+    reads everything it needs from the passed-in dict. Closes when
+    the user clicks the X or outside the dialog.
+    """
+    title = entry.get("title", "(no title)")
+    st.markdown(f"### 📄 {title}")
+    st.markdown(
+        f"{_status_badge(entry.get('status'))} · "
+        f"{_trust_badge(entry.get('trust_level_at_creation'))} · "
+        f"updated `{entry.get('updated_at', '?')}`"
+    )
+    content_md = entry.get("content", "") or ""
+    st.markdown(content_md)
+    _log("entry_viewed", entry_id=entry.get("id"))
+
+
 # ---- Run the search ----
 # The user explicitly clicks Search (search_clicked) — there is no
 # auto-search on filter changes. With a query typed, hit kb_search.
@@ -369,11 +391,15 @@ for r in filtered:
     rid = r.get("id")
     cols = st.columns([6, 1, 1, 1])
     with cols[0]:
-        # Title is plain text (no button) — the preview below already
-        # shows the content inline, so a clickable title was redundant
-        # and read as a broken link. Render as a bold markdown line.
+        # Title is plain text (no button) — the preview below shows
+        # the first 200 chars of content. Full content lives in the
+        # 'Read more' modal so long entries don't push other results
+        # down the page.
         st.markdown(f"**📄 {r.get('title', '(no title)')}**")
         st.caption(_preview(r.get("content", "")))
+        if r.get("content"):
+            if st.button("📖 Read more", key=f"kb_read_more_{rid}"):
+                _show_full_entry(r)
     with cols[1]:
         st.markdown(_status_badge(r.get("status")))
     with cols[2]:
