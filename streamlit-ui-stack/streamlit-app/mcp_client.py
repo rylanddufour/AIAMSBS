@@ -338,6 +338,34 @@ def kb_search(query: str, k: int = 10) -> list[dict]:
     return []
 
 
+def kb_list(
+    source_type: str | None = None,
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict]:
+    """Unfiltered (or lightly filtered) listing of KB entries.
+
+    Returns the same row shape as kb_search. The kb_list MCP tool does
+    NOT filter on tags — callers filter tags client-side. Used by the
+    KB Search page when the user clicks Search with an empty query so
+    tags / status / trust filters can resolve against a broader entry
+    set. Routes through /mcp per the BACKLOG #30 / #14 rule that the
+    streamlit UI does not depend on /api/kb/* sidecar routes.
+    """
+    args: dict[str, Any] = {"limit": limit, "offset": offset}
+    if source_type is not None:
+        args["source_type"] = source_type
+    if status is not None:
+        args["status"] = status
+    res = _tools_call(_kb_base_url(), "kb_list", args)
+    if isinstance(res, list):
+        return res
+    if isinstance(res, dict) and "result" in res and isinstance(res["result"], list):
+        return res["result"]
+    return []
+
+
 def kb_get(entry_id: int | str) -> dict | None:
     """Fetch a single KB entry by id.
 

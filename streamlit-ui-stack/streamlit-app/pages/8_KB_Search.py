@@ -29,6 +29,7 @@ from mcp_client import (
     MCPUnavailableError,
     MCPToolError,
     kb_add,
+    kb_list,
     kb_search,
 )
 from settings import load as load_settings
@@ -153,8 +154,10 @@ with fcol3:
 # a separate kb_list call (kb-mcp's kb_search already returns tags per
 # row) and avoids listing stale tags from deleted entries. Multi-select
 # uses AND semantics: an entry must have ALL selected tags to match.
-# If no results yet (page just loaded), the options list is empty and
-# the multiselect renders disabled — that's fine.
+#
+# On first page load (no prior search in session_state) the dropdown
+# would otherwise be empty — populate it once via kb_list so the user
+# can filter by tag BEFORE clicking Search. Cached for 60s.
 @st.cache_data(ttl=30, show_spinner=False)
 def _all_tags_from_results(rows: list[dict]) -> list[str]:
     """Return sorted unique tag union across the given rows.
@@ -170,14 +173,29 @@ def _all_tags_from_results(rows: list[dict]) -> list[str]:
     return sorted(tags)
 
 
-# Tag filter row. We render it BEFORE the search runs by deriving
-# available tags from the previous result set (or empty on first load).
-# The filter applies client-side after the search returns.
-_tag_options: list[str] = []
-if "results" in st.session_state and st.session_state.results:
-    _tag_options = _all_tags_from_results(
-        list(st.session_state.results)  # cache key stable across reruns
-    )
+@st.cache_data(ttl=60, show_spinner=False)
+def _initial_kb_for_tags() -> list[dict]:
+    """Single kb_list call on first page load to populate the tag
+    dropdown. Cached 60s — subsequent reruns within the TTL don't
+    re-hit kb-mcp. Failure returns [] silently so the page still
+    renders (just with an empty tag dropdown until the next refresh).
+    """
+    try:
+        return kb_list(limit=200)
+    except Exception:
+        return []
+
+
+# Lazy-init the session_state cache so the tag multiselect has options
+# on first load. Idempotent — only fires when "results" is missing.
+if "results" not in st.session_state:
+    st.session_state.results = _initial_kb_for_tags()
+
+# Tag options derived from whatever rows are currently in session_state
+# (either the lazy init above or the most recent successful search).
+_tag_options: list[str] = _all_tags_from_results(
+    list(st.session_state.results or [])
+)
 
 tagcol1, tagcol2 = st.columns([3, 1])
 with tagcol1:
@@ -263,20 +281,27 @@ def _preview(content: str, n: int = 200) -> str:
     return flat[:n] + ("…" if len(flat) > n else "")
 
 
-# ---- Run the search (auto-run on first load with empty query) ----
-# If the user hasn't clicked Search yet but has a query typed, also
-# run automatically (treats the text_input as live). Default state:
-# empty query -> empty results until user types or clicks Search.
-results: list[dict] = []
+# ---- Run the search ----
+# The user explicitly clicks Search (search_clicked) — there is no
+# auto-search on filter changes. With a query typed, hit kb_search.
+# With an empty query, hit kb_list so status / trust / tag filters
+# resolve against a broader entry set. Both paths feed results into
+# session_state for the tag dropdown's next-rerun derivation.
+results: list[dict] = list(st.session_state.get("results") or [])
 err_msg: str | None = None
 
-if query or search_clicked:
+if search_clicked:
     try:
-        with st.spinner("Searching KB…"):
-            results = kb_search(query=query, k=20)
-        # Persist for the tag-options derivation on next rerun (BACKLOG #69 (c)).
-        # We store the raw result list so the multiselect's options refresh
-        # from the most recent successful search.
+        if query:
+            with st.spinner("Searching KB…"):
+                results = kb_search(query=query, k=20)
+        else:
+            # Empty-query path: pull a broader set via kb_list so
+            # tag-only / status-only / trust-only searches work.
+            # Limit 200 covers the realistic KB size for a customer
+            # VM; pagination is a future concern if we ever exceed.
+            with st.spinner("Loading KB…"):
+                results = kb_list(limit=200)
         st.session_state["results"] = list(results)
     except MCPUnavailableError as e:
         err_msg = f"KB service unavailable: {e}"
@@ -309,7 +334,7 @@ if query or search_clicked:
         tag_filter=",".join(tag_filter),
     )
 
-if err_msg and query:
+if err_msg:
     st.warning(f"⚠️ {err_msg}")
 
 
@@ -353,10 +378,10 @@ if drill_entry:
 
 # ---- Results table ----
 st.markdown("---")
-if not filtered and (query or search_clicked):
+if not filtered and (query or search_clicked or tag_filter or status_filter or trust_filter):
     st.info("No KB entries match your search + filters.")
 elif not filtered:
-    st.info("Type a query above (or click Search) to look up KB entries.")
+    st.info("Type a query, pick a filter, or click Search to look up KB entries.")
 
 for r in filtered:
     rid = r.get("id")
