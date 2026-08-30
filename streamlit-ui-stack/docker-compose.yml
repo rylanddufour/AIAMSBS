@@ -3,7 +3,7 @@
 # One sibling container on the shared `monitoring` Docker network:
 #
 #   streamlit-ui — python:3.12-slim + streamlit + bcrypt + httpx.
-#                  Exposes 8501 to the host (the ONLY port this stack
+#                  Exposes 80 to the host (the ONLY port this stack
 #                  publishes). Talks to the rest of AIAMSBS over HTTP
 #                  on the monitoring network.
 #
@@ -25,11 +25,16 @@ services:
       dockerfile: Dockerfile
     image: aiamsbs_streamlit-ui
     container_name: streamlit-ui
-    # Port 8501 is the ONLY host-side port this v1.0 customer stack exposes.
+    # Port 80 is the only host-side port this v1.0 customer stack
+    # exposes. Streamlit still binds to 8501 INSIDE the container
+    # (don't change that — the Dockerfile ENTRYPOINT and the
+    # HEALTHCHECK both reference 8501). We only remap the host port.
+    # Operator asked for :80 on 2026-08-30 so they can hit the UI at
+    # http://192.168.0.220/ without typing the port number.
     # Streamlit's /_stcore/health endpoint responds on this port too, which
     # is what the orchestrator's verify list curls.
     ports:
-      - "0.0.0.0:8501:8501"
+      - "0.0.0.0:80:8501"
     # Hermes Web Dashboard runs on the host (s6-overlay), not in a container.
     # `host-gateway` is Docker's special alias that resolves to the host's
     # bridge IP at container-start time (Linux Docker 20.10+, macOS, Windows).
