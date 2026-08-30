@@ -125,6 +125,16 @@ _CSS_INNER = """
     padding: 1rem 1.25rem;
     box-shadow: var(--shadow-card);
 }
+/* BACKLOG #73 item 5b — KB Search result-row box sizing.
+   Consistent min-height so 1-word and 200-char previews render
+   at the same row height. Padding matches the panel padding
+   convention used elsewhere. The data-testid substring match
+   targets containers created with st.container(border=True,
+   key="kb_row_*") on the KB Search results list. */
+[data-testid="stVerticalBlockBorderWrapper"][data-testid*="kb_row_"] {
+    min-height: 88px;
+    padding: 12px 16px;
+}
 
 /* ============================================================
    Headings: consistent scale + accent for primary h1.

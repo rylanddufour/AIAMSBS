@@ -29,6 +29,7 @@ from mcp_client import (
     MCPUnavailableError,
     MCPToolError,
     kb_add,
+    kb_list,
     kb_search,
 )
 from settings import load as load_settings
@@ -148,10 +149,6 @@ with fcol3:
                 "and does not change on subsequent edits.*"
             )
 
-search_clicked = st.button(
-    "Search", type="primary", use_container_width=False, key="kb_search_btn"
-)
-
 
 # ---- Tag filter (client-side, BACKLOG #69 (c)) ----
 # We compute the union of all tags from the visible result set so the
@@ -176,14 +173,36 @@ def _all_tags_from_results(rows: list[dict]) -> list[str]:
     return sorted(tags)
 
 
-# Tag filter row. We render it BEFORE the search runs by deriving
-# available tags from the previous result set (or empty on first load).
-# The filter applies client-side after the search returns.
-_tag_options: list[str] = []
-if "results" in st.session_state and st.session_state.results:
-    _tag_options = _all_tags_from_results(
-        list(st.session_state.results)  # cache key stable across reruns
-    )
+# Tag filter row. On first page load we populate the tag dropdown
+# by pulling a broad KB listing via kb_list(limit=200). This is
+# cached for 60s so subsequent reruns don't hit kb-mcp repeatedly.
+# BACKLOG #73 item 5b (2026-08-29) — tags-only search depends on the
+# dropdown being populated BEFORE the user clicks Search.
+@st.cache_data(ttl=60, show_spinner=False)
+def _initial_kb_for_tags() -> list[dict]:
+    """Return a broad KB listing used to populate the tag dropdown.
+
+    Cached for 60s — the dropdown refreshes automatically on every
+    rerun after the TTL expires. Failure is silent (returns []) so
+    the page still renders the dropdown, just empty.
+    """
+    try:
+        return kb_list(limit=200)
+    except Exception:
+        return []
+
+
+# Lazy-init the session_state cache so the tag multiselect has options
+# on first load. This block is idempotent — only fires when "results"
+# is missing from session_state.
+if "results" not in st.session_state:
+    st.session_state.results = _initial_kb_for_tags()
+
+# Tag options derived from whatever rows are currently in session_state
+# (either the lazy init above or the most recent successful search).
+_tag_options: list[str] = _all_tags_from_results(
+    list(st.session_state.results or [])
+)
 
 tagcol1, tagcol2 = st.columns([3, 1])
 with tagcol1:
@@ -194,13 +213,23 @@ with tagcol1:
         key="kb_tag_filter",
         help=(
             "Filter by tags assigned to entries. AND semantics — an entry "
-            "must carry every selected tag. Options refresh 30s after each "
-            "search; if empty, run a Search first to populate the tag list."
+            "must carry every selected tag. Options refresh 60s after page "
+            "load; if empty, click Search to pull the latest."
         ),
     )
 with tagcol2:
     if _tag_options:
         st.caption(f"{len(_tag_options)} tag(s) available")
+
+# Search button — lives on its own row immediately under the Tags row
+# (BACKLOG #73 item 5b, 2026-08-29). Centered, not full-width — the
+# rest of the page uses partial columns so a button that spans the
+# whole row would shout.
+_btncol1, _btncol2 = st.columns([2, 1])
+with _btncol2:
+    search_clicked = st.button(
+        "Search", type="primary", use_container_width=True, key="kb_search_btn"
+    )
 
 
 # ---- Helpers ----
@@ -262,17 +291,29 @@ def _preview(content: str, n: int = 200) -> str:
     return flat[:n] + ("…" if len(flat) > n else "")
 
 
-# ---- Run the search (auto-run on first load with empty query) ----
-# If the user hasn't clicked Search yet but has a query typed, also
-# run automatically (treats the text_input as live). Default state:
-# empty query -> empty results until user types or clicks Search.
+# ---- Run the search ----
+# Three triggers:
+#   1. query typed (live auto-run, treats the text_input as live)
+#   2. user clicked the Search button (search_clicked)
+#   3. tags selected with empty query (tags-only search — BACKLOG #73 item 5b)
+# Default state: empty query + no tags + no click → empty results until
+# the user types, picks a tag, or clicks Search.
 results: list[dict] = []
 err_msg: str | None = None
 
-if query or search_clicked:
+if search_clicked or query or tag_filter:
     try:
-        with st.spinner("Searching KB…"):
-            results = kb_search(query=query, k=20)
+        if query:
+            # Normal FTS5 search path.
+            with st.spinner("Searching KB…"):
+                results = kb_search(query=query, k=20)
+        else:
+            # Empty-query path: pull a broader set via kb_list so tag-only
+            # searches can work. Limit 200 covers the realistic KB size
+            # for a customer VM; if we ever exceed this, add pagination
+            # later (BACKLOG #73 item 5b, 2026-08-29).
+            with st.spinner("Loading KB…"):
+                results = kb_list(limit=200)
         # Persist for the tag-options derivation on next rerun (BACKLOG #69 (c)).
         # We store the raw result list so the multiselect's options refresh
         # from the most recent successful search.
@@ -352,30 +393,40 @@ if drill_entry:
 
 # ---- Results table ----
 st.markdown("---")
-if not filtered and (query or search_clicked):
+if not filtered and (query or search_clicked or tag_filter):
     st.info("No KB entries match your search + filters.")
 elif not filtered:
     st.info("Type a query above (or click Search) to look up KB entries.")
 
 for r in filtered:
     rid = r.get("id")
-    cols = st.columns([6, 1, 1, 1])
-    with cols[0]:
-        # Title is the drill-down link.
-        if st.button(
-            f"📄 {r.get('title', '(no title)')}",
-            key=f"kb_title_{rid}",
-            use_container_width=True,
-        ):
-            st.query_params["entry_id"] = str(rid)
-            st.rerun()
-        st.caption(_preview(r.get("content", "")))
-    with cols[1]:
-        st.markdown(_status_badge(r.get("status")))
-    with cols[2]:
-        st.markdown(_trust_badge(r.get("trust_level_at_creation")))
-    with cols[3]:
-        st.caption(f"`{r.get('updated_at', '?')}`")
+    # BACKLOG #73 item 5b — uniform result-row box. The bordered
+    # container gets the dark-cyber panel + border from theme.py
+    # (selector on stVerticalBlockBorderWrapper), and the new
+    # data-testid substring selector enforces a consistent
+    # min-height + padding so 1-word and 200-char previews render
+    # at the same row height.
+    with st.container(border=True, key=f"kb_row_{rid}"):
+        cols = st.columns([6, 1, 1, 1], vertical_alignment="center")
+        with cols[0]:
+            # Title is the drill-down link.
+            if st.button(
+                f"📄 {r.get('title', '(no title)')}",
+                key=f"kb_title_{rid}",
+                use_container_width=True,
+            ):
+                st.query_params["entry_id"] = str(rid)
+                st.rerun()
+            # Bounded preview so the row stays within min-height
+            # (BACKLOG #73 item 5b — 140 chars caps the height even
+            # for long entries).
+            st.caption(_preview(r.get("content", ""), n=140))
+        with cols[1]:
+            st.markdown(_status_badge(r.get("status")))
+        with cols[2]:
+            st.markdown(_trust_badge(r.get("trust_level_at_creation")))
+        with cols[3]:
+            st.caption(f"`{r.get('updated_at', '?')}`")
 
 
 # ---- "Add new KB entry" modal ----
