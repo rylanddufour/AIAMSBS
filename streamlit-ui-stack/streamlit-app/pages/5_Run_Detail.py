@@ -164,7 +164,12 @@ with tab_l:
         f"orchestrator's open-question resolution, see Card 4 body)."
     )
     # Grafana Explore deep link with the run_id pre-filtered.
-    grafana_base = settings.grafana_url.rstrip("/")
+    # IMPORTANT: use the browser-facing URL (open_grafana_url, e.g.
+    # http://192.168.0.220:3000), NOT the container-internal grafana_url
+    # (http://grafana:3000). The operator's browser can't resolve the
+    # Docker-internal hostname. The container-internal URL is still
+    # correct for the Settings page's /health probe — different concern.
+    grafana_base = settings.open_grafana_url.rstrip("/")
     # Loki datasource UID on the AIAMSBS host varies. v1.0 customers use
     # the default Grafana Loki datasource which Grafana auto-creates
     # with a uuid — but the "Data sources" filter in Explore works without
@@ -181,7 +186,9 @@ with tab_l:
         f"_Equivalent query: `{query}`_"
     )
     # Offer a copy-paste Loki HTTP query if operator wants curl.
-    loki_url = settings.loki_url.rstrip("/")
+    # Same browser-facing fix as above — use open_loki_url so the
+    # URL is reachable from the operator's machine.
+    loki_url = settings.open_loki_url.rstrip("/")
     loki_query_url = (
         f"{loki_url}/loki/api/v1/query_range"
         f"?query={quote(query)}&limit=200"

@@ -47,6 +47,7 @@ class Settings:
     # Quick Links (browser-facing, host IP)
     open_hermes_url: str
     open_grafana_url: str
+    open_loki_url: str
     open_kb_url: str
     open_inventory_url: str
 
@@ -138,6 +139,9 @@ def load() -> Settings:
         open_grafana_url=_env_or(
             "OPEN_GRAFANA_URL", "http://192.168.0.220:3000",
         ),
+        open_loki_url=_env_or(
+            "OPEN_LOKI_URL", "http://192.168.0.220:3100",
+        ),
         open_kb_url=_env_or(
             "OPEN_KB_URL", "http://192.168.0.220:8002",
         ),
@@ -224,6 +228,15 @@ EDITABLE_FIELDS: list[dict] = [
         "label": "Grafana (browser)",
         "default": "http://192.168.0.220:3000",
         "help": "Browser-facing Grafana URL. Example: http://192.168.0.220:3000.",
+    },
+    {
+        "key": "OPEN_LOKI_URL",
+        "group": "Quick Links",
+        "label": "Loki (browser)",
+        "default": "http://192.168.0.220:3100",
+        "help": "Browser-facing Loki URL. Used by the Run Detail page's "
+                "Loki tab to build clickable links. Example: "
+                "http://192.168.0.220:3100.",
     },
     {
         "key": "OPEN_KB_URL",
