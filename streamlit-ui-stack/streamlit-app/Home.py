@@ -62,9 +62,6 @@ ql2.link_button("Open Hermes Dashboard", quicklinks.get("Open Hermes Dashboard",
 # the sidebar instead). The 3rd column slot is freed -- if we add a third
 # Quick Link later we re-introduce it here.
 
-st.markdown("---")
-
-
 # ---- Health snapshot (calls each backend's /health) ----
 def _check_one(name: str, base_url: str, health_path: str = "/health", timeout: float = 2.0) -> tuple[bool, int | None]:
     """Return (reachable, latency_ms).
@@ -120,9 +117,6 @@ for col, row in zip(hcols, snapshot):
 
 st.caption("Refreshed every 10s. Full diagnostics below.")
 
-st.markdown("---")
-
-
 # ---- Recent activity (placeholders for Card 4/5) ----
 ra1, ra2 = st.columns(2)
 with ra1:
@@ -167,5 +161,4 @@ except Exception as e:
 
 
 # ---- Logout (moved from sidebar to page body) ----
-st.markdown("---")
 render_logout_button()
