@@ -1,27 +1,30 @@
 # pages/5_Run_Detail.py — AIAMSBS v1.0 customer single-run drilldown.
 #
 # Card 4 of BACKLOG #64. URL: /Run_Detail?run_id=<uuid>. Reads the row
-# and its events from the local SQLite, then renders four tabs:
+# and its events from the local SQLite, then renders three tabs:
 #   * Timeline — ordered list of status_change + exec_* events.
 #   * Stdout   — pretty-printed exec_stdout events (already redacted
 #                on write by 3_Run_Playbook; we re-redact defensively
 #                in case anything snuck in).
 #   * Stderr   — exec_stderr events.
-#   * Loki     — pre-built Grafana Explore deep link with run_id="<uuid>"
-#                pipe-filtered query (Loki labels in this stack are
-#                job/source only — run_id lives in the JSON payload;
-#                see config/alloy.yml and orchestrator's open-question
-#                resolution on Card 4).
 #
 # If ?run_id is missing or invalid, render a friendly empty state.
+#
+# Loki tab removed (BACKLOG #73): the pre-built Grafana Explore link
+# could not reliably point the operator at this run's logs because
+# Loki's labelling doesn't include run_id as a first-class label
+# (it's a JSON payload field), and Grafana 13's Explore URL parser
+# rejected both the legacy `left=` and the new `panes=` formats we
+# tried. Customer feedback: "I don't think this Loki section is
+# important. Remove it and let's call the Run Detail done."
+# Streamlit/Stdout/Stderr tabs already cover the operator's actual
+# debugging needs (the run logs are right there in the DB).
 
 from __future__ import annotations
 
 import html as html_lib
 import json
-from urllib.parse import quote
 
-import httpx
 import streamlit as st
 
 from auth import require_auth, render_logout_button
@@ -103,7 +106,7 @@ with db() as conn:
         (run_id,),
     ).fetchall()]
 
-tab_t, tab_o, tab_e, tab_l = st.tabs(["Timeline", "Stdout", "Stderr", "Loki"])
+tab_t, tab_o, tab_e = st.tabs(["Timeline", "Stdout", "Stderr"])
 
 # ---- Timeline ----
 with tab_t:
@@ -155,93 +158,5 @@ def _render_event_text(filter_type: str, tab) -> None:
 _render_event_text("exec_stdout", tab_o)
 _render_event_text("exec_stderr", tab_e)
 
-# ---- Loki link ----
-with tab_l:
-    st.markdown(
-        f"To view this run in Loki, open the link below. The query filters "
-        f"`job=\"aiamsbs-streamlit\"` and pipes for the run_id in the JSON "
-        f"payload (Loki does not have `run_id` as a label — it's an "
-        f"orchestrator's open-question resolution, see Card 4 body)."
-    )
-    # Grafana Explore deep link with the run_id pre-filtered.
-    # IMPORTANT: use the browser-facing URL (open_grafana_url, e.g.
-    # http://192.168.0.220:3000), NOT the container-internal grafana_url
-    # (http://grafana:3000). The operator's browser can't resolve the
-    # Docker-internal hostname. The container-internal URL is still
-    # correct for the Settings page's /health probe — different concern.
-    grafana_base = settings.open_grafana_url.rstrip("/")
-    # Loki datasource UID is provisioned by Grafana's datasources.yml
-    # (see /etc/grafana/provisioning/datasources/datasources.yml on the
-    # container). Hard-coded to 'aiamsbs-loki' to match the v1.0 customer
-    # stack. If the operator renames the datasource, this link will
-    # still open Explore (Grafana falls back to the default Loki
-    # datasource if the UID isn't found) but the pre-filled query
-    # will be lost. Not worth a setting for an internal-only field.
-    loki_uid = "aiamsbs-loki"
-    # Grafana 9+ uses the `panes` + `schemaVersion` URL format. The
-    # older `left` format (which this file used to use) is rejected by
-    # Grafana 13 with 'Could not parse Explore URL' (BACKLOG #73).
-    # The new format wraps each pane in a JSON object under the "xl"
-    # key (the active split layout; "l" / "m" / "xl" correspond to
-    # collapsed / split / full layouts).
-    query = f'{{job="aiamsbs-streamlit"}} |= "run_id={run_id}"'
-    panes_obj = {
-        "xl": {
-            "datasource": {"type": "loki", "uid": loki_uid},
-            "queries": [{
-                "refId": "A",
-                "datasource": {"type": "loki", "uid": loki_uid},
-                "expr": query,
-                "queryType": "range",
-            }],
-            "range": {"from": "now-1h", "to": "now"},
-        }
-    }
-    panes_json = json.dumps(panes_obj, separators=(",", ":"))
-    panes_encoded = quote(panes_json, safe="")
-    explore_url = (
-        f"{grafana_base}/explore?schemaVersion=1"
-        f"&panes={panes_encoded}"
-        f"&orgId=1"
-    )
-    st.markdown(
-        f"[Open in Grafana Explore →]({explore_url})  \n"
-        f"_Equivalent query: `{query}`_"
-    )
-    # Offer a copy-paste Loki HTTP query if operator wants curl.
-    # Same browser-facing fix as above — use open_loki_url so the
-    # URL is reachable from the operator's machine.
-    loki_url = settings.open_loki_url.rstrip("/")
-    loki_query_url = (
-        f"{loki_url}/loki/api/v1/query_range"
-        f"?query={quote(query)}&limit=200"
-    )
-    st.code(loki_query_url, language="text")
-    # Optional: try to fetch recent Loki entries client-side so the
-    # operator sees the audit trail without leaving the page. Network
-    # may be unreliable; show the error if so.
-    try:
-        r = httpx.get(loki_query_url, timeout=5.0)
-        if r.status_code == 200:
-            data = r.json()
-            streams = (data.get("data") or {}).get("result") or []
-            if not streams:
-                st.caption("No matching Loki entries in the last 1h.")
-            else:
-                for s in streams:
-                    for v in s.get("values", []):
-                        ts_ns, line = v
-                        # line is a stringified JSON line.
-                        try:
-                            obj = json.loads(line)
-                            st.text(
-                                f"[{obj.get('ts','')}] "
-                                f"{obj.get('event','?')}: {line}"
-                            )
-                        except json.JSONDecodeError:
-                            st.text(line)
-        else:
-            st.caption(f"Loki returned {r.status_code} — use the Grafana link.")
-    except Exception as exc:
-        st.caption(f"Loki not reachable from this container ({type(exc).__name__}) — use the Grafana link.")
+# Loki tab removed — see module docstring (BACKLOG #73).
 
