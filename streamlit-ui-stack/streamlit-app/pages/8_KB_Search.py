@@ -198,14 +198,14 @@ _tag_options: list[str] = _all_tags_from_results(_initial_kb_for_tags())
 tagcol1, tagcol2 = st.columns([3, 1])
 with tagcol1:
     tag_filter = st.multiselect(
-        "Tags (AND — entry must have ALL selected)",
+        "Tags (OR — entry must have ANY selected)",
         options=_tag_options,
         default=[],
         key="kb_tag_filter",
         help=(
-            "Filter by tags assigned to entries. AND semantics — an entry "
-            "must carry every selected tag. Options refresh 30s after each "
-            "search; if empty, run a Search first to populate the tag list."
+            "Filter by tags assigned to entries. OR semantics — an entry "
+            "is included if it carries at least one of the selected tags. "
+            "Pick multiple tags to broaden the result set."
         ),
     )
 with tagcol2:
@@ -254,8 +254,8 @@ def _matches_filters(
 ) -> bool:
     """Return True iff entry passes the user-selected filters.
 
-    Tag filter is AND — entry must carry every selected tag. Empty/None
-    means "no tag filter applied".
+    Tag filter is OR — entry must carry at least one of the selected
+    tags. Empty/None means "no tag filter applied".
     """
     if statuses and "all" not in statuses:
         if (entry.get("status") or "").lower() not in statuses:
@@ -266,7 +266,7 @@ def _matches_filters(
             return False
     if tags:
         entry_tags = set(t for t in (entry.get("tags") or []) if t)
-        if not set(tags).issubset(entry_tags):
+        if not (set(tags) & entry_tags):
             return False
     return True
 
