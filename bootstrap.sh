@@ -1198,23 +1198,46 @@ create_grafana_mcp_service_account() {
         return 0
     fi
 
-    # Create service account
+    # Create service account. If a SA with this name already exists (from
+    # a prior bootstrap run, a manual pre-create, or a re-bootstrap after
+    # partial success), Grafana returns 409 Conflict. We detect that case,
+    # look up the existing SA's id, and continue to token creation. This
+    # makes the function idempotent across re-runs without losing the
+    # ability to refresh an expired or missing token.
     local sa_response
     sa_response=$(curl -sf -u "${admin_user}:${admin_pass}" \
         -H "Content-Type: application/json" \
         -X POST "${grafana_url}/api/serviceaccounts" \
         -d '{"name":"aiamsbs-mcp","role":"Admin","isDisabled":false}' 2>/dev/null) || {
-        log_warn "Could not create Grafana service account; skipping"
-        return 0
+        # 409 conflict path — SA already exists. Look up by name.
+        log_info "Service account aiamsbs-mcp already exists; reusing it"
+        sa_response=$(curl -sf -u "${admin_user}:${admin_pass}" \
+            "${grafana_url}/api/serviceaccounts/search?query=aiamsbs-mcp" 2>/dev/null) || {
+            log_warn "Could not create OR look up Grafana service account; skipping"
+            return 0
+        }
     }
 
     local sa_id
-    sa_id=$(echo "$sa_response" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null || echo "")
+    sa_id=$(echo "$sa_response" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+# /api/serviceaccounts POST returns {id, uid, ...}
+# /api/serviceaccounts/search returns {serviceAccounts: [{id, name, ...}]}
+if isinstance(d, dict) and 'serviceAccounts' in d:
+    for sa in d['serviceAccounts']:
+        if sa.get('name') == 'aiamsbs-mcp':
+            print(sa.get('id', '')); break
+else:
+    print(d.get('id', ''))
+" 2>/dev/null || echo "")
 
     if [ -z "$sa_id" ]; then
-        log_warn "Service account creation returned no id; skipping"
+        log_warn "Service account creation/lookup returned no id; skipping"
         return 0
     fi
+
+    log_info "Using service account id=$sa_id"
 
     # Create token for the service account
     local token_response
@@ -1947,6 +1970,78 @@ deploy_aiamsbs_ansible_stack() {
     fi
 }
 
+# Observability stack — the Prometheus / Loki / Grafana / Alloy / Promtail
+# / blackbox_exporter services that verify_installation() checks at the end
+# of bootstrap. They live in the SAME docker-compose.yml as aiamsbs-ansible
+# + streamlit-ui but were historically deployed by the orchestrator's initial
+# setup rather than by bash bootstrap.sh. That left a gap after any
+# snapshot rollback + bootstrap: the verify step at the end of bootstrap
+# would fail with 'HTTP 000 (expected 200)' for every observability service.
+#
+# This function fills that gap. It must run BEFORE
+# create_grafana_mcp_service_account (which waits up to 60s for Grafana to
+# become healthy) so the SA + token creation can succeed.
+#
+# Idempotency: `docker compose ... up -d` is naturally idempotent. Re-runs
+# skip services whose config is unchanged, recreate only containers whose
+# env / volumes / healthcheck changed, and rebuild images only if the
+# Dockerfile or build context changed. Safe to call on every bootstrap.
+#
+# HERMES_API_KEY is REQUIRED for streamlit-ui's env interpolation
+# (docker-compose.yml uses ${HERMES_API_KEY:?...}). export it the same
+# way deploy_streamlit_ui_stack() does — see HERMES_API_KEY handling in
+# configure_hermes_api() and provision_api_server_key().
+deploy_observability_stack() {
+    # INFRA_DIR is set once in main() upfront.
+    local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
+    local main_compose="$infra_dir/docker-compose.yml"
+
+    if [ ! -f "$main_compose" ]; then
+        log_warn "Main compose not found at $main_compose; skipping observability deploy"
+        return 0
+    fi
+
+    log_info "Deploying observability stack (Prometheus / Loki / Grafana / Alloy / Promtail / blackbox_exporter)..."
+
+    # HERMES_API_KEY must be exported so the streamlit-ui service in the
+    # same compose file can resolve its ${HERMES_API_KEY:?...} interpolation.
+    # Already set by provision_api_server_key() at the top of main() (via
+    # export HERMES_API_KEY="$API_SERVER_KEY"), so we just guard here.
+    if [ -z "${HERMES_API_KEY:-}" ] && [ -n "${API_SERVER_KEY:-}" ]; then
+        export HERMES_API_KEY="$API_SERVER_KEY"
+    fi
+
+    # prometheus + loki + grafana + alloy + promtail + alloy-customer + blackbox_exporter.
+    # We deliberately do NOT include aiamsbs-ansible / aiamsbs-ansible-runner /
+    # streamlit-ui here — those are owned by deploy_aiamsbs_ansible_stack and
+    # deploy_streamlit_ui_stack respectively so we can keep them ordered
+    # (streamlit-ui needs aiamsbs-ansible-runner for HMAC-signed POSTs).
+    if sg docker -c "docker compose -f '$main_compose' up -d prometheus loki grafana alloy promtail alloy-customer blackbox_exporter" 2>&1 | tail -15; then
+        log_success "Observability stack deployed (Prometheus/Loki/Grafana/Alloy/Promtail/blackbox_exporter on monitoring network)"
+    else
+        log_warn "Observability stack deployment failed; continuing"
+        return 0
+    fi
+
+    # Wait for Grafana to become healthy before returning. create_grafana_mcp_service_account
+    # polls /api/health for 60s but doesn't restart; if we're earlier in the
+    # bootstrap flow and observability was just deployed, give it a head
+    # start so the SA-creation step succeeds on the first try. Bound at
+    # 180s — Loki + Prometheus cold start can take ~90s on a fresh VM.
+    log_info "Waiting for Grafana to become healthy (up to 180s)..."
+    local attempts=0
+    while [ $attempts -lt 90 ]; do
+        if curl -sf "http://localhost:3000/api/health" >/dev/null 2>&1; then
+            log_success "Grafana is healthy"
+            return 0
+        fi
+        sleep 2
+        attempts=$((attempts + 1))
+    done
+    log_warn "Grafana not yet healthy after 180s; create_grafana_mcp_service_account will retry"
+    return 0
+}
+
 deploy_streamlit_ui_stack() {
     # INFRA_DIR is set once in main() upfront.
     local infra_dir="${INFRA_DIR:?INFRA_DIR not set — main() must clone repo first}"
@@ -1967,7 +2062,7 @@ deploy_streamlit_ui_stack() {
     # order. If aiamsbs-ansible-runner isn't up yet, this is a no-op
     # and a second `up -d streamlit-ui` brings it up.
     if sg docker -c "docker compose -f '$main_compose' up -d streamlit-ui" 2>&1 | tail -15; then
-        log_success "streamlit-ui deployed (Cards 3-6 — customer UI on port 8501)"
+        log_success "streamlit-ui deployed (Cards 3-6 — customer UI on port 80)"
     else
         log_warn "streamlit-ui deployment failed; continuing"
         return 0
@@ -2564,7 +2659,13 @@ main() {
         log_info "  cd ~/AIAMSBS && docker compose up -d"
     fi
 
-    # Post-install steps: skills install, MCP service account, MCP deploy
+    # Post-install steps: skills install, MCP service account, MCP deploy.
+    # deploy_observability_stack MUST run before create_grafana_mcp_service_account
+    # so Grafana is reachable when the SA creation polls /api/health. Without
+    # it, the SA-creation step skips with a warning and the grafana-mcp.env
+    # file is never written — leaving grafana-mcp unstartable and the
+    # final verify_installation step showing 'Grafana MCP: HTTP 000'.
+    deploy_observability_stack
     install_grafana_skills
     create_grafana_mcp_service_account
 
