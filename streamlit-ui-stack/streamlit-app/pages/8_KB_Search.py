@@ -179,6 +179,10 @@ def _initial_kb_for_tags() -> list[dict]:
     dropdown. Cached 60s — subsequent reruns within the TTL don't
     re-hit kb-mcp. Failure returns [] silently so the page still
     renders (just with an empty tag dropdown until the next refresh).
+
+    IMPORTANT: this populates the Tags dropdown ONLY — it does NOT
+    auto-fill the results list. Results stay empty until the user
+    clicks Search, per BACKLOG #73 item 5b operator decision.
     """
     try:
         return kb_list(limit=200)
@@ -186,16 +190,10 @@ def _initial_kb_for_tags() -> list[dict]:
         return []
 
 
-# Lazy-init the session_state cache so the tag multiselect has options
-# on first load. Idempotent — only fires when "results" is missing.
-if "results" not in st.session_state:
-    st.session_state.results = _initial_kb_for_tags()
-
-# Tag options derived from whatever rows are currently in session_state
-# (either the lazy init above or the most recent successful search).
-_tag_options: list[str] = _all_tags_from_results(
-    list(st.session_state.results or [])
-)
+# Tag options derived from a one-shot kb_list call cached for 60s.
+# The results list itself stays empty — operator wants results to
+# appear ONLY after the user clicks Search, not on page load.
+_tag_options: list[str] = _all_tags_from_results(_initial_kb_for_tags())
 
 tagcol1, tagcol2 = st.columns([3, 1])
 with tagcol1:
@@ -286,8 +284,13 @@ def _preview(content: str, n: int = 200) -> str:
 # auto-search on filter changes. With a query typed, hit kb_search.
 # With an empty query, hit kb_list so status / trust / tag filters
 # resolve against a broader entry set. Both paths feed results into
-# session_state for the tag dropdown's next-rerun derivation.
-results: list[dict] = list(st.session_state.get("results") or [])
+# session_state so subsequent reruns keep showing the last result set
+# until the user clicks Search again.
+#
+# Per operator decision (BACKLOG #73 item 5b, 2026-08-30): results
+# must NOT auto-render on page load. The page should land empty until
+# the user clicks Search.
+results: list[dict] = []
 err_msg: str | None = None
 
 if search_clicked:
