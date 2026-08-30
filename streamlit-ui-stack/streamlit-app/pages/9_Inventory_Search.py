@@ -316,7 +316,7 @@ if drill:
 
 
 # ---- Results table ----
-st.markdown("---")
+section_header("Results")
 if not filtered and not auto_run and (query or search_clicked):
     st.info("No devices match your search + filters.")
 elif not filtered and auto_run:
