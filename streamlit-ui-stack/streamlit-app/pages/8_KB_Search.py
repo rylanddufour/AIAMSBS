@@ -13,8 +13,9 @@
 # - Auth gate + sidebar logout (consistent with other pages).
 # - Top: search input, status multi-select, trust_level multi-select,
 #   result count.
-# - Submit -> kb_search(query, k=20) -> results table.
-# - Click title -> ?entry_id=<id> drill-down with full content.
+# - Submit -> kb_search(query, k=20) -> results table (each result
+#   shows a title preview + status/trust badges; no drill-down — the
+#   preview below the title already conveys the content).
 # - "Add new KB entry" modal -> kb_add -> refresh list.
 # - Loki events: {stream="kb", event="search|add", user_id, query_len,
 #   result_count} (no query body).
@@ -29,7 +30,6 @@ from mcp_client import (
     MCPUnavailableError,
     MCPToolError,
     kb_add,
-    kb_get,
     kb_list,
     kb_search,
 )
@@ -358,52 +358,6 @@ filtered = [
 st.caption(f"**{len(filtered)}** of {len(results)} result(s)")
 
 
-# ---- Drill-down (driven by ?entry_id=<id> query param) ----
-url_entry_id = st.query_params.get("entry_id", None)
-drill_entry: dict | None = None
-if url_entry_id:
-    # Look in the currently-filtered results first. If the user just
-    # clicked a title, the rerun resets `results` to [] (we don't
-    # auto-search), so `filtered` is empty. Fall back to the most
-    # recent successful search in session_state so the drill-down
-    # works after a click without forcing the user to re-run Search.
-    # As a last resort (cold-load via shared URL), call kb_get() to
-    # fetch the entry by id.
-    candidates = list(filtered)
-    if not candidates:
-        candidates = list(st.session_state.get("results") or [])
-    for r in candidates:
-        if str(r.get("id")) == str(url_entry_id):
-            drill_entry = r
-            break
-    if not drill_entry:
-        try:
-            fetched = kb_get(url_entry_id)
-            if fetched:
-                drill_entry = fetched
-        except Exception:
-            pass
-
-if drill_entry:
-    st.markdown("---")
-    st.markdown(f"### 📄 {drill_entry.get('title', '(no title)')}")
-    st.markdown(
-        f"{_status_badge(drill_entry.get('status'))} · "
-        f"{_trust_badge(drill_entry.get('trust_level_at_creation'))} · "
-        f"updated `{drill_entry.get('updated_at', '?')}`"
-    )
-    content_md = drill_entry.get("content", "") or ""
-    st.markdown(content_md)
-    # Copy-to-clipboard via streamlit components (works in a browser).
-    btn_cols = st.columns([1, 6])
-    with btn_cols[0]:
-        st.code(content_md[:2000], language=None)
-    _log("entry_viewed", entry_id=drill_entry.get("id"))
-    if st.button("← Back to results", key="kb_back_to_results"):
-        del st.query_params["entry_id"]
-        st.rerun()
-
-
 # ---- Results table ----
 section_header("Results")
 if not filtered and (query or search_clicked or tag_filter or status_filter or trust_filter):
@@ -415,14 +369,10 @@ for r in filtered:
     rid = r.get("id")
     cols = st.columns([6, 1, 1, 1])
     with cols[0]:
-        # Title is the drill-down link.
-        if st.button(
-            f"📄 {r.get('title', '(no title)')}",
-            key=f"kb_title_{rid}",
-            use_container_width=True,
-        ):
-            st.query_params["entry_id"] = str(rid)
-            st.rerun()
+        # Title is plain text (no button) — the preview below already
+        # shows the content inline, so a clickable title was redundant
+        # and read as a broken link. Render as a bold markdown line.
+        st.markdown(f"**📄 {r.get('title', '(no title)')}**")
         st.caption(_preview(r.get("content", "")))
     with cols[1]:
         st.markdown(_status_badge(r.get("status")))
