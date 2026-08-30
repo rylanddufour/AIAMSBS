@@ -33,7 +33,7 @@ from mcp_client import (
     kb_search,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
+from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
 st.set_page_config(
     page_title="KB Search — AIAMSBS",
@@ -117,8 +117,15 @@ with fcol2:
     status_filter = st.multiselect(
         "Status",
         options=["pending", "approved", "rejected", "all"],
-        default=["pending", "approved"],
+        default=[],
         key="kb_status_filter",
+        help=(
+            "Filter entries by review status.\n\n"
+            "pending 🟠 — written, awaiting a human review.\n\n"
+            "approved 🟢 — reviewed and accepted.\n\n"
+            "rejected 🔴 — reviewed and marked as not useful.\n\n"
+            "all — every status (including any future values)."
+        ),
     )
 with fcol3:
     # Trust ladder explainer becomes the multiselect's own help tooltip
@@ -128,9 +135,9 @@ with fcol3:
     # reference are dropped; emojis + TL labels stay so the visual ladder
     # still reads the same as before.
     trust_filter = st.multiselect(
-        "Trust level",
+        "Trust Level",
         options=["TL0", "TL1", "TL2", "TL3", "all"],
-        default=["TL0", "TL1", "TL2", "TL3"],
+        default=[],
         key="kb_trust_filter",
         help=(
             # Each TL is intentionally one short line so the tooltip's word-wrap
@@ -380,6 +387,7 @@ if drill_entry:
 
 
 # ---- Results table ----
+section_header("Results")
 st.markdown("---")
 if not filtered and (query or search_clicked or tag_filter or status_filter or trust_filter):
     st.info("No KB entries match your search + filters.")
