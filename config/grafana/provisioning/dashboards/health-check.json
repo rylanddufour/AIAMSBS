@@ -267,6 +267,51 @@
       }
     },
     {
+      "id": 80,
+      "title": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "max by (instance) (probe_success{job=\"blackbox\",instance=\"http://localhost:80/_stcore/health\"})",
+          "legendFormat": "Streamlit",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red"
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "name"
+      }
+    },
+    {
       "id": 40,
       "title": "",
       "type": "stat",
@@ -912,6 +957,51 @@
           "showLineNumbers": false,
           "showMiniMap": false
         }
+      }
+    },
+    {
+      "id": 81,
+      "title": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aiamsbs-prom"
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 18,
+        "y": 2
+      },
+      "targets": [
+        {
+          "expr": "max by (instance) (probe_success{job=\"blackbox\",instance=\"http://localhost:18000/health\"})",
+          "legendFormat": "Runner",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red"
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "name"
       }
     }
   ],

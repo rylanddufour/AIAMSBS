@@ -228,6 +228,16 @@ services:
       dockerfile: aiamsbs-ansible-runner/Dockerfile
     image: aiamsbs_aiamsbs-ansible-runner
     container_name: aiamsbs-ansible-runner
+    # BACKLOG #74: expose the runner's /health to host network so the
+    # Prometheus blackbox_exporter (which runs on host network with
+    # 9115) can probe it. 127.0.0.1-only — same trust model as Hermes
+    # Dashboard's port 9119 --insecure. The runner's HMAC-signed /run
+    # endpoint stays on the monitoring docker network (not published);
+    # /health has no body data, just a status probe. Port 18000 chosen
+    # to avoid conflict with grafana-mcp (:8000), inventory-mcp
+    # (:8001), and kb-mcp (:8002).
+    ports:
+      - "127.0.0.1:18000:8000"
     networks:
       - monitoring
     volumes:
