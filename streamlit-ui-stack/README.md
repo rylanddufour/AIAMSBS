@@ -1,6 +1,6 @@
 # streamlit-ui-stack
 
-AIAMSBS v1.0 customer Streamlit UI shell (BACKLOG #64, Card 3).
+AdminLM v1.0 customer Streamlit UI shell (BACKLOG #64, Card 3).
 
 ## What this is
 
@@ -29,12 +29,12 @@ streamlit-ui-stack/
 ├── README.md                   # this file
 ├── data/                       # bind-mounted for streamlit-ui.db + loki_logger/*.log
 ├── .streamlit/
-│   └── config.toml             # theme (AIAMSBS-blue) + server settings
+│   └── config.toml             # theme (AdminLM-blue) + server settings
 └── streamlit-app/
     ├── Home.py                 # entry point: auth gate + landing dashboard
     ├── auth.py                 # bcrypt verify + session_state + logout
     ├── db.py                   # SQLite connect + idempotent schema migration
-    ├── loki_logger.py          # symlink to ../aiamsbs-ansible-stack/loki_logger.py
+    ├── loki_logger.py          # symlink to ../adminlm-ansible-stack/loki_logger.py
     ├── settings.py             # load URLs + customer name from env
     └── pages/
         ├── 1_Settings.py       # read-only config + health subsection
@@ -44,7 +44,7 @@ streamlit-ui-stack/
 ## Bring it up
 
 ```bash
-cd /home/openclaw/AIAMSBS
+cd /home/openclaw/AdminLM
 docker compose -f streamlit-ui-stack/docker-compose.yml up -d --build
 ```
 
@@ -101,11 +101,11 @@ curl -s -G http://localhost:3100/loki/api/v1/query \
 
 - `loki_logger.py` writes NDJSON to `/data/streamlit-ui/logs/<stream>.log`
   inside the container (env var `LOKI_LOG_DIR`).
-- The host bind-mount maps `${HOME}/.hermes/logs/aiamsbs-streamlit` →
+- The host bind-mount maps `${HOME}/.hermes/logs/adminlm-streamlit` →
   `/data/streamlit-ui/logs`.
 - The host's existing `alloy` container tails `${HOME}/.hermes/logs` and
-  ships anything under `aiamsbs-streamlit/*.log` to Loki with
-  `job="aiamsbs-streamlit"`, `source="aiamsbs_host"`.
+  ships anything under `adminlm-streamlit/*.log` to Loki with
+  `job="adminlm-streamlit"`, `source="adminlm_host"`.
 - See `config/alloy.yml` for the matching `local.file_match` /
   `loki.source.file` block (added by Card 3, additive — Card 2's
   `adminlm-ansible` block is untouched).
@@ -146,7 +146,7 @@ host. The customer-facing install path is the overlay compose at the
 repo root:
 
 ```bash
-cd ~/AIAMSBS
+cd ~/AdminLM
 docker compose -f docker-compose.yml -f docker-compose.v1-private.yml up -d
 ```
 
@@ -159,7 +159,7 @@ v1.0 services.
 `bootstrap.sh` gains two new functions called from `main()`:
 
 - `deploy_adminlm_ansible_stack()` — gated on
-  `AIAMSBS_DEPLOY_V1_PRIVATE=true` (or `--v1-private`). Brings up the
+  `AdminLM_DEPLOY_V1_PRIVATE=true` (or `--v1-private`). Brings up the
   Card 2 stack first (the runner).
 - `deploy_streamlit_ui_stack()` — same gate, scopes to `streamlit-ui`.
   Order matters: the runner must be up before streamlit-ui posts

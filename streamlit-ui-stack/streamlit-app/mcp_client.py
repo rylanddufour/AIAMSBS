@@ -1,5 +1,5 @@
 # mcp_client.py
-# AIAMSBS v1.0 customer Streamlit UI — MCP HTTP transport client.
+# AdminLM v1.0 customer Streamlit UI — MCP HTTP transport client.
 #
 # Card 6 of BACKLOG #64. The streamlit-ui container talks to kb-mcp
 # (:8002) and inventory-mcp (:8001) exclusively through the MCP

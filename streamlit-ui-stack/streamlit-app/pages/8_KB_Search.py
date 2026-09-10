@@ -1,4 +1,4 @@
-# pages/8_KB_Search.py — AIAMSBS v1.0 customer KB Search.
+# pages/8_KB_Search.py — AdminLM v1.0 customer KB Search.
 #
 # Card 6 of BACKLOG #64. Read + add view over the kb-mcp backend.
 # All KB access goes through `mcp_client` (MCP HTTP transport). No

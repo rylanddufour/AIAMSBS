@@ -1,4 +1,4 @@
-# pages/7_Chat_Sessions.py — AIAMSBS v1.0 customer Chat Sessions.
+# pages/7_Chat_Sessions.py — AdminLM v1.0 customer Chat Sessions.
 #
 # Card 5 of BACKLOG #64. Top-row layout:
 #   [ Days back slider ] [ Session dropdown ]

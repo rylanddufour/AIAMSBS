@@ -1,14 +1,14 @@
 # hermes_client.py
-# Shared client utilities for AIAMSBS v1.0 customer Streamlit UI.
+# Shared client utilities for AdminLM v1.0 customer Streamlit UI.
 #
 # Card 4 (BACKLOG #64) introduced this module with HMAC signing for the
-# aiamsbs-ansible-runner + body redaction before persisting to SQLite.
+# adminlm-ansible-runner + body redaction before persisting to SQLite.
 # Card 5 (Agent Chat + Chat Sessions, BACKLOG #64) extends it with the
 # Hermes Responses-API / sessions client.
 #
 # This module owns:
 #
-#   * HMAC-SHA256 request signing for the aiamsbs-ansible-runner API.
+#   * HMAC-SHA256 request signing for the adminlm-ansible-runner API.
 #     The signature is computed over the raw request body (no canonicalization)
 #     so what gets sent over the wire is exactly what gets hashed. The header
 #     format is the same Stripe / GitHub pattern: "X-Signature: sha256=<hex>".
@@ -551,7 +551,7 @@ SIG_PREFIX = "sha256="
 
 
 def runner_secret() -> str:
-    """Return the shared secret used to sign requests to aiamsbs-ansible-runner.
+    """Return the shared secret used to sign requests to adminlm-ansible-runner.
 
     MUST match the runner's RUNNER_HMAC_SECRET. Default
     "dev-secret-rotate-me" matches Card 2's runner compose default. In

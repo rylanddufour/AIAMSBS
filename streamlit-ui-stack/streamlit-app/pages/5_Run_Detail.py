@@ -1,4 +1,4 @@
-# pages/5_Run_Detail.py — AIAMSBS v1.0 customer single-run drilldown.
+# pages/5_Run_Detail.py — AdminLM v1.0 customer single-run drilldown.
 #
 # Card 4 of BACKLOG #64. URL: /Run_Detail?run_id=<uuid>. Reads the row
 # and its events from the local SQLite, then renders three tabs:

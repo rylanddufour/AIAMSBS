@@ -1,4 +1,4 @@
-# pages/4_Run_History.py — AIAMSBS v1.0 customer Run History list view.
+# pages/4_Run_History.py — AdminLM v1.0 customer Run History list view.
 #
 # Card 4 of BACKLOG #64. Lists every playbook_runs row joined with the
 # users table so the operator can see who triggered what. Filters: status,

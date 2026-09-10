@@ -1,8 +1,8 @@
-# AIAMSBS v1.0 customer Streamlit UI shell (BACKLOG #64, Card 3).
+# AdminLM v1.0 customer Streamlit UI shell (BACKLOG #64, Card 3).
 #
 # - python:3.12-slim keeps the image small (~150MB before deps).
 # - We install only what streamlit + auth + httpx health checks need.
-#   The ansible runner + docker SDK live in aiamsbs-ansible-stack (Card 2)
+#   The ansible runner + docker SDK live in adminlm-ansible-stack (Card 2)
 #   so this image never touches the docker socket.
 # - WORKDIR is /app/streamlit-app because we bind-mount ./streamlit-app
 #   there at runtime. The bind-mount contains Home.py + pages/ + auth.py

@@ -1,4 +1,4 @@
-# Home.py — AIAMSBS v1.0 customer landing page.
+# Home.py — AdminLM v1.0 customer landing page.
 #
 # Entry point. Sets page_config + auth gate + the post-login dashboard.
 # Card 4 (Run Playbook) and Card 5 (Agent Chat) add pages under pages/

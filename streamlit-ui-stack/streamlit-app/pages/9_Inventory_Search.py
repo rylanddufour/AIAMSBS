@@ -1,4 +1,4 @@
-# pages/9_Inventory_Search.py — AIAMSBS v1.0 customer Inventory Search.
+# pages/9_Inventory_Search.py — AdminLM v1.0 customer Inventory Search.
 #
 # Card 6 of BACKLOG #64. Read view over the inventory-mcp backend.
 # All access goes through `mcp_client` (MCP HTTP transport). No

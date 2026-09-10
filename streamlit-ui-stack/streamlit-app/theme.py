@@ -1,5 +1,5 @@
 """
-theme.py — AIAMSBS Streamlit custom CSS / design tokens (BACKLOG #72).
+theme.py — AdminLM Streamlit custom CSS / design tokens (BACKLOG #72).
 
 Single source of truth for every visual customisation that goes BEYOND
 what `.streamlit/config.toml` can express. config.toml handles the
@@ -44,7 +44,7 @@ _STATUS_GRAY = "#7f8c8d"
 # visible body text instead of injecting it as a style tag.
 _CSS_INNER = """
 /* ============================================================
-   AIAMSBS Dark Cyber — design tokens (BACKLOG #72)
+   AdminLM Dark Cyber — design tokens (BACKLOG #72)
    Edit this block to swap palettes. Keep in sync with config.toml.
    ============================================================ */
 /* Material Symbols Outlined font (MIT, Google Fonts CDN) — loaded
@@ -524,7 +524,7 @@ pre, [data-testid="stCodeBlock"] {
 
 
 def apply_theme() -> None:
-    """Inject the AIAMSBS custom CSS into the current page.
+    """Inject the AdminLM custom CSS into the current page.
 
     Call once per page after st.set_page_config + auth. Idempotent.
 
@@ -538,7 +538,7 @@ def apply_theme() -> None:
 
 
 # ============================================================
-# AIAMSBS page-icon registry
+# AdminLM page-icon registry
 # ============================================================
 # Single source of truth for which Material Symbols name maps to
 # which page / element. Edit here when adding a new page; no
@@ -715,7 +715,7 @@ def section_header(title: str) -> None:
     )
 
 
-# AIAMSBS favicon. Inline SVG (data: URL) so the browser tab +
+# AdminLM favicon. Inline SVG (data: URL) so the browser tab +
 # bookmarks show the same glyph on every page. Drop-in for
 # st.set_page_config(page_icon=ADMINLM_FAVICON).
 # Glyph: stylized "A" inside a shield — matches the dark-cyber
@@ -909,7 +909,7 @@ _ICON_CSS = """
 /* The browser-tab favicon doesn't get our CSS — it's set via
    set_page_config(page_icon=...). We ship a small inline SVG as a
    consistent favicon across all pages so the browser tab always
-   shows the AIAMSBS glyph (a stylized "A" shield). */
+   shows the AdminLM glyph (a stylized "A" shield). */
 
 /* ============================================================
    Icon button (drop-in replacement for st.page_link when the icon

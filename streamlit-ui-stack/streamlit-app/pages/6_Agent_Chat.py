@@ -1,4 +1,4 @@
-# pages/6_Agent_Chat.py — AIAMSBS v1.0 customer Agent Chat.
+# pages/6_Agent_Chat.py — AdminLM v1.0 customer Agent Chat.
 #
 # Card 5 of BACKLOG #64. Single-page chat that NEVER navigates away.
 #

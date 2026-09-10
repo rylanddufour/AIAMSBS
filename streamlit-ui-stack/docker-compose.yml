@@ -54,7 +54,7 @@ services:
       # alloy container's read-only bind mount of /home/ansible/.hermes/logs.
       # So streamlit's loki_logger writes need to land in a subdir of that
       # shared mount — otherwise alloy never sees the events and the audit
-      # trail is lost. We bind-mount the aiamsbs-streamlit subdir directly
+      # trail is lost. We bind-mount the adminlm-streamlit subdir directly
       # so the container can write there without re-mounting the whole
       # ~/.hermes/logs tree (which would leak the operator's other logs).
       # The host directory must pre-exist with write permission for the
@@ -69,25 +69,25 @@ services:
       - ./streamlit-app:/app/streamlit-app:ro
       # loki_logger.py is Card 2's shared log-shipper module. The
       # ./streamlit-app directory contains a SYMLINK at loki_logger.py
-      # pointing to ../../aiamsbs-ansible-stack/loki_logger.py. On the
+      # pointing to ../../adminlm-ansible-stack/loki_logger.py. On the
       # host that resolves correctly. Inside the container, though,
       # Python's import machinery can't resolve the symlink's relative
       # target (the symlink target crosses a bind-mount boundary), so
       # we set PYTHONPATH below to point at the mounted target dir.
-      # Mounting JUST this one file (not the whole aiamsbs-ansible-stack
+      # Mounting JUST this one file (not the whole adminlm-ansible-stack
       # dir) keeps Card 2's other internals out of the streamlit-ui
-      # container. Source-of-truth: ~/AIAMSBS/aiamsbs-ansible-stack/loki_logger.py
+      # container. Source-of-truth: ~/AdminLM/adminlm-ansible-stack/loki_logger.py
       # exists on .220 (Card 2 created it).
       - ../adminlm-ansible-stack/loki_logger.py:/app/adminlm-ansible-stack/loki_logger.py:ro
       # Card 4 (Run Playbook) needs read-only access to the playbook and
       # inventory trees so the dropdown can list filenames without
-      # `docker exec` into aiamsbs-ansible. The Card 2 stack bind-mounts
-      # these into aiamsbs-ansible at /ansible/{playbooks,inventory} as
+      # `docker exec` into adminlm-ansible. The Card 2 stack bind-mounts
+      # these into adminlm-ansible at /ansible/{playbooks,inventory} as
       # RW. We add the SAME directory at the SAME in-container path as
       # a read-only bind mount. The :ro flag means streamlit-ui can
-      # NEVER modify ansible content — only aiamsbs-ansible (via docker
-      # exec) can. The relative path is ../aiamsbs-ansible-stack/...
-      # because streamlit-ui-stack/ is a sibling of aiamsbs-ansible-stack/.
+      # NEVER modify ansible content — only adminlm-ansible (via docker
+      # exec) can. The relative path is ../adminlm-ansible-stack/...
+      # because streamlit-ui-stack/ is a sibling of adminlm-ansible-stack/.
       # Source-of-truth check: paths exist on .220 (Card 2 created them).
       - ../adminlm-ansible-stack/playbooks:/ansible/playbooks:ro
       - ../adminlm-ansible-stack/inventory:/ansible/inventory:ro
@@ -132,17 +132,17 @@ services:
       - HERMES_MODEL=${HERMES_MODEL:-minimax/minimax-m3}
       - HERMES_PROFILE=${HERMES_PROFILE:-it_admin}
       # ---- Loki logger output dir ----
-      # Card 2's alloy tails /var/lib/hermes/logs/aiamsbs-streamlit/*.log
-      # (see config/alloy.yml, the aiamsbs-streamlit block). We bind-mount
+      # Card 2's alloy tails /var/lib/hermes/logs/adminlm-streamlit/*.log
+      # (see config/alloy.yml, the adminlm-streamlit block). We bind-mount
       # that exact host path into the container at /home/ansible/.hermes/logs/
-      # aiamsbs-streamlit above, and point loki_logger here. Result:
+      # adminlm-streamlit above, and point loki_logger here. Result:
       # streamlit events → NDJSON file → alloy tails → Loki with labels
       # {job="adminlm-streamlit", source="adminlm_host"}.
       - LOKI_LOG_DIR=/home/ansible/.hermes/logs/adminlm-streamlit
       # ---- PYTHONPATH for the bind-mounted loki_logger.py ----
       # The symlink at ./streamlit-app/loki_logger.py doesn't resolve
       # inside the container (its target crosses a bind-mount boundary).
-      # We bind-mount loki_logger.py into /app/aiamsbs-ansible-stack/
+      # We bind-mount loki_logger.py into /app/adminlm-ansible-stack/
       # and add that dir to PYTHONPATH so the `from loki_logger import
       # log_event` calls in Home.py / auth.py / KB_Search / etc. find it.
       # See the bind-mount comment for the full root-cause notes.

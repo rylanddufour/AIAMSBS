@@ -1,7 +1,7 @@
 # Streamlit runtime config. Theme + telemetry. Server flags live in the
 # Dockerfile ENTRYPOINT (so they show up in `docker inspect`).
 #
-# Theme: AIAMSBS "Dark Cyber" (BACKLOG #72).
+# Theme: AdminLM "Dark Cyber" (BACKLOG #72).
 #   * Operator constraint: NO white background. Pre-#72 the background
 #     was #ffffff (Streamlit default). Now flipped to deep-navy.
 #   * primaryColor = cyan accent for buttons / focus rings.

@@ -1,9 +1,9 @@
-# pages/3_Run_Playbook.py — AIAMSBS v1.0 customer Run Playbook flow.
+# pages/3_Run_Playbook.py — AdminLM v1.0 customer Run Playbook flow.
 #
 # Card 4 of BACKLOG #64 (now Card 8's inline-inventory variant). The
 # headline v1.0 feature: a 5-stage Streamlit flow that lets an
 # authenticated operator pick a playbook + hosts + mode + credentials,
-# REQUIRES a confirmation click, then calls the aiamsbs-ansible-runner
+# REQUIRES a confirmation click, then calls the adminlm-ansible-runner
 # HTTP API with an HMAC-signed body. Every run is recorded in the local
 # SQLite (Card 3 schema) and emits Loki events for the audit trail.
 #
@@ -78,7 +78,7 @@ st.caption(
 )
 
 # ---------------------------------------------------------------------------
-# Filesystem roots (Card 4 RO bind mounts of aiamsbs-ansible's directories).
+# Filesystem roots (Card 4 RO bind mounts of adminlm-ansible's directories).
 # ---------------------------------------------------------------------------
 PLAYBOOK_ROOT = Path("/ansible/playbooks")
 
@@ -111,7 +111,7 @@ def _device_universe() -> tuple[list[dict], str | None]:
         return [], f"{type(e).__name__}: {e}"
 
 # Where the runner writes NDJSON (Card 2 mount). The streamlit shell has
-# /home/ansible/.hermes/logs/aiamsbs-streamlit set as LOKI_LOG_DIR — log
+# /home/ansible/.hermes/logs/adminlm-streamlit set as LOKI_LOG_DIR — log
 # events here land in alloy's file tailer and arrive in Loki.
 
 # ---------------------------------------------------------------------------
@@ -124,7 +124,7 @@ _SS = st.session_state
 def _ss_init() -> None:
     defaults = {
         "stage": 1,
-        # Runner-relative path: what the aiamsbs-ansible-runner needs in its
+        # Runner-relative path: what the adminlm-ansible-runner needs in its
         # POST body. The runner `docker exec`s into the ansible container
         # with workdir=/ansible, so it expects paths like
         # "playbooks/generated/hello.yml" — NOT picker-relative
