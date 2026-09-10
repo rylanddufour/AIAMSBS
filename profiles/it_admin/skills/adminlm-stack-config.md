@@ -1,23 +1,23 @@
-# skills/aiamsbs-stack-config.md — AIAMSBS stack — config file locations
+# skills/adminlm-stack-config.md — AdminLM stack — config file locations
 
 ## Purpose
 
-Canonical paths to the AIAMSBS monitoring stack config files on the AIAMSBS host. When the user asks to add, change, or inspect any AIAMSBS service config (Prometheus targets, Alloy sources, Loki, Grafana, Promtail, Blackbox), this skill points the agent at the right file.
+Canonical paths to the AdminLM monitoring stack config files on the AdminLM host. When the user asks to add, change, or inspect any AdminLM service config (Prometheus targets, Alloy sources, Loki, Grafana, Promtail, Blackbox), this skill points the agent at the right file.
 
 **Not** for general Linux admin or device inventory — those have their own skills.
 
 ## Where the configs live
 
-The AIAMSBS monitoring stack lives at `$INSTALL_BASE_DIR/AIAMSBS/` (defaults to `$HOME/AIAMSBS/`). All service config files under `config/` are bind-mounted (read-only) into their respective containers, so the host file is the **single source of truth** — there is no separate "in-container" copy to edit.
+The AdminLM monitoring stack lives at `$INSTALL_BASE_DIR/adminlm/` (defaults to `$HOME/adminlm/`). All service config files under `config/` are bind-mounted (read-only) into their respective containers, so the host file is the **single source of truth** — there is no separate "in-container" copy to edit.
 
 | Service | Config file |
 |---|---|
-| Prometheus | `$INSTALL_BASE_DIR/AIAMSBS/config/prometheus.yml` |
-| Alloy | `$INSTALL_BASE_DIR/AIAMSBS/config/alloy.yml` |
-| Loki | `$INSTALL_BASE_DIR/AIAMSBS/config/loki.yml` |
-| Promtail | `$INSTALL_BASE_DIR/AIAMSBS/config/promtail.yml` |
-| Blackbox | `$INSTALL_BASE_DIR/AIAMSBS/config/blackbox.yml` |
-| Grafana provisioning | `$INSTALL_BASE_DIR/AIAMSBS/config/grafana/provisioning/` |
+| Prometheus | `$INSTALL_BASE_DIR/adminlm/config/prometheus.yml` |
+| Alloy | `$INSTALL_BASE_DIR/adminlm/config/alloy.yml` |
+| Loki | `$INSTALL_BASE_DIR/adminlm/config/loki.yml` |
+| Promtail | `$INSTALL_BASE_DIR/adminlm/config/promtail.yml` |
+| Blackbox | `$INSTALL_BASE_DIR/adminlm/config/blackbox.yml` |
+| Grafana provisioning | `$INSTALL_BASE_DIR/adminlm/config/grafana/provisioning/` |
 
 ## Common mistakes to avoid
 

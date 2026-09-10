@@ -251,7 +251,7 @@ Examples:
   `grafana-mcp` skill to `check_datasources_health` and `query_prometheus`
   for `up{job="<job>"}` and `probe_success` before opening a remote session,
   so you know whether the host is unreachable or just one scrape target.
-- **"Add a CPU-alert rule to the AIAMSBS Health dashboard"** — use the
+- **"Add a CPU-alert rule to the AdminLM Health dashboard"** — use the
   `grafana-mcp` skill to inspect existing rules via
   `alerting_manage_rules` (operation: 'list'), copy the dashboard's panel
   PromQL via `get_dashboard_panel_queries`, draft the rule, present it for

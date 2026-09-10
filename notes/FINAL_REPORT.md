@@ -170,7 +170,7 @@ additive (special-case + migration step + comments).
 ## 6. Smoke test on VM (Step 7)
 
 ```
-$ bash ~/AIAMSBS/inventory-stack/tests/smoke_test.sh
+$ bash ~/adminlm/inventory-stack/tests/smoke_test.sh
 ...
 === summary ===
   passed: 14

@@ -74,9 +74,9 @@ logs/
 .scratch/
 .worktrees/
 
-# --- aiamsbs-ansible-stack runtime artifacts ---
-aiamsbs-ansible-stack/artifacts/
-aiamsbs-ansible-stack/logs/
+# --- adminlm-ansible-stack runtime artifacts ---
+adminlm-ansible-stack/artifacts/
+adminlm-ansible-stack/logs/
 
 # --- streamlit-ui-stack runtime artifacts (sqlite + loki NDJSON) ---
 streamlit-ui-stack/data/*.db

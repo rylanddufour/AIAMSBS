@@ -1,8 +1,8 @@
-# skills/aiamsbs-backup.md — AIAMSBS stack backup
+# skills/adminlm-backup.md — AdminLM stack backup
 
 ## Purpose
 
-Documents the daily AIAMSBS stack backup workflow so the IT_ADMIN agent can run, verify, and troubleshoot it. Captures everything needed to restore the AIAMSBS stack to a working state without depending on git or upstream services — per the BACKLOG #6 "Backup script" work, **the customer can never push changes to the aiamsbs repo**, so the backup must be self-contained.
+Documents the daily AdminLM stack backup workflow so the IT_ADMIN agent can run, verify, and troubleshoot it. Captures everything needed to restore the AdminLM stack to a working state without depending on git or upstream services — per the BACKLOG #6 "Backup script" work, **the customer can never push changes to the adminlm repo**, so the backup must be self-contained.
 
 ## When to use
 
@@ -19,11 +19,11 @@ Documents the daily AIAMSBS stack backup workflow so the IT_ADMIN agent can run,
 | Section | Source | Purpose on restore |
 |---|---|---|
 | `dashboards/*.json` | Grafana API export (one per dashboard UID) | Recreates the dashboard as Grafana sees it; catches UI edits |
-| `dashboards-provisioned/*.json` | Filesystem copy of `~/AIAMSBS/config/grafana/provisioning/dashboards/*.json` | Catches provisioning source-of-truth (uid, datasource refs, provisioning metadata) — important when a customer edits a default dashboard |
+| `dashboards-provisioned/*.json` | Filesystem copy of `~/adminlm/config/grafana/provisioning/dashboards/*.json` | Catches provisioning source-of-truth (uid, datasource refs, provisioning metadata) — important when a customer edits a default dashboard |
 | `hermes/backup.zip` | `hermes backup --output ...` (built-in CLI) | Single zip of `~/.hermes` — profiles, skills, sessions, kanban, cron jobs, .env, secrets |
 | `db/inventory.db` | `docker exec inventory-mcp sqlite3 .backup` + `docker cp` | The inventory database (all discovered devices) |
 | `db/kb.db` | same pattern against `kb-mcp` | The KB content database |
-| `config/alloy.yml`, `blackbox.yml`, `loki.yml`, `prometheus.yml`, `promtail.yml` | Filesystem copy from `~/AIAMSBS/config/` | The actual on-host config (may have local edits not in git) |
+| `config/alloy.yml`, `blackbox.yml`, `loki.yml`, `prometheus.yml`, `promtail.yml` | Filesystem copy from `~/adminlm/config/` | The actual on-host config (may have local edits not in git) |
 | `config/datasources.yml`, `config/dashboards.yml` | Same | Grafana provisioning metadata |
 | `MANIFEST.json` | Generated at the end | Counts + sizes for verification |
 
@@ -42,7 +42,7 @@ Documents the daily AIAMSBS stack backup workflow so the IT_ADMIN agent can run,
 
 - `GRAFANA_URL` — default `http://localhost:3000`
 - `GRAFANA_TOKEN_FILE` — default `~/.hermes/secrets/grafana-mcp.env`
-- `AIAMSBS_DIR` — default `~/AIAMSBS` (root of the AIAMSBS config tree)
+- `AIAMSBS_DIR` — default `~/AIAMSBS` (root of the AdminLM config tree)
 - `BACKUP_DIR` — default `~/backups`
 - `KEEP` — default `14` daily backups retained
 
@@ -90,7 +90,7 @@ The manifest is the quickest way to verify a backup:
 {
   "schema_version": 2,
   "generated_at": "2026-07-07T...",
-  "aiamsbs_dir": "/home/ansible/AIAMSBS",
+  "aiamsbs_dir": "/home/ansible/adminlm",
   "grafana_url": "http://localhost:3000",
   "dashboards_api_exported": 12,
   "dashboards_provisioned_files": 12,

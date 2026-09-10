@@ -23,7 +23,7 @@ import urllib.request
 
 INVENTORY_URL = "http://localhost:8001/mcp"
 PROM_RELOAD_URL = "http://localhost:9090/-/reload"
-INSTALL_DIR = os.environ.get("AIAMSBS_INSTALL_DIR", os.path.expanduser("~/AIAMSBS"))
+INSTALL_DIR = os.environ.get("ADMINLM_INSTALL_DIR", os.path.expanduser("~/adminlm"))
 TARGETS_DIR = os.path.join(INSTALL_DIR, "config/prometheus/targets")
 TARGETS_FILE = os.path.join(TARGETS_DIR, "blackbox_inventory.json")
 

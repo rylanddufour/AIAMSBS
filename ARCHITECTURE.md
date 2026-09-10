@@ -1,4 +1,4 @@
-# AIAMSBS Architecture Reference
+# AdminLM Architecture Reference
 
 ## Alloy Configuration Details
 

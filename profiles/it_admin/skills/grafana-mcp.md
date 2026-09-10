@@ -37,7 +37,7 @@ Common triggers:
   recent errors from that service
 - "What alerts are firing?" → `list_alert_groups`, `get_alert_group`,
   `alerting_manage_rules` (operation: 'list')
-- "Add a CPU alert rule to the AIAMSBS Health dashboard" →
+- "Add a CPU alert rule to the AdminLM Health dashboard" →
   `search_dashboards` → `get_dashboard_panel_queries` → draft rule →
   approval → `alerting_manage_rules` (operation: 'create')
 - "Where did the 5xx errors spike?" → `query_loki_logs` with `{job="..."}`

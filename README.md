@@ -1,4 +1,4 @@
-# AIAMSBS - AI Agent Managed Services for SMBs
+# AdminLM - AI Agent Managed Services for SMBs
 
 Self-hosting infrastructure platform using Hermes Agent.
 
@@ -16,14 +16,14 @@ The bootstrap script supports both CLI arguments and interactive mode. **CLI is 
 
 ```bash
 # Replace YOUR_API_KEY with your actual API key
-curl -fsSL https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh | bash -s -- --api-key YOUR_API_KEY --provider openrouter
+curl -fsSL https://raw.githubusercontent.com/rylanddufour/adminlm/main/bootstrap.sh | bash -s -- --api-key YOUR_API_KEY --provider openrouter
 ```
 
 **Supported providers:** `openai`, `anthropic`, `openrouter`, `google`
 
 Example with model:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh | bash -s -- --api-key sk-xxx --provider openrouter --model openai/chatgpt-4o-latest
+curl -fsSL https://raw.githubusercontent.com/rylanddufour/adminlm/main/bootstrap.sh | bash -s -- --api-key sk-xxx --provider openrouter --model openai/chatgpt-4o-latest
 ```
 
 ### Interactive Mode (Advanced)
@@ -32,7 +32,7 @@ If you prefer to be prompted for each option, clone the script first and run it 
 
 ```bash
 # Download script first
-curl -fsSL -o bootstrap.sh https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh
+curl -fsSL -o bootstrap.sh https://raw.githubusercontent.com/rylanddufour/adminlm/main/bootstrap.sh
 
 # Make executable and run (stdin will be your terminal)
 chmod +x bootstrap.sh

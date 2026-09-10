@@ -1,8 +1,8 @@
-# skills/aiamsbs-kb.md — AIAMSBS knowledge base authoring
+# skills/adminlm-kb.md — AdminLM knowledge base authoring
 
 ## Purpose
 
-How an agent should write to the AIAMSBS knowledge base via the `kb-mcp` MCP tools (`kb_add`, `kb_update`, `kb_search`, `kb_list`, `kb_get`, `kb_delete`). The skill exists so that every entry — written by any agent, any subagent, any future model — is **discoverable, scannable, and trustworthy** six months from now.
+How an agent should write to the AdminLM knowledge base via the `kb-mcp` MCP tools (`kb_add`, `kb_update`, `kb_search`, `kb_list`, `kb_get`, `kb_delete`). The skill exists so that every entry — written by any agent, any subagent, any future model — is **discoverable, scannable, and trustworthy** six months from now.
 
 The number one failure mode of a knowledge base is entries that no one can find later. This skill prevents that.
 
@@ -221,7 +221,7 @@ Six months later, a customer sees the same symptom, types `Win11 link_down` into
 
 ## Related skills / files
 
-- `skills/aiamsbs-backup.md` — how the KB database gets backed up.
-- `skills/monitoring-observability.md` — where Prometheus, Loki, and the KB live in the AIAMSBS stack.
+- `skills/adminlm-backup.md` — how the KB database gets backed up.
+- `skills/monitoring-observability.md` — where Prometheus, Loki, and the KB live in the AdminLM stack.
 - BACKLOG #57 (the kb-mcp `/ui/` regression that originally surfaced the title gap).
-- The kb-mcp web UI at `http://<aiamsbs-host>:8002/ui/` for human authoring and review.
+- The kb-mcp web UI at `http://<adminlm-host>:8002/ui/` for human authoring and review.

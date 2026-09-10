@@ -12,7 +12,7 @@ If you find a security vulnerability in this project, please report it responsib
 
 1. **Review the script** — Always read `bootstrap.sh` before running it on your system:
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh | less
+   curl -fsSL https://raw.githubusercontent.com/rylanddufour/adminlm/main/bootstrap.sh | less
    ```
 
 2. **Understand what it does** — The script installs:
@@ -47,14 +47,14 @@ export POSTGRES_MCP_DATABASE_URI=postgresql://user:pass@host:5432/db
 
 ### Skill Self-Modification Protection
 
-AIAMSBS hardens the Hermes agent against editing its own skill files. Out of the box, `~/.hermes/profiles/*/skills/*.md` is **not** in `file_tools._SENSITIVE_PATH_PREFIXES` (only `/etc/`, `/boot/`, `/usr/lib/systemd/`, etc. are), so a prompt-injected or misbehaving agent can rewrite its own instructions.
+AdminLM hardens the Hermes agent against editing its own skill files. Out of the box, `~/.hermes/profiles/*/skills/*.md` is **not** in `file_tools._SENSITIVE_PATH_PREFIXES` (only `/etc/`, `/boot/`, `/usr/lib/systemd/`, etc. are), so a prompt-injected or misbehaving agent can rewrite its own instructions.
 
 `bootstrap.sh` `configure_skill_safety()` (called from `main()` after `configure_hermes_api`) sets two flags in `~/.hermes/config.yaml`:
 
 - `skills.write_approval: true` — agent skill writes are staged to `/skills pending` for human review via `tools/write_approval.py:253` instead of auto-applying.
 - `skills.guard_agent_created: true` — agent-created skills are scanned by `tools/skills_guard.py` for exfiltration, prompt injection, destructive commands, and persistence patterns before install.
 
-Both flags are off by default in upstream Hermes. AIAMSBS turns them on as a baseline. See `obsidian_vaults/agent vault/AIAMSBS_Docs_Diagrams/2026-06-27-skill-safety-gates.md` for the full design + PR #8. Closes BACKLOG #22.
+Both flags are off by default in upstream Hermes. AdminLM turns them on as a baseline. See `obsidian_vaults/agent vault/adminlm_Docs_Diagrams/2026-06-27-skill-safety-gates.md` for the full design + PR #8. Closes BACKLOG #22.
 
 ### SSH Access
 

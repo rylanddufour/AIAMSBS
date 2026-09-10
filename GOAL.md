@@ -1,4 +1,4 @@
-# AIAMSBS Deployment
+# AdminLM Deployment
 
 **This document is historical.** It used to be a "deployment plan" that an
 LLM agent would follow when prompted via `hermes chat -q "$(cat GOAL.md)"`.
@@ -6,12 +6,12 @@ That approach has been retired.
 
 ## Current deployment path
 
-`bootstrap.sh` is the **single source of truth** for installing AIAMSBS.
+`bootstrap.sh` is the **single source of truth** for installing AdminLM.
 It does everything this document used to describe — and more — deterministically
 (no LLM in the deploy path):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh | \
+curl -fsSL https://raw.githubusercontent.com/rylanddufour/adminlm/main/bootstrap.sh | \
   bash -s -- --api-key YOUR_KEY --provider openrouter --model minimax/minimax-m2.5
 ```
 
@@ -39,7 +39,7 @@ end-to-end smoke test that confirms the entire stack is healthy.
 
 ## Adding new deployment logic
 
-If you need to change how AIAMSBS is deployed:
+If you need to change how AdminLM is deployed:
 
 1. **Edit `bootstrap.sh`** — add or modify a function, wire it into `main()`.
 2. **Re-run bootstrap on a clean VM** (via Proxmox snapshot rollback) to verify.
@@ -51,7 +51,7 @@ If you need to change how AIAMSBS is deployed:
 - `README.md` — quick start
 - `BACKLOG.md` — feature backlog
 - `SECURITY.md` — vulnerability reporting
-- AIAMSBS_Docs_Diagrams (OneDrive) — full docs project including operational
+- adminlm_Docs_Diagrams (OneDrive) — full docs project including operational
   walkthroughs and troubleshooting
 
 ## Version
