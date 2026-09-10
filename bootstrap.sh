@@ -51,11 +51,11 @@ CLI_MODEL=""
 AUTO_DEPLOY=true
 DASHBOARD_USER="admin"
 # BACKLOG #64 (v1.0 customer-facing deployment). The customer-facing services
-# (aiamsbs-ansible + aiamsbs-ansible-runner + streamlit-ui) are always deployed
+# (adminlm-ansible + adminlm-ansible-runner + streamlit-ui) are always deployed
 # with the main stack — they live in docker-compose.yml, not an overlay.
 # Customer-vs-operator visibility is governed by authentication, not install
 # flags.
-# Removed 2026-08-20: --v1-private CLI flag and AIAMSBS_DEPLOY_V1_PRIVATE env var.
+# Removed 2026-08-20: --v1-private CLI flag and ADMINLM_DEPLOY_V1_PRIVATE env var.
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -634,7 +634,7 @@ YAML
 # ============================================
 # Configure skill safety gates
 # ============================================
-# Hardens AIAMSBS against agent self-modification of skill files. The
+# Hardens AdminLM against agent self-modification of skill files. The
 # ~/.hermes/profiles/*/skills/*.md paths are NOT in file_tools' sensitive
 # path list (only /etc/, /boot/, /usr/lib/systemd/ are protected), so the
 # agent can edit its own skills out of the box. Two gates close this gap:
@@ -645,7 +645,7 @@ YAML
 #                                 exfiltration, persistence, and destructive
 #                                 patterns (tools/skills_guard.py scanner).
 #
-# Both flags are off by default in upstream Hermes. AIAMSBS turns them on as
+# Both flags are off by default in upstream Hermes. AdminLM turns them on as
 # a baseline so a misbehaving subagent or a prompt-injected agent cannot
 # silently rewrite its own instructions. Surfaced 2026-06-27 by review of
 # tools/file_tools.py + tools/skills_guard.py.
@@ -1023,7 +1023,7 @@ start_hermes_dashboard() {
 # Install Hermes Gateway systemd service
 # ============================================
 # Writes a unit file so the hermes-gateway daemon (and therefore every
-# Hermes cron job, e.g. AIAMSBS Dashboard Backup) survives reboots and is
+# Hermes cron job, e.g. AdminLM Dashboard Backup) survives reboots and is
 # supervised by systemd. The gateway is the daemon that TICKS scheduled
 # jobs — without it, cron entries are registered in jobs.json but never
 # fire. See hermes_agent/cron/__init__.py: "Cron jobs are executed
@@ -1319,7 +1319,7 @@ EOF
 #
 # Pre-req: HERMES_HOME must exist (set up by install_hermes) and the SA token
 # file must exist at $HERMES_HOME/secrets/grafana-mcp.env (set up by
-# create_grafana_mcp_service_account). The aiamsbs-backup.sh script reads
+# create_grafana_mcp_service_account). The adminlm-backup.sh script reads
 # that token file at runtime, so install_backup_scripts MUST run after
 # create_grafana_mcp_service_account.
 
@@ -1365,7 +1365,7 @@ install_backup_scripts() {
 # Install Dashboard Backup Cron (Hermes-managed cron)
 # ============================================
 # Registers a Hermes cron job against the it_admin profile that runs the
-# aiamsbs-backup.sh script daily at 01:00. Replaces the legacy
+# adminlm-backup.sh script daily at 01:00. Replaces the legacy
 # /etc/cron.d/aiamsbs-dashboard-backup system cron (which the Python helper
 # removes on first run).
 #
@@ -1380,9 +1380,9 @@ install_backup_scripts() {
 #     (e.g. a restore-dashboard workflow) can still register additional
 #     it_admin-scoped cron jobs as needed.
 #
-# The shell script (scripts/aiamsbs-backup.sh) is the workhorse and is
+# The shell script (scripts/adminlm-backup.sh) is the workhorse and is
 # unchanged. The agent's prompt is a thin wrapper that invokes the script
-# and reports the result. See skills/aiamsbs-backup.md (installed to
+# and reports the result. See skills/adminlm-backup.md (installed to
 # both the it_admin profile AND the default profile by bootstrap) for
 # what the agent sees.
 #
@@ -1407,7 +1407,7 @@ install_dashboard_backup_hermes_cron() {
         fi
     fi
 
-    log_info "Registering AIAMSBS Dashboard Backup as a Hermes cron job (profile=default, daily 01:00)..."
+    log_info "Registering AdminLM Dashboard Backup as a Hermes cron job (profile=default, daily 01:00)..."
     # The helper handles the jobs.json edit + idempotency + legacy removal.
     # Second arg "default" is legacy/ignored — the helper hardcodes "default"
     # because the cron scheduler runs under the default profile regardless.
@@ -1420,7 +1420,7 @@ install_dashboard_backup_hermes_cron() {
 
 # BACKLOG #39.6 — register the daily inventory discovery cron.
 # install_inventory_discovery_hermes_cron [no args]
-# Registers the "AIAMSBS Inventory Discovery" cron job with Hermes
+# Registers the "AdminLM Inventory Discovery" cron job with Hermes
 # (profile=default, daily 02:00). Idempotent — re-running updates the
 # existing job in place (matches by name, not id).
 # Idempotency + jobs.json edit live in
@@ -1433,7 +1433,7 @@ install_inventory_discovery_hermes_cron() {
         log_warn "(install_backup_scripts should have installed it; check that step)"
         return 0
     fi
-    log_info "Registering AIAMSBS Inventory Discovery as a Hermes cron job (profile=default, daily 02:00)..."
+    log_info "Registering AdminLM Inventory Discovery as a Hermes cron job (profile=default, daily 02:00)..."
     # Second arg "default" is legacy/ignored — the helper hardcodes "default"
     # because the cron scheduler runs under the default profile regardless.
     if python3 "$helper" "$HERMES_HOME" default; then
@@ -1544,7 +1544,7 @@ deploy_inventory_stack() {
 # register_inventory_mcp [profile_name]
 # Registers the inventory-mcp MCP server in a Hermes profile's config.yaml.
 # Profiles: 'default' (the customer's default Hermes profile) and 'it_admin'
-# (the AIAMSBS specialist IT admin profile). Both profiles get wired in so the
+# (the AdminLM specialist IT admin profile). Both profiles get wired in so the
 # customer can ask either one about inventory.
 #
 # Hermes profile paths (verified 2026-06-27 via `hermes profile show <name>`):
@@ -1782,7 +1782,7 @@ install_inventory_discovery_skill() {
 # Background: the Hermes cron scheduler runs as the default-profile
 # process (HERMES_HOME=~/.hermes), so any skill referenced by a cron
 # job's ``skills:`` field must be resolvable from the default profile.
-# The AIAMSBS crons (backup, inventory-discovery) currently reference
+# The AdminLM crons (backup, inventory-discovery) currently reference
 # their skills by bare name (no profile prefix). The inventory-discovery
 # skill is already installed to ~/.hermes/skills/ by
 # install_inventory_discovery_skill() above. This function handles the
@@ -1941,7 +1941,7 @@ deploy_kb_stack() {
     fi
 
     # BACKLOG #47 (sub-item of #30): install SMB/CIFS + NFS client tooling on
-    # the AIAMSBS host so the agent can mount Windows file shares (CIFS) and
+    # the AdminLM host so the agent can mount Windows file shares (CIFS) and
     # NFS exports for KB ingestion. cifs-utils provides mount.cifs, nfs-common
     # provides mount.nfs, smbclient is the command-line SMB browser used for
     # share discovery and quick reads. Check via dpkg rather than command -v
@@ -1977,7 +1977,7 @@ deploy_kb_stack() {
 # Deploy v1.0 Customer-Facing Services (BACKLOG #64, Cards 2-6)
 # ============================================
 #
-# The customer-facing services (aiamsbs-ansible, aiamsbs-ansible-runner,
+# The customer-facing services (adminlm-ansible, adminlm-ansible-runner,
 # streamlit-ui) live in docker-compose.yml — always deployed with the main
 # stack. No opt-in gate, no overlay.
 #
@@ -1993,23 +1993,23 @@ deploy_aiamsbs_ansible_stack() {
     local main_compose="$infra_dir/docker-compose.yml"
 
     if [ ! -f "$main_compose" ]; then
-        log_warn "Main compose not found at $main_compose; skipping aiamsbs-ansible deploy"
+        log_warn "Main compose not found at $main_compose; skipping adminlm-ansible deploy"
         return 0
     fi
 
-    log_info "Deploying aiamsbs-ansible (Card 2 — Ansible runtime + runner)..."
+    log_info "Deploying adminlm-ansible (Card 2 — Ansible runtime + runner)..."
 
-    if sg docker -c "docker compose -f '$main_compose' up -d aiamsbs-ansible aiamsbs-ansible-runner" 2>&1 | tail -15; then
-        log_success "aiamsbs-ansible stack deployed (Card 2 — ansible + runner on monitoring network)"
+    if sg docker -c "docker compose -f '$main_compose' up -d adminlm-ansible adminlm-ansible-runner" 2>&1 | tail -15; then
+        log_success "adminlm-ansible stack deployed (Card 2 — ansible + runner on monitoring network)"
     else
-        log_warn "aiamsbs-ansible stack deployment failed; continuing"
+        log_warn "adminlm-ansible stack deployment failed; continuing"
         return 0
     fi
 }
 
 # Observability stack — the Prometheus / Loki / Grafana / Alloy / Promtail
 # / blackbox_exporter services that verify_installation() checks at the end
-# of bootstrap. They live in the SAME docker-compose.yml as aiamsbs-ansible
+# of bootstrap. They live in the SAME docker-compose.yml as adminlm-ansible
 # + streamlit-ui but were historically deployed by the orchestrator's initial
 # setup rather than by bash bootstrap.sh. That left a gap after any
 # snapshot rollback + bootstrap: the verify step at the end of bootstrap
@@ -2049,10 +2049,10 @@ deploy_observability_stack() {
     fi
 
     # prometheus + loki + grafana + alloy + promtail + alloy-customer + blackbox_exporter.
-    # We deliberately do NOT include aiamsbs-ansible / aiamsbs-ansible-runner /
+    # We deliberately do NOT include adminlm-ansible / adminlm-ansible-runner /
     # streamlit-ui here — those are owned by deploy_aiamsbs_ansible_stack and
     # deploy_streamlit_ui_stack respectively so we can keep them ordered
-    # (streamlit-ui needs aiamsbs-ansible-runner for HMAC-signed POSTs).
+    # (streamlit-ui needs adminlm-ansible-runner for HMAC-signed POSTs).
     if sg docker -c "docker compose -f '$main_compose' up -d prometheus loki grafana alloy promtail alloy-customer blackbox_exporter" 2>&1 | tail -15; then
         log_success "Observability stack deployed (Prometheus/Loki/Grafana/Alloy/Promtail/blackbox_exporter on monitoring network)"
     else
@@ -2091,12 +2091,12 @@ deploy_streamlit_ui_stack() {
 
     log_info "Deploying streamlit-ui (Cards 3-6 — customer Streamlit UI)..."
 
-    # streamlit-ui depends on aiamsbs-ansible-runner being up (HMAC-signed
+    # streamlit-ui depends on adminlm-ansible-runner being up (HMAC-signed
     # POSTs to it from the Run Playbook page). Docker Compose's
     # depends_on handles that for the full `up -d`, but here we scope
     # to just streamlit-ui. The container will start as soon as the
     # runner's healthcheck reports healthy, regardless of declaration
-    # order. If aiamsbs-ansible-runner isn't up yet, this is a no-op
+    # order. If adminlm-ansible-runner isn't up yet, this is a no-op
     # and a second `up -d streamlit-ui` brings it up.
     if sg docker -c "docker compose -f '$main_compose' up -d streamlit-ui" 2>&1 | tail -15; then
         log_success "streamlit-ui deployed (Cards 3-6 — customer UI on port 80)"
@@ -2333,7 +2333,7 @@ verify_service_health() {
 }
 
 # list_listening_ports
-# Prints the bind address + scope for every known AIAMSBS port that's
+# Prints the bind address + scope for every known AdminLM port that's
 # currently listening. Reads ss(8) output — does not require docker access.
 list_listening_ports() {
     local line addr port scope
@@ -2345,7 +2345,7 @@ list_listening_ports() {
         # Extract port (last colon-separated field, strip trailing ] for IPv6)
         port="${addr##*:}"
         port="${port%]}"
-        # Filter to known AIAMSBS ports
+        # Filter to known AdminLM ports
         case "$port" in
             514|1514|3000|3100|8000|8001|8002|8003|9090|9119|12345) ;;
             *) continue ;;
@@ -2389,7 +2389,7 @@ print_access_summary() {
     echo "  Bootstrap Complete!"
     echo "============================================"
     echo ""
-    echo "  Access your AIAMSBS host (http://$host_ip):"
+    echo "  Access your AdminLM host (http://$host_ip):"
     echo ""
     echo "  📊 Grafana (visualization)"
     echo "     URL:      http://$host_ip:3000"
@@ -2463,13 +2463,13 @@ print_customer_facing_post_install() {
     echo "        the agent never runs ansible-playbook directly)."
     echo ""
     echo "  📊 Loki query labels (Grafana → Explore → Loki):"
-    echo "     Ansible runs:   {job=\"aiamsbs-ansible\"}"
-    echo "     Streamlit UI:   {job=\"aiamsbs-streamlit\"}"
-    echo "     Per-run query:  {job=\"aiamsbs-ansible\", run_id=\"<uuid>\"}"
+    echo "     Ansible runs:   {job=\"adminlm-ansible\"}"
+    echo "     Streamlit UI:   {job=\"adminlm-streamlit\"}"
+    echo "     Per-run query:  {job=\"adminlm-ansible\", run_id=\"<uuid>\"}"
     echo "     UI events:      {stream=\"streamlit|chat|kb|inventory\"}"
     echo ""
     echo "  🔄 Re-deploy (idempotent — no rebuild on healthy state):"
-    echo "     cd ~/AIAMSBS"
+    echo "     cd ~/adminlm"
     echo "     docker compose up -d"
     echo "============================================"
     echo ""
@@ -2541,12 +2541,12 @@ verify_installation() {
         verify_service_health "Streamlit UI"    "http://localhost:80/_stcore/health"    "200"    || errors=$((errors+1))
         # BACKLOG #65 — ansible-runner /health probe. The runner listens on
         # 8000 INSIDE the monitoring network but has NO host port mapping
-        # (intentional — streamlit talks to it via aiamsbs-ansible-runner:8000
+        # (intentional — streamlit talks to it via adminlm-ansible-runner:8000
         # on the docker network, no host exposure needed). We probe it from
         # the host via `docker exec python3 -c "urllib..."` since the runner
         # image is minimal (no curl/wget; just python:3.12-slim + tini +
         # fastapi/uvicorn/docker/httpx). The runner's /health returns 200
-        # iff the aiamsbs-ansible container is reachable via the docker
+        # iff the adminlm-ansible container is reachable via the docker
         # socket — catching both runner-down AND ansible-container-down.
         local runner_code
         runner_code=$(sg docker -c "docker exec aiamsbs-ansible-runner python3 -c 'import urllib.request,urllib.error,sys
@@ -2560,10 +2560,10 @@ except Exception:
         if [ "$runner_code" = "200" ]; then
             log_success "  ✓ Ansible Runner (Run Playbook backend): HTTP 200"
         elif [ "$runner_code" = "503" ]; then
-            log_warn "  ✗ Ansible Runner: HTTP 503 (degraded — aiamsbs-ansible container not reachable via docker socket; check 'docker ps | grep aiamsbs-ansible')"
+            log_warn "  ✗ Ansible Runner: HTTP 503 (degraded — aiamsbs-ansible container not reachable via docker socket; check 'docker ps | grep adminlm-ansible')"
             errors=$((errors+1))
         else
-            log_warn "  ✗ Ansible Runner: HTTP $runner_code (expected 200; check 'docker ps | grep aiamsbs-ansible-runner' and runner logs at /home/ansible/.hermes/logs/aiamsbs-ansible/runner.log)"
+            log_warn "  ✗ Ansible Runner: HTTP $runner_code (expected 200; check 'docker ps | grep adminlm-ansible-runner' and runner logs at /home/ansible/.hermes/logs/adminlm-ansible/runner.log)"
             errors=$((errors+1))
         fi
         # Hermes API server: 200 with key, 401 without. We pass the key from
@@ -2591,21 +2591,21 @@ except Exception:
             errors=$((errors+1))
         fi
         # BACKLOG #67 — Run Playbook "playbook not found" smoke check.
-        # Verify the aiamsbs-ansible container can resolve the same playbook
+        # Verify the adminlm-ansible container can resolve the same playbook
         # paths that the streamlit picker would surface. Catches bind-mount
         # misconfigurations (where streamlit sees /ansible/playbooks/X but
-        # aiamsbs-ansible sees a different tree) before the operator hits
+        # adminlm-ansible sees a different tree) before the operator hits
         # "Confirm" in the UI.
         local playbook_smoke
         playbook_smoke=$(sg docker -c "docker exec aiamsbs-ansible ls /ansible/playbooks/generated/_aiamsbs_ping.yml" 2>/dev/null)
         if [ -n "$playbook_smoke" ] && [ "$(echo "$playbook_smoke" | tr -d '[:space:]')" = "/ansible/playbooks/generated/_aiamsbs_ping.yml" ]; then
-            log_success "  ✓ Run Playbook smoke: /ansible/playbooks/generated/_aiamsbs_ping.yml visible to aiamsbs-ansible"
+            log_success "  ✓ Run Playbook smoke: /ansible/playbooks/generated/_aiamsbs_ping.yml visible to adminlm-ansible"
         else
-            log_warn "  ✗ Run Playbook smoke: ping playbook not visible inside aiamsbs-ansible container (got: $playbook_smoke). Run Playbook will fail 'not found'."
+            log_warn "  ✗ Run Playbook smoke: ping playbook not visible inside adminlm-ansible container (got: $playbook_smoke). Run Playbook will fail 'not found'."
             errors=$((errors+1))
         fi
 
-        log_info "Listening ports (AIAMSBS services):"
+        log_info "Listening ports (AdminLM services):"
         list_listening_ports || true
     else
         log_warn "Docker not running; skipping service health checks"
@@ -2614,7 +2614,7 @@ except Exception:
     # Hermes gateway is a systemd service, not an HTTP endpoint, so it
     # doesn't fit verify_service_health() (which curls a URL). Check its
     # systemd state directly. Without the gateway running, every Hermes
-    # cron job (e.g. AIAMSBS Dashboard Backup) is inert — see
+    # cron job (e.g. AdminLM Dashboard Backup) is inert — see
     # install_hermes_gateway_service for context. The check runs
     # independently of the docker block above: a healthy gateway matters
     # even on a host where docker is down.
@@ -2683,7 +2683,7 @@ main() {
 
     # Install the gateway as a system service so the cron scheduler daemon
     # survives reboots. Must run before install_dashboard_backup_hermes_cron
-    # below so the gateway is up when the AIAMSBS Dashboard Backup cron
+    # below so the gateway is up when the AdminLM Dashboard Backup cron
     # entry is first registered and on every subsequent 01:00 tick. See
     # install_hermes_gateway_service for the full rationale.
     install_hermes_gateway_service
@@ -2693,7 +2693,7 @@ main() {
     else
         log_info "Skipping auto-deploy (--no-auto-deploy)"
         log_info "To deploy manually, run:"
-        log_info "  cd ~/AIAMSBS && docker compose up -d"
+        log_info "  cd ~/adminlm && docker compose up -d"
     fi
 
     # Post-install steps: skills install, MCP service account, MCP deploy.
@@ -2727,7 +2727,7 @@ main() {
     deploy_inventory_stack
 
     # Wire inventory-mcp into both the customer's default Hermes profile and
-    # the AIAMSBS it_admin specialist profile, then start nmap-discovery so a
+    # the AdminLM it_admin specialist profile, then start nmap-discovery so a
     # customer can immediately ask Hermes to discover/inventory their network
     # without re-running register_inventory_mcp.sh by hand.
     register_inventory_mcp "default"
@@ -2753,7 +2753,7 @@ main() {
 
     # BACKLOG #64, Card 7: customer-facing services. Both deploy functions
     # run unconditionally — these services ship with the main stack. Order
-    # matters: aiamsbs-ansible (Card 2) MUST come up before streamlit-ui
+    # matters: adminlm-ansible (Card 2) MUST come up before streamlit-ui
     # (Card 3) so the Run Playbook page's HMAC-signed POSTs have a live
     # runner to talk to.
     deploy_aiamsbs_ansible_stack
