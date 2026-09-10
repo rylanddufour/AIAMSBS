@@ -8,9 +8,18 @@
 
 from __future__ import annotations
 
+import hmac
+
+import bcrypt
 import streamlit as st
 
-from auth import require_auth, render_logout_button
+from auth import (
+    _admin_password_source,
+    _expected_admin_password,
+    _expected_admin_password_hash,
+    require_auth,
+    render_logout_button,
+)
 from db import (
     get_ui_settings,
     reset_all_ui_settings,
@@ -132,6 +141,136 @@ if save:
 if reset:
     reset_all_ui_settings()
     st.success("✅ All overrides cleared. Env defaults are now in effect.")
+    st.rerun()
+
+
+# ---- Admin Account (BACKLOG #77 — rotate admin password via UI) ----
+# Stored as a bcrypt hash in ui_settings (override > env). Auth re-reads
+# the hash on every login, so no `docker compose restart` is needed.
+# Render order: status caption → section header + help popover → form.
+
+_AUTH_SOURCE_LABELS = {
+    "override-hash":  "🔐 Auth: bcrypt override",
+    "env-hash":       "🔐 Auth: bcrypt env",
+    "override-plain": "🔐 Auth: plain-text override",
+    "env-plain":      "🔐 Auth: plain-text env fallback",
+    "unconfigured":   "🔐 Auth: not configured",
+}
+st.caption(_AUTH_SOURCE_LABELS.get(_admin_password_source(), "🔐 Auth: unknown"))
+
+# Full-width section header (BACKLOG #79 — dropped the ? popover; help text
+# goes to customer-facing docs, not the form. The form is self-explanatory
+# once you're filling it in).
+section_header("Admin Account")
+
+
+# Show-passwords toggle: streamlit's `type` is set at widget creation,
+# so we can't toggle it after the fact. Pattern (a) from BACKLOG #77 —
+# bake the flag into the widget key, so flipping the checkbox creates a
+# brand-new widget with the new `type`. The old widget's value is
+# discarded (clean), and the new widget is empty on each flip (the
+# caller has to retype, which is fine for a password field).
+_show = st.session_state.get("show_pw", False)
+_pw_type = "default" if _show else "password"
+
+with st.form("admin_password_form", clear_on_submit=True):
+    new_pw = st.text_input(
+        "New password",
+        type=_pw_type,
+        key=f"new_pw_{int(_show)}",
+    )
+    confirm_pw = st.text_input(
+        "Confirm new password",
+        type=_pw_type,
+        key=f"confirm_pw_{int(_show)}",
+    )
+    show_pw = st.checkbox(
+        "Show passwords",
+        key="show_pw",
+        value=_show,
+    )
+    # Render the Save button inside the form so Enter-submits work.
+    # We compute the "disabled" look by validating eagerly and
+    # only showing an error block; the button is always present.
+    submit = st.form_submit_button(
+        "Update password", type="primary", use_container_width=True,
+    )
+
+# Validation runs both on submit (for errors) and on every render so the
+# operator sees problems as they type. The Save button stays enabled —
+# clicking it just surfaces the same error message (streamlit doesn't
+# support disabling a form_submit_button after construction).
+_validation_errors: list[str] = []
+if submit or new_pw or confirm_pw:
+    if not new_pw and not confirm_pw:
+        pass  # empty form, nothing to validate yet
+    elif new_pw != confirm_pw:
+        _validation_errors.append("Passwords do not match")
+    elif len(new_pw) < 12:
+        _validation_errors.append("Password must be at least 12 characters")
+    else:
+        # "differs from current" check: try the bcrypt hash first, fall
+        # back to the plain-text env fallback via constant-time compare.
+        _matches_current = False
+        _cur_hash = _expected_admin_password_hash()
+        if _cur_hash:
+            try:
+                _matches_current = bcrypt.checkpw(
+                    new_pw.encode("utf-8"), _cur_hash,
+                )
+            except ValueError:
+                _matches_current = False
+        elif _expected_admin_password():
+            _cur_plain = _expected_admin_password() or ""
+            _matches_current = hmac.compare_digest(
+                new_pw.encode("utf-8"),
+                _cur_plain.encode("utf-8"),
+            )
+        if _matches_current:
+            _validation_errors.append(
+                "New password must differ from current"
+            )
+
+# Surface any validation errors.
+for _err in _validation_errors:
+    st.error(_err)
+
+if submit and not _validation_errors and new_pw and confirm_pw:
+    # Hash with a fresh salt. bcrypt.gensalt() default cost factor (12)
+    # matches the existing Card 3 login path so timing stays consistent.
+    _new_hash = bcrypt.hashpw(
+        new_pw.encode("utf-8"), bcrypt.gensalt(),
+    ).decode("utf-8")
+    # Write the bcrypt override and clear the plain-text override (if any)
+    # so the plain-text fallback can't accidentally re-activate on the
+    # next login. Empty value -> row is deleted by set_ui_settings.
+    set_ui_settings({
+        "STREAMLIT_ADMIN_PASSWORD_HASH": _new_hash,
+        "STREAMLIT_ADMIN_PASSWORD": "",
+    })
+    # Wipe the password inputs from session_state so the plain text
+    # doesn't linger in the form after a successful save. The widget
+    # keys were suffix-tagged with the current `show_pw` value; deleting
+    # both possible suffixes covers whichever one is live.
+    for _suffix in ("0", "1"):
+        for _k in (f"new_pw_{_suffix}", f"confirm_pw_{_suffix}"):
+            st.session_state.pop(_k, None)
+    # Audit trail: mirror the streamlit_login / streamlit_logout pattern
+    # in auth.py so password changes show up in Loki alongside the
+    # existing session events.
+    try:
+        from loki_logger import log_event
+        log_event("streamlit", {
+            "event": "streamlit_password_change",
+            "user_id": st.session_state.get("user_id"),
+            "username": st.session_state.get("user"),
+        })
+    except Exception:
+        pass  # logging failures must never block a successful save
+    st.success(
+        "Password updated. New password takes effect on the next login "
+        "(no restart needed)."
+    )
     st.rerun()
 
 
