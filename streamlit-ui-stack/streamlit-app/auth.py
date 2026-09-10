@@ -14,21 +14,70 @@ import warnings
 import bcrypt
 import streamlit as st
 
-from db import get_or_create_user
+from db import get_or_create_user, get_ui_settings
 
 
 def _expected_admin_password_hash() -> bytes | None:
-    """Return the admin's bcrypt hash bytes, or None if not configured."""
+    """Return the admin's bcrypt hash bytes, or None if not configured.
+
+    Precedence: ui_settings override > env var > None. The Settings page
+    writes the operator-chosen bcrypt hash to ui_settings so rotation
+    takes effect on the next login without a container restart.
+    """
+    try:
+        override = get_ui_settings().get("STREAMLIT_ADMIN_PASSWORD_HASH", "").strip()
+        if override:
+            return override.encode("utf-8")
+    except Exception:
+        # db may be unreachable on first rerun before init_schema() has
+        # run — fall through to the env default rather than crash login.
+        pass
     h = os.environ.get("STREAMLIT_ADMIN_PASSWORD_HASH", "").strip()
-    if h:
-        return h.encode("utf-8")
-    return None
+    return h.encode("utf-8") if h else None
 
 
 def _expected_admin_password() -> str | None:
-    """Return the admin's plain-text password (v1.0 fallback only)."""
+    """Return the admin's plain-text password (v1.0 fallback only).
+
+    Precedence: ui_settings override > env var > None. The Settings page
+    clears this row when it writes a new bcrypt hash so the plain-text
+    fallback can't accidentally re-activate after rotation.
+    """
+    try:
+        override = get_ui_settings().get("STREAMLIT_ADMIN_PASSWORD", "").strip()
+        if override:
+            return override
+    except Exception:
+        pass
     p = os.environ.get("STREAMLIT_ADMIN_PASSWORD", "").strip()
     return p or None
+
+
+def _admin_password_source() -> str:
+    """Return where the currently-active admin password is coming from.
+
+    Used by the Settings page to render a "🔐 Auth: ..." status caption
+    so the operator can tell which backend is in effect. Possible
+    values:
+      - "override-hash"   bcrypt hash in ui_settings (Settings page wrote it)
+      - "env-hash"        bcrypt hash in env var (production)
+      - "override-plain"  plain-text in ui_settings (rare; transitional)
+      - "env-plain"       plain-text in env var (v1.0 fallback; current .220)
+      - "unconfigured"    neither is set; login will always fail
+    """
+    try:
+        overrides = get_ui_settings()
+    except Exception:
+        overrides = {}
+    if overrides.get("STREAMLIT_ADMIN_PASSWORD_HASH", "").strip():
+        return "override-hash"
+    if os.environ.get("STREAMLIT_ADMIN_PASSWORD_HASH", "").strip():
+        return "env-hash"
+    if overrides.get("STREAMLIT_ADMIN_PASSWORD", "").strip():
+        return "override-plain"
+    if os.environ.get("STREAMLIT_ADMIN_PASSWORD", "").strip():
+        return "env-plain"
+    return "unconfigured"
 
 
 def _admin_username() -> str:
