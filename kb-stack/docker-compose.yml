@@ -1,6 +1,6 @@
 services:
   kb-mcp:
-    image: aiamsbs_kb-mcp
+    image: adminlm_kb-mcp
     container_name: kb-mcp
     build:
       context: ./mcp

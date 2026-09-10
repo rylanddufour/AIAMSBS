@@ -1,6 +1,6 @@
 services:
   inventory-mcp:
-    image: aiamsbs_inventory-mcp
+    image: adminlm_inventory-mcp
     container_name: inventory-mcp
     build:
       context: ./mcp
@@ -24,7 +24,7 @@ services:
       retries: 3
 
   nmap-discovery:
-    image: aiamsbs_nmap-discovery
+    image: adminlm_nmap-discovery
     container_name: nmap-discovery
     build:
       context: ./nmap-discovery

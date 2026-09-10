@@ -1,5 +1,5 @@
 // Customer Windows host observability.
-// Set ALLOY_REMOTE_WRITE_URL and ALLOY_LOKI_URL when the AIAMSBS endpoints
+// Set ALLOY_REMOTE_WRITE_URL and ALLOY_LOKI_URL when the AdminLM endpoints
 // are not reachable by their defaults from inside the customer host network.
 //
 // Service-account requirements:
@@ -46,9 +46,9 @@ prometheus.relabel "customer_host" {
 	forward_to = [prometheus.remote_write.metrics.receiver]
 }
 
-// Default URL works when this config runs inside the AIAMSBS network.
+// Default URL works when this config runs inside the AdminLM network.
 // For a customer-side Alloy process, set ALLOY_REMOTE_WRITE_URL to
-// http://<AIAMSBS>:9090/api/v1/write.
+// http://<adminlm-host>:9090/api/v1/write.
 prometheus.remote_write "metrics" {
 	endpoint {
 		url = coalesce(
@@ -97,7 +97,7 @@ loki.source.windowsevent "security" {
 	forward_to = [loki.write.eventlog.receiver]
 }
 
-// Default URL works when Loki is the AIAMSBS service on the local network.
+// Default URL works when Loki is the AdminLM service on the local network.
 loki.write "eventlog" {
 	endpoint {
 		url = coalesce(

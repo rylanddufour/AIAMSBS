@@ -1,4 +1,4 @@
-# AIAMSBS Monitoring Stack
+# AdminLM Monitoring Stack
 # Deploy with: docker compose up -d
 
 services:
@@ -53,7 +53,7 @@ services:
     # OS hostname (e.g. `gstack-iac` on .220 today) is a different concern;
     # the dashboards and per-host relabel contract use `aiamsbs-host` as
     # the AIAMSBS host's role-based label.
-    hostname: aiamsbs-host
+    hostname: adminlm-host
     ports:
       - "0.0.0.0:12345:12345"
     volumes:
@@ -113,7 +113,7 @@ services:
   alloy-customer:
     image: grafana/alloy:latest
     container_name: alloy-customer
-    hostname: aiamsbs-host
+    hostname: adminlm-host
     ports:
       - "0.0.0.0:12346:12345"
     volumes:
@@ -182,7 +182,7 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------------------
-  # AIAMSBS v1.0 customer-facing services (BACKLOG #64).
+  # AdminLM v1.0 customer-facing services (BACKLOG #64).
   #
   # These three services are always deployed with the main stack — the
   # customer's streamlit + ansible execution UI ships in the same install
@@ -192,42 +192,42 @@ services:
   #
   # Originally introduced via the `docker-compose.v1-private.yml` overlay
   # (removed 2026-08-20 — overlay was an opt-in mechanism that pre-dated
-  # the decision to ship AIAMSBS as one product).
+  # the decision to ship AdminLM as one product).
   # ----------------------------------------------------------------------
 
   # Stock Ansible runtime (BACKLOG #64 Card 2). No exposed port; the
   # runner container (next) does `docker exec` into this one.
-  aiamsbs-ansible:
+  adminlm-ansible:
     build:
       context: ./aiamsbs-ansible-stack
-      dockerfile: aiamsbs-ansible/Dockerfile
-    image: aiamsbs_aiamsbs-ansible
-    container_name: aiamsbs-ansible
+      dockerfile: adminlm-ansible/Dockerfile
+    image: adminlm_adminlm-ansible
+    container_name: adminlm-ansible
     networks:
       - monitoring
     volumes:
-      - ./aiamsbs-ansible-stack/playbooks/customer:/ansible/playbooks/customer:rw
-      - ./aiamsbs-ansible-stack/playbooks/generated:/ansible/playbooks/generated:rw
-      - ./aiamsbs-ansible-stack/inventory/static:/ansible/inventory/static:rw
-      - ./aiamsbs-ansible-stack/inventory/generated:/ansible/inventory/generated:rw
-      - ./aiamsbs-ansible-stack/artifacts:/ansible/artifacts:rw
+      - ./adminlm-ansible-stack/playbooks/customer:/ansible/playbooks/customer:rw
+      - ./adminlm-ansible-stack/playbooks/generated:/ansible/playbooks/generated:rw
+      - ./adminlm-ansible-stack/inventory/static:/ansible/inventory/static:rw
+      - ./adminlm-ansible-stack/inventory/generated:/ansible/inventory/generated:rw
+      - ./adminlm-ansible-stack/artifacts:/ansible/artifacts:rw
       # Loki log directory. The main alloy container already bind-mounts
       # $HOME/.hermes/logs (read-only) as /var/lib/hermes/logs, so writing
       # to a subdir here is visible to alloy without editing the main
       # compose. See aiamsbs-ansible-stack/docker-compose.yml comments for
       # the full rationale.
-      - ${HOME}/.hermes/logs/aiamsbs-ansible:/ansible/logs:rw
+      - ${HOME}/.hermes/logs/adminlm-ansible:/ansible/logs:rw
     restart: unless-stopped
 
   # FastAPI bridge with /var/run/docker.sock (BACKLOG #64 Card 2). Only
   # container with the docker socket — streamlit talks to this over HTTP
   # instead of mounting the socket itself. No host port.
-  aiamsbs-ansible-runner:
+  adminlm-ansible-runner:
     build:
       context: ./aiamsbs-ansible-stack
-      dockerfile: aiamsbs-ansible-runner/Dockerfile
-    image: aiamsbs_aiamsbs-ansible-runner
-    container_name: aiamsbs-ansible-runner
+      dockerfile: adminlm-ansible-runner/Dockerfile
+    image: adminlm_adminlm-ansible-runner
+    container_name: adminlm-ansible-runner
     # BACKLOG #74: expose the runner's /health to host network so the
     # Prometheus blackbox_exporter (which runs on host network with
     # 9115) can probe it. 127.0.0.1-only — same trust model as Hermes
@@ -242,11 +242,11 @@ services:
       - monitoring
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${HOME}/.hermes/logs/aiamsbs-ansible:/ansible/logs:rw
+      - ${HOME}/.hermes/logs/adminlm-ansible:/ansible/logs:rw
       - ./aiamsbs-ansible-stack/loki_logger.py:/app/loki_logger.py:ro
     environment:
       - RUNNER_HMAC_SECRET=${RUNNER_HMAC_SECRET:-dev-secret-rotate-me}
-      - ANSIBLE_CONTAINER_NAME=aiamsbs-ansible
+      - ANSIBLE_CONTAINER_NAME=adminlm-ansible
       - DOCKER_HOST=unix:///var/run/docker.sock
       - PYTHONPATH=/app
     healthcheck:
@@ -256,7 +256,7 @@ services:
       retries: 3
     restart: unless-stopped
     depends_on:
-      aiamsbs-ansible:
+      adminlm-ansible:
         condition: service_started
 
   # Customer-facing Streamlit UI (BACKLOG #64 Cards 3-6). Port 8501 is
@@ -265,7 +265,7 @@ services:
     build:
       context: ./streamlit-ui-stack
       dockerfile: Dockerfile
-    image: aiamsbs_streamlit-ui
+    image: adminlm_streamlit-ui
     container_name: streamlit-ui
     ports:
       - "0.0.0.0:80:8501"
@@ -275,7 +275,7 @@ services:
       - monitoring
     volumes:
       - ./streamlit-ui-stack/data:/data/streamlit-ui:rw
-      - /home/ansible/.hermes/logs/aiamsbs-streamlit:/home/ansible/.hermes/logs/aiamsbs-streamlit:rw
+      - /home/ansible/.hermes/logs/adminlm-streamlit:/home/ansible/.hermes/logs/adminlm-streamlit:rw
       - ./streamlit-ui-stack/streamlit-app:/app/streamlit-app:ro
       # loki_logger.py is Card 2's shared log-shipper module. The
       # ./streamlit-ui-stack/streamlit-app directory contains a SYMLINK
@@ -288,9 +288,9 @@ services:
       # aiamsbs-ansible-stack dir) to keep Card 2's other internals out
       # of the streamlit-ui container. Source-of-truth:
       # ~/AIAMSBS/aiamsbs-ansible-stack/loki_logger.py exists on .220.
-      - ./aiamsbs-ansible-stack/loki_logger.py:/app/aiamsbs-ansible-stack/loki_logger.py:ro
-      - ./aiamsbs-ansible-stack/playbooks:/ansible/playbooks:ro
-      - ./aiamsbs-ansible-stack/inventory:/ansible/inventory:ro
+      - ./adminlm-ansible-stack/loki_logger.py:/app/adminlm-ansible-stack/loki_logger.py:ro
+      - ./adminlm-ansible-stack/playbooks:/ansible/playbooks:ro
+      - ./adminlm-ansible-stack/inventory:/ansible/inventory:ro
     environment:
       - STREAMLIT_ADMIN_USERNAME=${STREAMLIT_ADMIN_USERNAME:-admin}
       - STREAMLIT_ADMIN_PASSWORD_HASH=${STREAMLIT_ADMIN_PASSWORD_HASH:-}
@@ -299,10 +299,10 @@ services:
       - KB_MCP_URL=${KB_MCP_URL:-http://kb-mcp:8002}
       - INVENTORY_MCP_URL=${INVENTORY_MCP_URL:-http://inventory-mcp:8001}
       - LOKI_URL=${LOKI_URL:-http://loki:3100}
-      - ANSIBLE_RUNNER_URL=${ANSIBLE_RUNNER_URL:-http://aiamsbs-ansible-runner:8000}
+      - ANSIBLE_RUNNER_URL=${ANSIBLE_RUNNER_URL:-http://adminlm-ansible-runner:8000}
       - GRAFANA_URL=${GRAFANA_URL:-http://grafana:3000}
       - RUNNER_HMAC_SECRET=${RUNNER_HMAC_SECRET:-dev-secret-rotate-me}
-      - AIAMSBS_CUSTOMER_NAME=${AIAMSBS_CUSTOMER_NAME:-dufour-int}
+      - ADMINLM_CUSTOMER_NAME=${ADMINLM_CUSTOMER_NAME:-dufour-int}
       # Hermes gateway binds 0.0.0.0:8642 (BACKLOG #66 fix). The
       # API_SERVER_KEY lives in /home/ansible/.hermes/.env on the host;
       # bootstrap.sh reads it and exports it before `docker compose up -d`.
@@ -310,11 +310,11 @@ services:
       - HERMES_API_KEY=${HERMES_API_KEY:?HERMES_API_KEY is required for Agent Chat — bootstrap.sh must source it from /home/ansible/.hermes/.env's API_SERVER_KEY}
       - HERMES_MODEL=${HERMES_MODEL:-minimax/minimax-m3}
       - HERMES_PROFILE=${HERMES_PROFILE:-it_admin}
-      - LOKI_LOG_DIR=/home/ansible/.hermes/logs/aiamsbs-streamlit
+      - LOKI_LOG_DIR=/home/ansible/.hermes/logs/adminlm-streamlit
       # PYTHONPATH for the bind-mounted loki_logger.py (see volumes
       # block above). Without this, `from loki_logger import log_event`
       # raises ModuleNotFoundError on the Home page (BACKLOG #73 fix).
-      - PYTHONPATH=/app/aiamsbs-ansible-stack
+      - PYTHONPATH=/app/adminlm-ansible-stack
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8501/_stcore/health"]
       interval: 30s

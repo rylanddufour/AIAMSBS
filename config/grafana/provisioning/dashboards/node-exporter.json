@@ -1,8 +1,8 @@
 {
-  "uid": "aiamsbs-node-exporter",
+  "uid": "adminlm-node-exporter",
   "title": "Linux Hosts",
   "tags": [
-    "aiamsbs",
+    "adminlm",
     "node-exporter",
     "per-host"
   ],
@@ -22,7 +22,7 @@
         "type": "query",
         "datasource": {
           "type": "prometheus",
-          "uid": "aiamsbs-prom"
+          "uid": "adminlm-prom"
         },
         "query": "label_values(up{job=\"integrations/unix\"}, host)",
         "refresh": 1,
@@ -30,8 +30,8 @@
         "multi": false,
         "current": {
           "selected": false,
-          "text": "aiamsbs-host",
-          "value": "aiamsbs-host"
+          "text": "adminlm-host",
+          "value": "adminlm-host"
         },
         "options": [],
         "sort": 1
@@ -61,7 +61,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -102,7 +102,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -143,7 +143,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -184,7 +184,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -238,7 +238,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 8,
@@ -302,7 +302,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -343,7 +343,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -384,7 +384,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -425,7 +425,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -479,7 +479,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -528,7 +528,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -569,7 +569,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -610,7 +610,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -661,7 +661,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 6,
@@ -738,7 +738,7 @@
       "type": "table",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 8,
@@ -794,7 +794,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 8,
@@ -858,7 +858,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 8,
@@ -909,7 +909,7 @@
       "type": "table",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 8,
@@ -991,7 +991,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -1032,7 +1032,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -1073,7 +1073,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -1124,7 +1124,7 @@
       "type": "table",
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "gridPos": {
         "h": 4,
@@ -1187,7 +1187,7 @@
       "type": "logs",
       "datasource": {
         "type": "loki",
-        "uid": "aiamsbs-loki"
+        "uid": "adminlm-loki"
       },
       "gridPos": {
         "h": 20,
@@ -1201,7 +1201,7 @@
           "refId": "A",
           "datasource": {
             "type": "loki",
-            "uid": "aiamsbs-loki"
+            "uid": "adminlm-loki"
           },
           "queryType": "range"
         }
@@ -1217,5 +1217,5 @@
     }
   ],
   "revision": 1,
-  "description": "Per-OS host metrics + logs via Grafana Alloy. The AIAMSBS host itself is tracked on aiamsbs-health."
+  "description": "Per-OS host metrics + logs via Grafana Alloy. The AdminLM host itself is tracked on adminlm-health."
 }

@@ -14,7 +14,7 @@ Documents the daily AdminLM stack backup workflow so the IT_ADMIN agent can run,
 
 ## What the script captures
 
-`~/.hermes/scripts/aiamsbs-backup.sh` (installed by `bootstrap.sh install_backup_scripts`, present on every AIAMSBS install). One tarball: `~/backups/aiamsbs-backup-YYYYMMDD-HHMMSS.tar.gz`. Contents:
+`~/.hermes/scripts/adminlm-backup.sh` (installed by `bootstrap.sh install_backup_scripts`, present on every AdminLM install). One tarball: `~/backups/adminlm-backup-YYYYMMDD-HHMMSS.tar.gz`. Contents:
 
 | Section | Source | Purpose on restore |
 |---|---|---|
@@ -48,9 +48,9 @@ Documents the daily AdminLM stack backup workflow so the IT_ADMIN agent can run,
 
 ## How the agent runs it (the cron flow)
 
-The Hermes cron job `AIAMSBS Backup` (registered by `bootstrap.sh install_dashboard_backup_hermes_cron`) fires daily at 01:00. Its prompt is a thin wrapper:
+The Hermes cron job `AdminLM Backup` (registered by `bootstrap.sh install_dashboard_backup_hermes_cron`) fires daily at 01:00. Its prompt is a thin wrapper:
 
-> Run `~/.hermes/scripts/aiamsbs-backup.sh` and report any errors.
+> Run `~/.hermes/scripts/adminlm-backup.sh` and report any errors.
 
 The agent:
 1. Invokes the script via the terminal tool.
@@ -62,7 +62,7 @@ The agent does NOT rewrite the script or implement backup logic in-line. The scr
 
 ## The gateway is what ticks the cron
 
-Per `hermes_agent/cron/__init__.py`: *"Cron jobs are executed automatically by the gateway daemon"*. This means the `AIAMSBS Backup` entry in `~/.hermes/cron/jobs.json` is **inert until the `hermes-gateway` daemon is running** — registration alone is not enough.
+Per `hermes_agent/cron/__init__.py`: *"Cron jobs are executed automatically by the gateway daemon"*. This means the `AdminLM Backup` entry in `~/.hermes/cron/jobs.json` is **inert until the `hermes-gateway` daemon is running** — registration alone is not enough.
 
 `bootstrap.sh` installs the gateway as a **system-level systemd service** (`sudo hermes gateway install --system --run-as-user <user>`) so it:
 - Lives in `/etc/systemd/system/hermes-gateway.service`
@@ -77,12 +77,12 @@ To verify on a live install: `sudo systemctl status hermes-gateway.service` — 
 
 ```bash
 # List recent archives
-ls -lht ~/backups/aiamsbs-backup-*.tar.gz | head -5
+ls -lht ~/backups/adminlm-backup-*.tar.gz | head -5
 
 # Extract one
-mkdir /tmp/aiamsbs-restore && tar -xzf ~/backups/aiamsbs-backup-<TS>.tar.gz -C /tmp/aiamsbs-restore
-ls /tmp/aiamsbs-restore/   # dashboards/, dashboards-provisioned/, config/, db/, hermes/, MANIFEST.json
-cat /tmp/aiamsbs-restore/MANIFEST.json
+mkdir /tmp/adminlm-restore && tar -xzf ~/backups/adminlm-backup-<TS>.tar.gz -C /tmp/adminlm-restore
+ls /tmp/adminlm-restore/   # dashboards/, dashboards-provisioned/, config/, db/, hermes/, MANIFEST.json
+cat /tmp/adminlm-restore/MANIFEST.json
 ```
 
 The manifest is the quickest way to verify a backup:
@@ -90,7 +90,7 @@ The manifest is the quickest way to verify a backup:
 {
   "schema_version": 2,
   "generated_at": "2026-07-07T...",
-  "aiamsbs_dir": "/home/ansible/adminlm",
+  "adminlm_dir": "/home/ansible/adminlm",
   "grafana_url": "http://localhost:3000",
   "dashboards_api_exported": 12,
   "dashboards_provisioned_files": 12,
@@ -110,8 +110,8 @@ The manifest is the quickest way to verify a backup:
 | `WARN: hermes not on PATH; skipping hermes backup` | `hermes` CLI not installed or not in the cron user's PATH. Install hermes-agent and re-run. |
 | `WARN: inventory-mcp container not running; skipping inventory DB` | The inventory stack is not deployed (or down). The rest of the backup still completes. If the inventory DB existed previously, the last good backup is your fallback. |
 | `WARN: kb-mcp container not running; skipping KB DB` | Same pattern for the KB stack. |
-| `WARN: missing /home/.../AIAMSBS/config/<file>.yml` | The AIAMSBS repo is not at the expected path. Check `AIAMSBS_DIR` env override. |
-| No `aiamsbs-backup-*.tar.gz` files in `~/backups/` | Cron never ran. Check the Hermes cron state: `hermes cron list`, look for `AIAMSBS Backup`, check `last_status`. |
+| `WARN: missing /home/.../adminlm/config/<file>.yml` | The AIAMSBS repo is not at the expected path. Check `AIAMSBS_DIR` env override. |
+| No `adminlm-backup-*.tar.gz` files in `~/backups/` | Cron never ran. Check the Hermes cron state: `hermes cron list`, look for `AdminLM Backup`, check `last_status`. |
 | Cron registered in jobs.json with `state: scheduled` and `enabled: true` but never fires | The **hermes-gateway daemon is not running** — it is the daemon that ticks scheduled jobs. Check `sudo systemctl status hermes-gateway.service`; on a fresh install it should be `active (running)`. If `inactive` or `failed`, start it with `sudo systemctl start hermes-gateway.service` and inspect `journalctl -u hermes-gateway.service -n 50` for the cause. |
 | `last_status: error` on the cron | Read `last_error` from `~/.hermes/cron/jobs.json` or `hermes cron status <id>`. |
 | Archive size much smaller than usual | A dashboard was deleted, a DB was wiped, or the hermes state shrank. Compare against the manifest from a prior archive. |
@@ -132,8 +132,8 @@ The manifest is the quickest way to verify a backup:
 
 ## Related
 
-- Script: `scripts/aiamsbs-backup.sh` (the workhorse)
-- Old script: `scripts/backup-dashboards.sh` — **removed** when scope grew to include hermes / inventory / KB / configs. If you see this file referenced anywhere, it's stale; the installer's cron job was renamed to `AIAMSBS Backup` and the old `AIAMSBS Dashboard Backup` cron should be replaced.
+- Script: `scripts/adminlm-backup.sh` (the workhorse)
+- Old script: `scripts/backup-dashboards.sh` — **removed** when scope grew to include hermes / inventory / KB / configs. If you see this file referenced anywhere, it's stale; the installer's cron job was renamed to `AdminLM Backup` and the old `AIAMSBS Dashboard Backup` cron should be replaced.
 - Hermes backup CLI: https://hermes-agent.nousresearch.com/docs/reference/cli-commands (covers what `hermes backup` itself does)
 - Service account: `create_grafana_mcp_service_account()` in `bootstrap.sh`
 - Cron registration: `install_dashboard_backup_hermes_cron()` in `bootstrap.sh` (replaces the legacy `/etc/cron.d/aiamsbs-dashboard-backup` system cron)

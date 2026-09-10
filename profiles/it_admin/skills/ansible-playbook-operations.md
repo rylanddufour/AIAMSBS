@@ -70,7 +70,7 @@ UI** owns the confirm button. Sequence:
    The agent writes the pending run to the UI's `/confirm` page
    (`POST http://streamlit-ui:8501/...` over the `monitoring` network,
    via the UI's internal API surface). **The agent MUST NOT call
-   `aiamsbs-ansible-runner` directly** — it has no UI in front of it,
+   `adminlm-ansible-runner` directly** — it has no UI in front of it,
    so direct agent calls would bypass the human-in-the-loop trust
    boundary.
 5. **Wait for the customer to click Confirm** in the Streamlit UI.
@@ -79,12 +79,12 @@ UI** owns the confirm button. Sequence:
    boundary.
 6. **The runner executes.** On Confirm, the UI HMAC-signs the body
    with `RUNNER_HMAC_SECRET` and POSTs to
-   `http://aiamsbs-ansible-runner:8000/runs`. The runner then runs
-   `docker exec aiamsbs-ansible ansible-playbook ...` and streams
-   NDJSON to `${HOME}/.hermes/logs/aiamsbs-ansible/`.
+   `http://adminlm-ansible-runner:8000/runs`. The runner then runs
+   `docker exec adminlm-ansible ansible-playbook ...` and streams
+   NDJSON to `${HOME}/.hermes/logs/adminlm-ansible/`.
 7. **Loki picks it up.** The host's Grafana Alloy tails that NDJSON
    directory and ships to Loki with label
-   `{job="aiamsbs-ansible", run_id=<uuid>}`. The customer can
+   `{job="adminlm-ansible", run_id=<uuid>}`. The customer can
    query `run_id` in Grafana's Explore / Loki to see the live stream.
 8. **Report back.** The UI polls the runner for the run summary
    (status, exit_code, log line count, Loki link) and renders it
@@ -93,7 +93,7 @@ UI** owns the confirm button. Sequence:
 
 ## Critical safety boundary
 
-> The agent MUST NOT call `aiamsbs-ansible-runner` directly. It only
+> The agent MUST NOT call `adminlm-ansible-runner` directly. It only
 > writes the pending run to the Streamlit UI's confirmation screen.
 > The customer (or their admin) clicks Confirm in the UI before
 > anything runs on a real device. This is the v1.0 trust boundary.
@@ -197,7 +197,7 @@ for the most common phrasings.
 
 ## Cross-references
 
-- **BACKLOG #59** — AIAMSBS Ansible fleet (long-term vision: agent
+- **BACKLOG #59** — AdminLM Ansible fleet (long-term vision: agent
   auto-generates + versions playbooks per device class).
 - **BACKLOG #61** — *Superseded* by #64 (this skill's spec is the
   final one).

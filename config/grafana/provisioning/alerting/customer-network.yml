@@ -21,12 +21,12 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: aiamsbs-loki
+            datasourceUid: adminlm-loki
             model:
               refId: A
               datasource:
                 type: loki
-                uid: aiamsbs-loki
+                uid: adminlm-loki
               editorMode: code
               instant: true
               expr: |
@@ -84,7 +84,7 @@ groups:
           severity: critical
           category: network
           source: customer-network
-          aiamsbs_alert: 'true'
+          adminlm_alert: 'true'
 
       # ----------------------------------------------------------------------
       # 2. NetworkLinkDown (critical)
@@ -101,12 +101,12 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: aiamsbs-loki
+            datasourceUid: adminlm-loki
             model:
               refId: A
               datasource:
                 type: loki
-                uid: aiamsbs-loki
+                uid: adminlm-loki
               editorMode: code
               instant: true
               expr: |
@@ -165,7 +165,7 @@ groups:
           severity: critical
           category: network
           source: customer-network
-          aiamsbs_alert: 'true'
+          adminlm_alert: 'true'
 
       # ----------------------------------------------------------------------
       # 3. InterfaceErrorsHigh (warning)
@@ -181,12 +181,12 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: aiamsbs-loki
+            datasourceUid: adminlm-loki
             model:
               refId: A
               datasource:
                 type: loki
-                uid: aiamsbs-loki
+                uid: adminlm-loki
               editorMode: code
               instant: true
               expr: |
@@ -248,7 +248,7 @@ groups:
           severity: warning
           category: network
           source: customer-network
-          aiamsbs_alert: 'true'
+          adminlm_alert: 'true'
 
       # ----------------------------------------------------------------------
       # 4. OSPFNeighborDown (critical)
@@ -264,12 +264,12 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: aiamsbs-loki
+            datasourceUid: adminlm-loki
             model:
               refId: A
               datasource:
                 type: loki
-                uid: aiamsbs-loki
+                uid: adminlm-loki
               editorMode: code
               instant: true
               expr: |
@@ -328,7 +328,7 @@ groups:
           severity: critical
           category: network
           source: customer-network
-          aiamsbs_alert: 'true'
+          adminlm_alert: 'true'
 
       # ----------------------------------------------------------------------
       # 5. DHCPScopeExhausted (critical)
@@ -344,12 +344,12 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: aiamsbs-loki
+            datasourceUid: adminlm-loki
             model:
               refId: A
               datasource:
                 type: loki
-                uid: aiamsbs-loki
+                uid: adminlm-loki
               editorMode: code
               instant: true
               expr: |
@@ -408,7 +408,7 @@ groups:
           severity: critical
           category: network
           source: customer-network
-          aiamsbs_alert: 'true'
+          adminlm_alert: 'true'
 
       # ----------------------------------------------------------------------
       # 6. STPTopologyChangeStorm (warning)
@@ -424,12 +424,12 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: aiamsbs-loki
+            datasourceUid: adminlm-loki
             model:
               refId: A
               datasource:
                 type: loki
-                uid: aiamsbs-loki
+                uid: adminlm-loki
               editorMode: code
               instant: true
               expr: |
@@ -490,13 +490,13 @@ groups:
           severity: warning
           category: network
           source: customer-network
-          aiamsbs_alert: 'true'
+          adminlm_alert: 'true'
 
       # ----------------------------------------------------------------------
       # 7. PortScanDetected (warning)
       #    More than 50 [UFW BLOCK] events in the last 5m. A normal blocked
       #    connection produces 1-5 lines; a port scan produces dozens.
-      #    Source: AIAMSBS host's journald (already collected by alloy).
+      #    Source: AdminLM host's journald (already collected by alloy).
       # ----------------------------------------------------------------------
       - uid: cust-net-port-scan
         title: PortScanDetected
@@ -507,12 +507,12 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: aiamsbs-loki
+            datasourceUid: adminlm-loki
             model:
               refId: A
               datasource:
                 type: loki
-                uid: aiamsbs-loki
+                uid: adminlm-loki
               editorMode: code
               instant: true
               expr: |
@@ -547,7 +547,7 @@ groups:
         noDataState: OK
         execErrState: Error
         annotations:
-          summary: 'Port scan activity against AIAMSBS host'
+          summary: 'Port scan activity against AdminLM host'
           description: |
             More than 50 [UFW BLOCK] events from ufw in the last 5m.
             A normal blocked connection produces 1-5 lines; a port scan
@@ -556,7 +556,7 @@ groups:
           severity: warning
           category: security
           source: customer-network
-          aiamsbs_alert: 'true'
+          adminlm_alert: 'true'
 
       # ----------------------------------------------------------------------
       # 8. RIPNeighborDown (critical) — replacement for BGPNeighborDown
@@ -572,12 +572,12 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: aiamsbs-loki
+            datasourceUid: adminlm-loki
             model:
               refId: A
               datasource:
                 type: loki
-                uid: aiamsbs-loki
+                uid: adminlm-loki
               editorMode: code
               instant: true
               expr: |
@@ -636,7 +636,7 @@ groups:
           severity: critical
           category: network
           source: customer-network
-          aiamsbs_alert: 'true'
+          adminlm_alert: 'true'
 
       # ----------------------------------------------------------------------
       # 1. CustomerDeviceUnreachable (critical, for: 5m)
@@ -656,12 +656,12 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: aiamsbs-prom
+            datasourceUid: adminlm-prom
             model:
               refId: A
               datasource:
                 type: prometheus
-                uid: aiamsbs-prom
+                uid: adminlm-prom
               editorMode: code
               instant: true
               expr: |
@@ -698,15 +698,15 @@ groups:
           summary: 'Customer host {{ $labels.host }} unreachable for 5m'
           description: |
             Customer host `{{ $labels.host }}` has been unreachable from
-            AIAMSBS for 5m (blackbox_inventory probe_success == 0).
+            AdminLM for 5m (blackbox_inventory probe_success == 0).
             Triage: physical/VPN reachability, host power, network path
-            (.220 → gateway → host). The AIAMSBS Health dashboard surfaces
+            (.220 → gateway → host). The AdminLM Health dashboard surfaces
             the full set of failed probes if more than one host is down.
         labels:
           severity: critical
           category: servers
           source: customer-network
-          aiamsbs_alert: 'true'
+          adminlm_alert: 'true'
 
       # ----------------------------------------------------------------------
       # 2. CustomerServerDiskLow (warning, for: 10m)
@@ -729,12 +729,12 @@ groups:
             relativeTimeRange:
               from: 600
               to: 0
-            datasourceUid: aiamsbs-prom
+            datasourceUid: adminlm-prom
             model:
               refId: A
               datasource:
                 type: prometheus
-                uid: aiamsbs-prom
+                uid: adminlm-prom
               editorMode: code
               instant: true
               expr: |
@@ -787,7 +787,7 @@ groups:
           severity: warning
           category: servers
           source: customer-network
-          aiamsbs_alert: 'true'
+          adminlm_alert: 'true'
 
       # ----------------------------------------------------------------------
       # 3. CustomerServerDiskFillSoon (warning, for: 30m)
@@ -809,12 +809,12 @@ groups:
             relativeTimeRange:
               from: 21600
               to: 0
-            datasourceUid: aiamsbs-prom
+            datasourceUid: adminlm-prom
             model:
               refId: A
               datasource:
                 type: prometheus
-                uid: aiamsbs-prom
+                uid: adminlm-prom
               editorMode: code
               instant: true
               expr: |
@@ -865,7 +865,7 @@ groups:
           severity: warning
           category: servers
           source: customer-network
-          aiamsbs_alert: 'true'
+          adminlm_alert: 'true'
 
       # ----------------------------------------------------------------------
       # 3b. CustomerServerDiskLowWindows (warning, for: 10m)
@@ -876,7 +876,7 @@ groups:
       #
       #    Metric source: alloy's prometheus.exporter.windows (in
       #    customer-windows.river). Volume label is the drive letter;
-      #    C: is the system drive on every Windows SKU AIAMSBS supports.
+      #    C: is the system drive on every Windows SKU AdminLM supports.
       #    Job label is "integrations/windows" in the alloy era.
       #
       #    Will not fire until alloy-customer is deployed to Windows hosts.
@@ -890,12 +890,12 @@ groups:
             relativeTimeRange:
               from: 600
               to: 0
-            datasourceUid: aiamsbs-prom
+            datasourceUid: adminlm-prom
             model:
               refId: A
               datasource:
                 type: prometheus
-                uid: aiamsbs-prom
+                uid: adminlm-prom
               editorMode: code
               instant: true
               expr: |
@@ -963,12 +963,12 @@ groups:
             relativeTimeRange:
               from: 21600
               to: 0
-            datasourceUid: aiamsbs-prom
+            datasourceUid: adminlm-prom
             model:
               refId: A
               datasource:
                 type: prometheus
-                uid: aiamsbs-prom
+                uid: adminlm-prom
               editorMode: code
               instant: true
               expr: |

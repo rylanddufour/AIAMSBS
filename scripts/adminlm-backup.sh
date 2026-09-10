@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# aiamsbs-backup.sh
-# Comprehensive AIAMSBS stack backup for disaster recovery.
+# adminlm-backup.sh
+# Comprehensive AdminLM stack backup for disaster recovery.
 #
 # Captures, in one tarball:
 #   1. Grafana dashboards — via the Grafana API (catches UI edits)
 #   2. Grafana dashboards — provisioning source files from
-#      ~/AIAMSBS/config/grafana/provisioning/dashboards/ (catches provisioning
+#      ~/adminlm/config/grafana/provisioning/dashboards/ (catches provisioning
 #      source-of-truth, including metadata like uid, datasource refs)
 #   3. Hermes state — single zip via `hermes backup` (covers ~/.hermes minus
 #      the agent codebase: profiles, sessions, kanban, cron jobs, .env, etc.)
@@ -20,11 +20,11 @@
 #   - hermes-agent code — installable from PyPI; not customer state
 #   - Docker volumes for grafana-data / loki / prometheus — service-level
 #
-# Output: ~/backups/aiamsbs-backup-YYYYMMDD-HHMMSS.tar.gz
+# Output: ~/backups/adminlm-backup-YYYYMMDD-HHMMSS.tar.gz
 # Retention: last 14 daily backups (rotated)
 #
-# Cron: 0 1 * * *   (daily at 01:00, fired by the AIAMSBS Backup Hermes cron job)
-# Run as: the AIAMSBS install user (e.g. ansible). hermes and docker must be on PATH.
+# Cron: 0 1 * * *   (daily at 01:00, fired by the AdminLM Backup Hermes cron job)
+# Run as: the AdminLM install user (e.g. ansible). hermes and docker must be on PATH.
 
 set -euo pipefail
 
@@ -35,12 +35,12 @@ export PATH="$HOME/.local/bin:$PATH"
 
 GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
 TOKEN_FILE="${GRAFANA_TOKEN_FILE:-$HOME/.hermes/secrets/grafana-mcp.env}"
-AIAMSBS_DIR="${AIAMSBS_DIR:-$HOME/AIAMSBS}"
+ADMINLM_DIR="${ADMINLM_DIR:-$HOME/adminlm}"
 BACKUP_DIR="${BACKUP_DIR:-$HOME/backups}"
 KEEP="${KEEP:-14}"
 TS="$(date -u +%Y%m%d-%H%M%S)"
 WORK="$(mktemp -d)"
-ARCHIVE="$BACKUP_DIR/aiamsbs-backup-${TS}.tar.gz"
+ARCHIVE="$BACKUP_DIR/adminlm-backup-${TS}.tar.gz"
 
 mkdir -p "$BACKUP_DIR" \
          "$WORK/dashboards" \
@@ -92,14 +92,14 @@ done
 log "  exported $EXPORTED dashboard(s) via API"
 
 # ===== 2. Grafana dashboards — provisioning source files =====
-if [ -d "$AIAMSBS_DIR/config/grafana/provisioning/dashboards" ]; then
-    cp "$AIAMSBS_DIR/config/grafana/provisioning/dashboards"/*.json \
+if [ -d "$ADMINLM_DIR/config/grafana/provisioning/dashboards" ]; then
+    cp "$ADMINLM_DIR/config/grafana/provisioning/dashboards"/*.json \
        "$WORK/dashboards-provisioned/" 2>/dev/null || true
     PROV_COUNT=$(ls -1 "$WORK/dashboards-provisioned"/*.json 2>/dev/null | wc -l)
     log "Copied $PROV_COUNT provisioning dashboard(s) from filesystem"
 else
     PROV_COUNT=0
-    log "WARN: $AIAMSBS_DIR/config/grafana/provisioning/dashboards not found"
+    log "WARN: $ADMINLM_DIR/config/grafana/provisioning/dashboards not found"
 fi
 
 # ===== 3. Hermes state =====
@@ -175,18 +175,18 @@ fi
 # ===== 6. Config yml files =====
 log "Copying yml config files"
 for f in alloy.yml blackbox.yml loki.yml prometheus.yml promtail.yml; do
-    if [ -f "$AIAMSBS_DIR/config/$f" ]; then
-        cp "$AIAMSBS_DIR/config/$f" "$WORK/config/"
+    if [ -f "$ADMINLM_DIR/config/$f" ]; then
+        cp "$ADMINLM_DIR/config/$f" "$WORK/config/"
     else
-        log "  WARN: missing $AIAMSBS_DIR/config/$f"
+        log "  WARN: missing $ADMINLM_DIR/config/$f"
     fi
 done
 for f in grafana/provisioning/datasources/datasources.yml \
          grafana/provisioning/dashboards/dashboards.yml; do
-    if [ -f "$AIAMSBS_DIR/config/$f" ]; then
-        cp "$AIAMSBS_DIR/config/$f" "$WORK/config/$(basename "$f")"
+    if [ -f "$ADMINLM_DIR/config/$f" ]; then
+        cp "$ADMINLM_DIR/config/$f" "$WORK/config/$(basename "$f")"
     else
-        log "  WARN: missing $AIAMSBS_DIR/config/$f"
+        log "  WARN: missing $ADMINLM_DIR/config/$f"
     fi
 done
 
@@ -196,14 +196,14 @@ PROV_COUNT="$PROV_COUNT" \
 HERMES_SIZE="$HERMES_SIZE" \
 INVENTORY_SIZE="$INVENTORY_SIZE" \
 KB_SIZE="$KB_SIZE" \
-AIAMSBS_DIR="$AIAMSBS_DIR" \
+ADMINLM_DIR="$ADMINLM_DIR" \
 GRAFANA_URL="$GRAFANA_URL" \
 python3 - <<'PY' > "$WORK/MANIFEST.json"
 import datetime, json, os
 print(json.dumps({
     "schema_version": 2,
     "generated_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-    "aiamsbs_dir": os.environ.get("AIAMSBS_DIR", "unknown"),
+    "adminlm_dir": os.environ.get("ADMINLM_DIR", "unknown"),
     "grafana_url": os.environ.get("GRAFANA_URL", "unknown"),
     "dashboards_api_exported": int(os.environ.get("EXPORTED", "0")),
     "dashboards_provisioned_files": int(os.environ.get("PROV_COUNT", "0")),
@@ -218,6 +218,6 @@ tar -czf "$ARCHIVE" -C "$WORK" .
 log "Wrote $ARCHIVE ($(du -h "$ARCHIVE" | awk '{print $1}'))"
 
 # ===== 9. Rotate =====
-ROTATED=$(ls -1t "$BACKUP_DIR"/aiamsbs-backup-*.tar.gz 2>/dev/null | tail -n +$((KEEP + 1)) | wc -l)
-ls -1t "$BACKUP_DIR"/aiamsbs-backup-*.tar.gz 2>/dev/null | tail -n +$((KEEP + 1)) | xargs -r rm -f --
+ROTATED=$(ls -1t "$BACKUP_DIR"/adminlm-backup-*.tar.gz 2>/dev/null | tail -n +$((KEEP + 1)) | wc -l)
+ls -1t "$BACKUP_DIR"/adminlm-backup-*.tar.gz 2>/dev/null | tail -n +$((KEEP + 1)) | xargs -r rm -f --
 log "Retention: kept last $KEEP backups (rotated $ROTATED old)"

@@ -1,4 +1,4 @@
-# MCP Servers for Hermes Agent (AIAMSBS deployment)
+# MCP Servers for Hermes Agent (AdminLM deployment)
 #
 # Deployed by bootstrap.sh's deploy_mcp_stack() after the main monitoring
 # stack is up. Brings in only the Grafana MCP server for now.

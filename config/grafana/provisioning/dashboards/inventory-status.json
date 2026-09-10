@@ -20,7 +20,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "targets": [
         {
@@ -74,7 +74,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "targets": [
         {
@@ -132,7 +132,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "targets": [
         {
@@ -189,7 +189,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "aiamsbs-prom"
+        "uid": "adminlm-prom"
       },
       "targets": [
         {
@@ -242,7 +242,7 @@
   "refresh": "1m",
   "schemaVersion": 38,
   "tags": [
-    "aiamsbs",
+    "adminlm",
     "inventory",
     "blackbox"
   ],
@@ -254,7 +254,7 @@
         "type": "query",
         "datasource": {
           "type": "prometheus",
-          "uid": "aiamsbs-prom"
+          "uid": "adminlm-prom"
         },
         "query": {
           "query": "label_values(probe_success{job=\"blackbox_inventory\"}, instance)",
