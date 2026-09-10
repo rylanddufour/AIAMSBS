@@ -129,7 +129,7 @@ def render_login_form() -> bool:
     _warn_if_plaintext_password()
 
     with st.form("login", clear_on_submit=False):
-        st.subheader(f"Sign in to AIAMSBS ({_admin_username()})")
+        st.subheader(f"Sign in to AdminLM ({_admin_username()})")
         username = st.text_input("Username", value=_admin_username())
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Sign in")

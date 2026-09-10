@@ -26,9 +26,9 @@ from db import (
     set_ui_settings,
 )
 from settings import EDITABLE_FIELDS, load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
+from theme import ADMINLM_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
-st.set_page_config(page_title="Settings — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
+st.set_page_config(page_title="Settings — AdminLM", page_icon=ADMINLM_FAVICON, layout="wide")
 
 if not require_auth():
     st.stop()

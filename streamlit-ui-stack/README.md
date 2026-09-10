@@ -11,7 +11,7 @@ on the shared `monitoring` Docker network:
 |-----------------|------------------------------------------------------------------------------------------|----------|
 | `streamlit-ui`  | Streamlit app (Home / Settings / Health). Talks to backends over HTTP. NO docker socket. | Yes (8501) |
 
-The other backends it talks to (`aiamsbs-ansible-runner`, `kb-mcp`,
+The other backends it talks to (`adminlm-ansible-runner`, `kb-mcp`,
 `inventory-mcp`, `loki`, `grafana`) live in their own stacks. They are
 reachable on the `monitoring` network by container name. The Hermes Web
 Dashboard runs on the host (s6-overlay) and is reached via
@@ -92,7 +92,7 @@ sqlite3 streamlit-ui-stack/data/streamlit-ui.db "SELECT * FROM users"
 
 # 5. Loki query for streamlit events
 curl -s -G http://localhost:3100/loki/api/v1/query \
-    --data-urlencode 'query={job="aiamsbs-streamlit"}' \
+    --data-urlencode 'query={job="adminlm-streamlit"}' \
     | jq '.data.result | length'
 # → ≥1 after login + home view
 ```
@@ -108,12 +108,12 @@ curl -s -G http://localhost:3100/loki/api/v1/query \
   `job="aiamsbs-streamlit"`, `source="aiamsbs_host"`.
 - See `config/alloy.yml` for the matching `local.file_match` /
   `loki.source.file` block (added by Card 3, additive — Card 2's
-  `aiamsbs-ansible` block is untouched).
+  `adminlm-ansible` block is untouched).
 
 ## Security notes
 
 - `streamlit-ui` does **not** mount `/var/run/docker.sock`. The only
-  container in the AIAMSBS stack that does is `aiamsbs-ansible-runner`
+  container in the AdminLM stack that does is `adminlm-ansible-runner`
   (Card 2). Streamlit → runner → docker-exec is the privilege-bounded
   path for playbook execution (Card 4).
 - Plain-text passwords are never written to disk. The `users.password_hash`
@@ -151,14 +151,14 @@ docker compose -f docker-compose.yml -f docker-compose.v1-private.yml up -d
 ```
 
 The overlay `include:`s `streamlit-ui-stack/docker-compose.yml` (this
-file) and `aiamsbs-ansible-stack/docker-compose.yml`. Bind mounts, env
+file) and `adminlm-ansible-stack/docker-compose.yml`. Bind mounts, env
 vars, healthchecks, and image tags defined here flow through unchanged.
-The overlay only adds a `aiamsbs-v1-private=true` label to the three
+The overlay only adds a `adminlm-v1-private=true` label to the three
 v1.0 services.
 
 `bootstrap.sh` gains two new functions called from `main()`:
 
-- `deploy_aiamsbs_ansible_stack()` — gated on
+- `deploy_adminlm_ansible_stack()` — gated on
   `AIAMSBS_DEPLOY_V1_PRIVATE=true` (or `--v1-private`). Brings up the
   Card 2 stack first (the runner).
 - `deploy_streamlit_ui_stack()` — same gate, scopes to `streamlit-ui`.

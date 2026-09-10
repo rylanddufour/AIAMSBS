@@ -31,9 +31,9 @@ from auth import require_auth, render_logout_button
 from db import db
 from hermes_client import redact_secrets, short_run_id
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header
+from theme import ADMINLM_FAVICON, apply_theme, cyberpunk_title, page_header
 
-st.set_page_config(page_title="Run Detail — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
+st.set_page_config(page_title="Run Detail — AdminLM", page_icon=ADMINLM_FAVICON, layout="wide")
 
 if not require_auth():
     st.stop()

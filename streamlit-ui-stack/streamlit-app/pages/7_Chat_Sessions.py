@@ -32,10 +32,10 @@ from db import (
     update_chat_session_response,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
+from theme import ADMINLM_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button
 
 st.set_page_config(
-    page_title="Chat Sessions — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide",
+    page_title="Chat Sessions — AdminLM", page_icon=ADMINLM_FAVICON, layout="wide",
 )
 
 if not require_auth():

@@ -34,11 +34,11 @@ from mcp_client import (
     kb_search,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
+from theme import ADMINLM_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
 st.set_page_config(
-    page_title="KB Search — AIAMSBS",
-    page_icon=AIAMSBS_FAVICON, layout="wide",
+    page_title="KB Search — AdminLM",
+    page_icon=ADMINLM_FAVICON, layout="wide",
 )
 
 if not require_auth():

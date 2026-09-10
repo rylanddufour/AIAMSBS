@@ -155,7 +155,7 @@ def _ensure_session(client: httpx.Client, base_url: str) -> str:
             "params": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {"name": "aiamsbs-streamlit-ui", "version": "1.0"},
+                "clientInfo": {"name": "adminlm-streamlit-ui", "version": "1.0"},
             },
         }
         try:

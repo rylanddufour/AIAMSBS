@@ -522,7 +522,7 @@ def log_chat_event(
         chat_session_deleted  — user deleted a session
 
     All events use stream="chat" so Loki queries can pull just chat events:
-        {job="aiamsbs-streamlit"} | stream="chat"
+        {job="adminlm-streamlit"} | stream="chat"
     """
     payload: dict[str, Any] = {
         "page": "Agent_Chat",
@@ -600,7 +600,7 @@ def post_signed(
     not silently calling httpx.post directly.
 
     Args:
-        url: full URL, e.g. "http://aiamsbs-ansible-runner:8000/run".
+        url: full URL, e.g. "http://adminlm-ansible-runner:8000/run".
         payload: dict that will be JSON-serialized. Use sort-free,
             canonical form (separators=(",", ":")) so debuggers can
             reproduce the signature.

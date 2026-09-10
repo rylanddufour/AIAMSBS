@@ -15,11 +15,11 @@ import streamlit as st
 from auth import require_auth, render_logout_button
 from db import db, init_schema
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
+from theme import ADMINLM_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
 st.set_page_config(
-    page_title="AIAMSBS v1.0",
-    page_icon=AIAMSBS_FAVICON, layout="wide",
+    page_title="AdminLM v1.0",
+    page_icon=ADMINLM_FAVICON, layout="wide",
     initial_sidebar_state="expanded",
 )
 
@@ -40,9 +40,9 @@ settings = load_settings()
 
 # ---- Sidebar ----
 # ---- Header ----
-cyberpunk_title(f"AIAMSBS v1.0 — Customer {settings.customer_name}", "home")
+cyberpunk_title(f"AdminLM v1.0 — Customer {settings.customer_name}", "home")
 st.caption(
-    "Private deployment dashboard. Backends below run on the AIAMSBS host. "
+    "Private deployment dashboard. Backends below run on the AdminLM host. "
     "Pages (Settings, Run Playbook, Agent Chat, etc.) are in the sidebar. "
     "Quick Links point at host IPs by default — edit them on the Settings page."
 )
@@ -97,7 +97,7 @@ section_header("Health snapshot")
 snapshot = _health_snapshot()
 hcols = st.columns(len(snapshot))
 for col, row in zip(hcols, snapshot):
-    status_class = "aiamsbs-health-tile-up" if row["ok"] else "aiamsbs-health-tile-down"
+    status_class = "adminlm-health-tile-up" if row["ok"] else "adminlm-health-tile-down"
     # Material Symbols shortcodes are NOT used here (those are sidebar/page
     # icon glyphs); for health-tile status we render the literal Material
     # Symbols name inside <span class="ms ms-up|ms-down"> so it inherits the
@@ -107,7 +107,7 @@ for col, row in zip(hcols, snapshot):
     latency = f"{row['latency_ms']} ms" if row["latency_ms"] is not None else "—"
     with col:
         st.markdown(
-            f'<div class="aiamsbs-health-tile {status_class}">'
+            f'<div class="adminlm-health-tile {status_class}">'
             f'<span class="name"><span class="ms {ms_class}">{glyph}</span> '
             f'{row["backend"]}</span>'
             f'<span class="latency">{latency}</span>'

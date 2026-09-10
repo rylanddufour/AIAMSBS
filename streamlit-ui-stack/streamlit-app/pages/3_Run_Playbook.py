@@ -54,9 +54,9 @@ from mcp_client import (
     inventory_list,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
+from theme import ADMINLM_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
-st.set_page_config(page_title="Run Playbook — AIAMSBS", page_icon=AIAMSBS_FAVICON, layout="wide")
+st.set_page_config(page_title="Run Playbook — AdminLM", page_icon=ADMINLM_FAVICON, layout="wide")
 
 if not require_auth():
     st.stop()
@@ -230,7 +230,7 @@ def _stage1() -> None:
         st.error(
             "No playbooks found under `/ansible/playbooks/{customer,generated}/`. "
             "The streamlit-ui container must have read access to the playbook "
-            "directory mounted by the aiamsbs-ansible-stack."
+            "directory mounted by the adminlm-ansible-stack."
         )
         st.stop()
 
@@ -745,7 +745,7 @@ def _run_in_progress() -> None:
         _SS["auth_failed"] = True
         _SS["run_error"] = (
             "Authentication failed — check RUNNER_HMAC_SECRET on both "
-            "streamlit-ui and aiamsbs-ansible-runner containers. The "
+            "streamlit-ui and adminlm-ansible-runner containers. The "
             "shared secret must match exactly."
         )
         _update_run_status(run_id, status="failed", finished_at=_now_iso(),

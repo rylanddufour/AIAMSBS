@@ -101,7 +101,7 @@ def _env_or(key: str, default: str) -> str:
 def load() -> Settings:
     return Settings(
         customer_name=_env_or(
-            "AIAMSBS_CUSTOMER_NAME", "dufour-int",
+            "ADMINLM_CUSTOMER_NAME", "dufour-int",
         ),
         admin_username=_env_or(
             "STREAMLIT_ADMIN_USERNAME", "admin",
@@ -123,7 +123,7 @@ def load() -> Settings:
             "PROMETHEUS_URL", "http://prometheus:9090",
         ),
         ansible_runner_url=_env_or(
-            "ANSIBLE_RUNNER_URL", "http://aiamsbs-ansible-runner:8000",
+            "ANSIBLE_RUNNER_URL", "http://adminlm-ansible-runner:8000",
         ),
         grafana_url=_env_or(
             "GRAFANA_URL", "http://grafana:3000",
@@ -205,7 +205,7 @@ EDITABLE_FIELDS: list[dict] = [
         "key": "ANSIBLE_RUNNER_URL",
         "group": "Backend URLs",
         "label": "Ansible Runner",
-        "default": "http://aiamsbs-ansible-runner:8000",
+        "default": "http://adminlm-ansible-runner:8000",
         "help": "Internal URL for the /health probe. Container-internal.",
     },
     # --- Quick Links (browser-facing, host IP) ---
@@ -234,7 +234,7 @@ EDITABLE_FIELDS: list[dict] = [
     },
     # --- Identity ---
     {
-        "key": "AIAMSBS_CUSTOMER_NAME",
+        "key": "ADMINLM_CUSTOMER_NAME",
         "group": "Identity",
         "label": "Customer name",
         "default": "dufour-int",

@@ -56,19 +56,19 @@ _CSS_INNER = """
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&display=swap');
 :root {
-    --aiamsbs-bg:           #0b1220;
-    --aiamsbs-panel:        #0f1b2e;
-    --aiamsbs-panel-hover:  #14253d;
-    --aiamsbs-border:       #1f3a5c;
-    --aiamsbs-accent:       #00d4ff;
-    --aiamsbs-accent-dim:   #008db3;
-    --aiamsbs-magenta:      #ff00ff;
-    --aiamsbs-magenta-dim:  #b300b3;
-    --aiamsbs-warn:         #d68a00;
-    --aiamsbs-warn-dim:     #8f5d00;
-    --aiamsbs-text:         #e6edf3;
-    --aiamsbs-text-muted:   #8b9bb4;
-    --aiamsbs-mono:         "JetBrains Mono", "Fira Code", "SF Mono",
+    --adminlm-bg:           #0b1220;
+    --adminlm-panel:        #0f1b2e;
+    --adminlm-panel-hover:  #14253d;
+    --adminlm-border:       #1f3a5c;
+    --adminlm-accent:       #00d4ff;
+    --adminlm-accent-dim:   #008db3;
+    --adminlm-magenta:      #ff00ff;
+    --adminlm-magenta-dim:  #b300b3;
+    --adminlm-warn:         #d68a00;
+    --adminlm-warn-dim:     #8f5d00;
+    --adminlm-text:         #e6edf3;
+    --adminlm-text-muted:   #8b9bb4;
+    --adminlm-mono:         "JetBrains Mono", "Fira Code", "SF Mono",
                             Menlo, Consolas, monospace;
     --status-up:            #2ecc71;
     --status-warn:          #f39c12;
@@ -86,25 +86,25 @@ _CSS_INNER = """
    fall back to light. Force dark surfaces here.
    ============================================================ */
 [data-testid="stAppViewContainer"] {
-    background-color: var(--aiamsbs-bg);
+    background-color: var(--adminlm-bg);
 }
 [data-testid="stHeader"] {
-    background-color: var(--aiamsbs-bg);
-    border-bottom: 1px solid var(--aiamsbs-border);
+    background-color: var(--adminlm-bg);
+    border-bottom: 1px solid var(--adminlm-border);
 }
 
 /* ============================================================
    Sidebar: deeper panel, subtle separator from main content.
    ============================================================ */
 [data-testid="stSidebar"] {
-    background-color: var(--aiamsbs-panel);
-    border-right: 1px solid var(--aiamsbs-border);
+    background-color: var(--adminlm-panel);
+    border-right: 1px solid var(--adminlm-border);
 }
 [data-testid="stSidebar"] * {
-    color: var(--aiamsbs-text);
+    color: var(--adminlm-text);
 }
 [data-testid="stSidebar"] hr {
-    border-color: var(--aiamsbs-border);
+    border-color: var(--adminlm-border);
     margin: 0.5rem 0;
 }
 
@@ -119,8 +119,8 @@ _CSS_INNER = """
     /* keep selector narrow so we don't break prose */
 }
 [data-testid="stVerticalBlockBorderWrapper"] {
-    background-color: var(--aiamsbs-panel);
-    border: 1px solid var(--aiamsbs-border);
+    background-color: var(--adminlm-panel);
+    border: 1px solid var(--adminlm-border);
     border-radius: 8px;
     padding: 1rem 1.25rem;
     box-shadow: var(--shadow-card);
@@ -130,12 +130,12 @@ _CSS_INNER = """
    Headings: consistent scale + accent for primary h1.
    ============================================================ */
 h1, h2, h3, h4, h5, h6 {
-    color: var(--aiamsbs-text);
+    color: var(--adminlm-text);
     font-weight: 600;
     letter-spacing: -0.01em;
 }
 h1 {
-    border-bottom: 2px solid var(--aiamsbs-accent);
+    border-bottom: 2px solid var(--adminlm-accent);
     padding-bottom: 0.4rem;
     margin-bottom: 1rem;
 }
@@ -145,10 +145,10 @@ h1 {
    ============================================================ */
 [data-testid="stMarkdownContainer"] p,
 [data-testid="stMarkdownContainer"] li {
-    color: var(--aiamsbs-text);
+    color: var(--adminlm-text);
 }
 .stCaption, [data-testid="stCaptionContainer"] {
-    color: var(--aiamsbs-text-muted) !important;
+    color: var(--adminlm-text-muted) !important;
 }
 
 /* ============================================================
@@ -159,20 +159,20 @@ h1 {
    ============================================================ */
 .stButton > button,
 .stDownloadButton > button {
-    background-color: var(--aiamsbs-panel);
-    color: var(--aiamsbs-text);
-    border: 1px solid var(--aiamsbs-border);
+    background-color: var(--adminlm-panel);
+    color: var(--adminlm-text);
+    border: 1px solid var(--adminlm-border);
     border-radius: 6px;
     transition: background-color 120ms ease, border-color 120ms ease;
 }
 .stButton > button:hover,
 .stDownloadButton > button:hover {
-    background-color: var(--aiamsbs-panel-hover);
-    border-color: var(--aiamsbs-accent-dim);
+    background-color: var(--adminlm-panel-hover);
+    border-color: var(--adminlm-accent-dim);
 }
 .stButton > button:focus,
 .stDownloadButton > button:focus {
-    outline: 2px solid var(--aiamsbs-accent);
+    outline: 2px solid var(--adminlm-accent);
     outline-offset: 1px;
 }
 
@@ -180,8 +180,8 @@ h1 {
    submit / primary button look. */
 .stLinkButton a {
     background-color: #0a2a3d;
-    color: var(--aiamsbs-accent);
-    border: 1px solid var(--aiamsbs-accent-dim);
+    color: var(--adminlm-accent);
+    border: 1px solid var(--adminlm-accent-dim);
     border-radius: 6px;
     font-weight: 600;
     transition: background-color 120ms ease, border-color 120ms ease,
@@ -189,12 +189,12 @@ h1 {
 }
 .stLinkButton a:hover {
     background-color: #0f3a52;
-    border-color: var(--aiamsbs-accent);
+    border-color: var(--adminlm-accent);
     box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30);
     text-decoration: none;
 }
 .stLinkButton a:focus {
-    outline: 2px solid var(--aiamsbs-accent);
+    outline: 2px solid var(--adminlm-accent);
     outline-offset: 1px;
 }
 .stButton > button[kind="primary"],
@@ -213,8 +213,8 @@ h1 {
        consistent across enabled/disabled and across all primary
        buttons. */
     background-color: #0a2a3d !important;
-    color: var(--aiamsbs-accent) !important;
-    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    color: var(--adminlm-accent) !important;
+    border: 1px solid var(--adminlm-accent-dim) !important;
     font-weight: 600 !important;
 }
 /* Ultra-specific fallback: bypass the stButton > button > kind chain
@@ -230,24 +230,24 @@ h1 {
    has on the inner <button> for our type="primary" buttons. */
 button[data-testid="stBaseButton-primary"] {
     background-color: #0a2a3d !important;
-    color: var(--aiamsbs-accent) !important;
-    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    color: var(--adminlm-accent) !important;
+    border: 1px solid var(--adminlm-accent-dim) !important;
     font-weight: 600 !important;
 }
 button[data-testid="stBaseButton-primary"]:hover {
     background-color: #0f3a52 !important;
-    border-color: var(--aiamsbs-accent) !important;
+    border-color: var(--adminlm-accent) !important;
     box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30) !important;
 }
 button[data-testid="stBaseButton-primary"]:focus {
-    outline: 2px solid var(--aiamsbs-accent) !important;
+    outline: 2px solid var(--adminlm-accent) !important;
     outline-offset: 1px !important;
 }
 button[data-testid="stBaseButton-primary"][disabled],
 button[data-testid="stBaseButton-primary"]:disabled {
     background-color: #0a2a3d !important;
-    color: var(--aiamsbs-accent) !important;
-    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    color: var(--adminlm-accent) !important;
+    border: 1px solid var(--adminlm-accent-dim) !important;
     opacity: 0.45 !important;
     cursor: not-allowed !important;
 }
@@ -262,32 +262,32 @@ button[data-testid="stBaseButton-primary"]:disabled {
    data-testid starting with "stBaseButton-") = specificity (0,3,1). */
 button[kind="primary"][data-testid^="stBaseButton-"] {
     background-color: #0a2a3d !important;
-    color: var(--aiamsbs-accent) !important;
-    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    color: var(--adminlm-accent) !important;
+    border: 1px solid var(--adminlm-accent-dim) !important;
     font-weight: 600 !important;
 }
 button[kind="primary"][data-testid^="stBaseButton-"]:hover {
     background-color: #0f3a52 !important;
-    border-color: var(--aiamsbs-accent) !important;
+    border-color: var(--adminlm-accent) !important;
     box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30) !important;
 }
 button[kind="primary"][data-testid^="stBaseButton-"][disabled],
 button[kind="primary"][data-testid^="stBaseButton-"]:disabled {
     background-color: #0a2a3d !important;
-    color: var(--aiamsbs-accent) !important;
-    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    color: var(--adminlm-accent) !important;
+    border: 1px solid var(--adminlm-accent-dim) !important;
     opacity: 0.45 !important;
     cursor: not-allowed !important;
 }
 .stButton > button[kind="primary"]:hover,
 .stFormSubmitButton > button:hover {
     background-color: #0f3a52 !important;
-    border-color: var(--aiamsbs-accent) !important;
+    border-color: var(--adminlm-accent) !important;
     box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30) !important;
 }
 .stButton > button[kind="primary"]:focus,
 .stFormSubmitButton > button:focus {
-    outline: 2px solid var(--aiamsbs-accent) !important;
+    outline: 2px solid var(--adminlm-accent) !important;
     outline-offset: 1px !important;
 }
 .stButton > button:disabled,
@@ -297,8 +297,8 @@ button[kind="primary"][data-testid^="stBaseButton-"]:disabled {
        amber-transparent combo which reads as "broken UI" rather than
        "intentionally inactive". */
     background-color: #0a2a3d !important;
-    color: var(--aiamsbs-accent) !important;
-    border: 1px solid var(--aiamsbs-accent-dim) !important;
+    color: var(--adminlm-accent) !important;
+    border: 1px solid var(--adminlm-accent-dim) !important;
     opacity: 0.45 !important;
     cursor: not-allowed !important;
 }
@@ -312,22 +312,22 @@ button[kind="primary"][data-testid^="stBaseButton-"]:disabled {
 .stSelectbox div[data-baseweb="select"] > div,
 .stMultiSelect div[data-baseweb="select"] > div,
 .stChatInput textarea {
-    background-color: var(--aiamsbs-panel) !important;
-    color: var(--aiamsbs-text) !important;
-    border: 1px solid var(--aiamsbs-border) !important;
+    background-color: var(--adminlm-panel) !important;
+    color: var(--adminlm-text) !important;
+    border: 1px solid var(--adminlm-border) !important;
     border-radius: 6px !important;
 }
 .stTextInput input:focus,
 .stTextArea textarea:focus,
 .stNumberInput input:focus,
 .stChatInput textarea:focus {
-    border-color: var(--aiamsbs-accent) !important;
+    border-color: var(--adminlm-accent) !important;
     box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.25) !important;
 }
 
 /* Slider track + thumb */
 .stSlider [data-baseweb="slider"] > div > div {
-    background-color: var(--aiamsbs-accent-dim) !important;
+    background-color: var(--adminlm-accent-dim) !important;
 }
 
 /* Checkbox + radio: amber comes from config.toml primaryColor
@@ -343,37 +343,37 @@ button[kind="primary"][data-testid^="stBaseButton-"]:disabled {
 [data-baseweb="tag"],
 [data-baseweb="tag"] * {
     background-color: #2d1f06 !important;
-    color: var(--aiamsbs-warn) !important;
-    border-color: var(--aiamsbs-warn-dim) !important;
-    fill: var(--aiamsbs-warn) !important;
+    color: var(--adminlm-warn) !important;
+    border-color: var(--adminlm-warn-dim) !important;
+    fill: var(--adminlm-warn) !important;
 }
 [data-baseweb="tag"] {
-    border: 1px solid var(--aiamsbs-warn-dim) !important;
+    border: 1px solid var(--adminlm-warn-dim) !important;
     border-radius: 4px !important;
 }
 [data-baseweb="tag"] span,
 [data-baseweb="tag"] [data-baseweb="tag-closeIcon"] svg,
 [data-baseweb="tag"] svg {
-    color: var(--aiamsbs-warn) !important;
-    fill: var(--aiamsbs-warn) !important;
+    color: var(--adminlm-warn) !important;
+    fill: var(--adminlm-warn) !important;
 }
 
 /* Selectbox focused border: primaryColor drives this. Amber
    border signals "you're focused here, ready to pick". */
 [data-baseweb="select"] > div {
-    border-color: var(--aiamsbs-warn-dim) !important;
+    border-color: var(--adminlm-warn-dim) !important;
 }
 [data-baseweb="select"]:focus-within > div,
 [data-baseweb="select"] > div:focus-within {
-    border-color: var(--aiamsbs-warn) !important;
-    box-shadow: 0 0 0 1px var(--aiamsbs-warn) !important;
+    border-color: var(--adminlm-warn) !important;
+    box-shadow: 0 0 0 1px var(--adminlm-warn) !important;
 }
 
 /* ============================================================
    Tables / dataframes: zebra rows, sticky header, mono numeric.
    ============================================================ */
 .stDataFrame {
-    border: 1px solid var(--aiamsbs-border);
+    border: 1px solid var(--adminlm-border);
     border-radius: 6px;
     overflow: hidden;
 }
@@ -382,9 +382,9 @@ button[kind="primary"][data-testid^="stBaseButton-"]:disabled {
     width: 100%;
 }
 [data-testid="stTable"] thead th {
-    background-color: var(--aiamsbs-panel);
-    color: var(--aiamsbs-text);
-    border-bottom: 1px solid var(--aiamsbs-border);
+    background-color: var(--adminlm-panel);
+    color: var(--adminlm-text);
+    border-bottom: 1px solid var(--adminlm-border);
     font-weight: 600;
     text-align: left;
     padding: 0.5rem 0.75rem;
@@ -395,10 +395,10 @@ button[kind="primary"][data-testid^="stBaseButton-"]:disabled {
     background-color: rgba(255, 255, 255, 0.02);
 }
 [data-testid="stTable"] tbody tr:hover td {
-    background-color: var(--aiamsbs-panel-hover);
+    background-color: var(--adminlm-panel-hover);
 }
 [data-testid="stTable"] td {
-    color: var(--aiamsbs-text);
+    color: var(--adminlm-text);
     padding: 0.4rem 0.75rem;
     border-bottom: 1px solid rgba(31, 58, 92, 0.5);
 }
@@ -411,46 +411,46 @@ button[kind="primary"][data-testid^="stBaseButton-"]:disabled {
 .glide-data-editor .dg-cell-selected,
 [data-testid="stDataFrame"] .dg-cell-selected {
     background-color: rgba(214, 138, 0, 0.18) !important;
-    border-left: 2px solid var(--aiamsbs-warn) !important;
-    border-right: 2px solid var(--aiamsbs-warn) !important;
+    border-left: 2px solid var(--adminlm-warn) !important;
+    border-right: 2px solid var(--adminlm-warn) !important;
 }
 
 /* ============================================================
    Status pills: colored shape + label (color > text).
    Use st.markdown(status_pill(...), unsafe_allow_html=True).
    ============================================================ */
-.aiamsbs-pill {
+.adminlm-pill {
     display: inline-block;
     padding: 0.15rem 0.6rem;
     border-radius: 999px;
     font-size: 0.8rem;
     font-weight: 600;
-    font-family: var(--aiamsbs-mono);
+    font-family: var(--adminlm-mono);
     color: #001520;
     line-height: 1.4;
 }
-.aiamsbs-pill-up      { background-color: var(--status-up); }
-.aiamsbs-pill-warn    { background-color: var(--status-warn); }
-.aiamsbs-pill-down    { background-color: var(--status-down); }
-.aiamsbs-pill-info    { background-color: var(--status-info); }
-.aiamsbs-pill-unknown { background-color: var(--status-unknown); color: #fff; }
+.adminlm-pill-up      { background-color: var(--status-up); }
+.adminlm-pill-warn    { background-color: var(--status-warn); }
+.adminlm-pill-down    { background-color: var(--status-down); }
+.adminlm-pill-info    { background-color: var(--status-info); }
+.adminlm-pill-unknown { background-color: var(--status-unknown); color: #fff; }
 
 /* ============================================================
    Inline code / code blocks: monospace + panel background.
    ============================================================ */
 code, pre, kbd {
-    font-family: var(--aiamsbs-mono) !important;
+    font-family: var(--adminlm-mono) !important;
 }
 [data-testid="stMarkdownContainer"] code {
-    background-color: var(--aiamsbs-panel) !important;
-    color: var(--aiamsbs-accent) !important;
+    background-color: var(--adminlm-panel) !important;
+    color: var(--adminlm-accent) !important;
     padding: 0.1rem 0.35rem !important;
     border-radius: 4px !important;
-    border: 1px solid var(--aiamsbs-border) !important;
+    border: 1px solid var(--adminlm-border) !important;
 }
 pre, [data-testid="stCodeBlock"] {
-    background-color: var(--aiamsbs-panel) !important;
-    border: 1px solid var(--aiamsbs-border) !important;
+    background-color: var(--adminlm-panel) !important;
+    border: 1px solid var(--adminlm-border) !important;
     border-radius: 6px !important;
 }
 
@@ -467,22 +467,22 @@ pre, [data-testid="stCodeBlock"] {
 [data-testid="stAlert"][data-baseweb-kind="info"] {
     background-color: rgba(52, 152, 219, 0.10);
     border-color: var(--status-info);
-    color: var(--aiamsbs-text);
+    color: var(--adminlm-text);
 }
 [data-testid="stAlert"][data-baseweb-kind="success"] {
     background-color: rgba(46, 204, 113, 0.10);
     border-color: var(--status-up);
-    color: var(--aiamsbs-text);
+    color: var(--adminlm-text);
 }
 [data-testid="stAlert"][data-baseweb-kind="warning"] {
     background-color: rgba(243, 156, 18, 0.10);
     border-color: var(--status-warn);
-    color: var(--aiamsbs-text);
+    color: var(--adminlm-text);
 }
 [data-testid="stAlert"][data-baseweb-kind="error"] {
     background-color: rgba(231, 76, 60, 0.10);
     border-color: var(--status-down);
-    color: var(--aiamsbs-text);
+    color: var(--adminlm-text);
 }
 
 /* ============================================================
@@ -490,25 +490,25 @@ pre, [data-testid="stCodeBlock"] {
    ============================================================ */
 .stTabs [data-baseweb="tab-list"] {
     gap: 0.5rem;
-    border-bottom: 1px solid var(--aiamsbs-border);
+    border-bottom: 1px solid var(--adminlm-border);
 }
 .stTabs [data-baseweb="tab"] {
     background-color: transparent;
-    color: var(--aiamsbs-text-muted);
+    color: var(--adminlm-text-muted);
     border-radius: 6px 6px 0 0;
     padding: 0.5rem 1rem;
 }
 .stTabs [aria-selected="true"] {
-    color: var(--aiamsbs-accent);
-    border-bottom: 2px solid var(--aiamsbs-accent);
+    color: var(--adminlm-accent);
+    border-bottom: 2px solid var(--adminlm-accent);
 }
 
 /* ============================================================
    Chat messages: distinct user / assistant surfaces.
    ============================================================ */
 [data-testid="stChatMessage"] {
-    background-color: var(--aiamsbs-panel);
-    border: 1px solid var(--aiamsbs-border);
+    background-color: var(--adminlm-panel);
+    border: 1px solid var(--adminlm-border);
     border-radius: 8px;
     padding: 0.75rem 1rem;
     margin-bottom: 0.5rem;
@@ -518,7 +518,7 @@ pre, [data-testid="stCodeBlock"] {
    Spinner / progress: accent color.
    ============================================================ */
 .stSpinner > div {
-    border-top-color: var(--aiamsbs-accent) !important;
+    border-top-color: var(--adminlm-accent) !important;
 }
 """
 
@@ -592,7 +592,7 @@ def page_header(title: str, icon_name: str) -> None:
     """
     glyph = _PAGE_ICONS.get(icon_name, icon_name)
     st.markdown(
-        f'<div class="aiamsbs-page-header">'
+        f'<div class="adminlm-page-header">'
         f'<span class="ms">{glyph}</span>'
         f'<h1>{title}</h1>'
         f'</div>',
@@ -653,7 +653,7 @@ def page_link_button(
     name = _re.sub(r"^[0-9]+_", "", name)
     href = "/" + name
     st.markdown(
-        f'<a href="{href}" class="aiamsbs-icon-button">'
+        f'<a href="{href}" class="adminlm-icon-button">'
         f'<span class="ms">{glyph}</span>'
         f'<span>{label}</span>'
         f'</a>',
@@ -683,11 +683,11 @@ def cyberpunk_title(title: str, icon_name: str = "", size: str = "") -> None:
     if icon_name:
         glyph = _PAGE_ICONS.get(icon_name, icon_name)
         glyph_html = f'<span class="ms">{glyph}</span>'
-    size_class = " aiamsbs-cyberpunk-sm" if size == "sm" else ""
+    size_class = " adminlm-cyberpunk-sm" if size == "sm" else ""
     st.markdown(
-        f'<div class="aiamsbs-cyberpunk-row">'
+        f'<div class="adminlm-cyberpunk-row">'
         f'{glyph_html}'
-        f'<span class="aiamsbs-cyberpunk{size_class}">{title}</span>'
+        f'<span class="adminlm-cyberpunk{size_class}">{title}</span>'
         f'</div>',
         unsafe_allow_html=True,
     )
@@ -702,7 +702,7 @@ def section_header(title: str) -> None:
     subheadings like "Quick links", "Stage 1 — Select playbook",
     "Recent playbook runs".
 
-    Drop-in replacement for st.subheader(). The .aiamsbs-section-header
+    Drop-in replacement for st.subheader(). The .adminlm-section-header
     class also works as a fallback — if you must use raw st.markdown
     or st.subheader, add the class to the rendered HTML.
 
@@ -710,14 +710,14 @@ def section_header(title: str) -> None:
         section_header("Stage 1 — Select playbook")
     """
     st.markdown(
-        f'<div class="aiamsbs-section-header">{title}</div>',
+        f'<div class="adminlm-section-header">{title}</div>',
         unsafe_allow_html=True,
     )
 
 
 # AIAMSBS favicon. Inline SVG (data: URL) so the browser tab +
 # bookmarks show the same glyph on every page. Drop-in for
-# st.set_page_config(page_icon=AIAMSBS_FAVICON).
+# st.set_page_config(page_icon=ADMINLM_FAVICON).
 # Glyph: stylized "A" inside a shield — matches the dark-cyber
 # palette. Rendered as 32x32 SVG, base64-encoded.
 import base64 as _base64
@@ -736,7 +736,7 @@ _FAVICON_SVG = (
     'stroke-linecap="round" stroke-linejoin="round"/>'
     '</svg>'
 )
-AIAMSBS_FAVICON = (
+ADMINLM_FAVICON = (
     "data:image/svg+xml;base64,"
     + _base64.b64encode(_FAVICON_SVG.encode()).decode()
 )
@@ -758,16 +758,16 @@ def status_pill(status: str, label: str | None = None) -> str:
     """
     s = status.lower()
     css_class = {
-        "up": "aiamsbs-pill-up",
-        "warn": "aiamsbs-pill-warn",
-        "degraded": "aiamsbs-pill-warn",
-        "down": "aiamsbs-pill-down",
-        "error": "aiamsbs-pill-down",
-        "info": "aiamsbs-pill-info",
-        "unknown": "aiamsbs-pill-unknown",
-    }.get(s, "aiamsbs-pill-unknown")
+        "up": "adminlm-pill-up",
+        "warn": "adminlm-pill-warn",
+        "degraded": "adminlm-pill-warn",
+        "down": "adminlm-pill-down",
+        "error": "adminlm-pill-down",
+        "info": "adminlm-pill-info",
+        "unknown": "adminlm-pill-unknown",
+    }.get(s, "adminlm-pill-unknown")
     text = label if label is not None else status.upper()
-    return f'<span class="aiamsbs-pill {css_class}">{text}</span>'
+    return f'<span class="adminlm-pill {css_class}">{text}</span>'
 
 
 # Friendly alias so pages don't need to import st.markdown separately.
@@ -823,7 +823,7 @@ _ICON_CSS = """
     font-feature-settings: 'liga';
     -webkit-font-smoothing: antialiased;
     /* Default appearance: cyan-tinted, 24px, vertical-aligned to text */
-    color: var(--aiamsbs-accent);
+    color: var(--adminlm-accent);
     font-size: 24px;
     vertical-align: middle;
     transition: text-shadow 120ms ease, color 120ms ease;
@@ -851,45 +851,45 @@ _ICON_CSS = """
    left border, no success/error box so there's only ONE icon (the user
    spec said "Check or X then Name of Service. Latency."). Each tile is one
    div; consumer renders the glyph + name + latency manually. */
-.aiamsbs-health-tile {
+.adminlm-health-tile {
     min-height: 88px;
     padding: 0.7rem 0.9rem;
     border-radius: 6px;
-    border-left: 4px solid var(--aiamsbs-border);
-    background-color: var(--aiamsbs-panel);
+    border-left: 4px solid var(--adminlm-border);
+    background-color: var(--adminlm-panel);
     box-shadow: var(--shadow-card);
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
-.aiamsbs-health-tile-up   { border-left-color: var(--status-up);   }
-.aiamsbs-health-tile-down { border-left-color: var(--status-down); }
-.aiamsbs-health-tile .name {
+.adminlm-health-tile-up   { border-left-color: var(--status-up);   }
+.adminlm-health-tile-down { border-left-color: var(--status-down); }
+.adminlm-health-tile .name {
     font-weight: 600;
-    color: var(--aiamsbs-text);
+    color: var(--adminlm-text);
     margin-bottom: 0.15rem;
 }
-.aiamsbs-health-tile .latency {
-    font-family: var(--aiamsbs-mono);
+.adminlm-health-tile .latency {
+    font-family: var(--adminlm-mono);
     font-size: 0.85rem;
-    color: var(--aiamsbs-text-muted);
+    color: var(--adminlm-text-muted);
 }
 
 /* Page-header row: icon + title inline, with a subtle glow on the
    icon. Pages call page_header() to get this layout for free. */
-.aiamsbs-page-header {
+.adminlm-page-header {
     display: flex;
     align-items: center;
     gap: 0.6rem;
     margin: 0 0 1rem 0;
     padding-bottom: 0.4rem;
-    border-bottom: 2px solid var(--aiamsbs-accent);
+    border-bottom: 2px solid var(--adminlm-accent);
 }
-.aiamsbs-page-header .ms {
+.adminlm-page-header .ms {
     font-size: 32px;
     text-shadow: 0 0 10px rgba(0, 212, 255, 0.45);
 }
-.aiamsbs-page-header h1 {
+.adminlm-page-header h1 {
     margin: 0;
     padding: 0;
     border: none;       /* the row already has the accent underline */
@@ -919,14 +919,14 @@ _ICON_CSS = """
    st.markdown(unsafe_allow_html=True). The href uses Streamlit's
    internal page URL routing so navigation still works.
    ============================================================ */
-a.aiamsbs-icon-button {
+a.adminlm-icon-button {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
     padding: 0.45rem 0.9rem;
-    background-color: var(--aiamsbs-panel);
-    color: var(--aiamsbs-text);
-    border: 1px solid var(--aiamsbs-border);
+    background-color: var(--adminlm-panel);
+    color: var(--adminlm-text);
+    border: 1px solid var(--adminlm-border);
     border-radius: 6px;
     text-decoration: none;
     font-weight: 500;
@@ -934,20 +934,20 @@ a.aiamsbs-icon-button {
                 box-shadow 120ms ease;
     vertical-align: middle;
 }
-a.aiamsbs-icon-button:hover {
-    background-color: var(--aiamsbs-panel-hover);
-    border-color: var(--aiamsbs-accent-dim);
+a.adminlm-icon-button:hover {
+    background-color: var(--adminlm-panel-hover);
+    border-color: var(--adminlm-accent-dim);
     box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.30);
     text-decoration: none;
 }
-a.aiamsbs-icon-button:focus {
-    outline: 2px solid var(--aiamsbs-accent);
+a.adminlm-icon-button:focus {
+    outline: 2px solid var(--adminlm-accent);
     outline-offset: 1px;
 }
-a.aiamsbs-icon-button .ms {
+a.adminlm-icon-button .ms {
     font-size: 18px;
     vertical-align: -3px;
-    color: var(--aiamsbs-accent);
+    color: var(--adminlm-accent);
 }
 
 /* ============================================================
@@ -970,7 +970,7 @@ a.aiamsbs-icon-button .ms {
 
    Usage: cyberpunk_title("Agent Chat", "agent_chat")
    ============================================================ */
-.aiamsbs-cyberpunk {
+.adminlm-cyberpunk {
     display: inline-block;
     font-family: 'Orbitron', 'Rajdhani', 'Audiowide', system-ui,
                  -apple-system, BlinkMacSystemFont, sans-serif;
@@ -990,15 +990,15 @@ a.aiamsbs-icon-button .ms {
     -webkit-text-fill-color: transparent;
     background: linear-gradient(
         90deg,
-        var(--aiamsbs-accent) 0%,
+        var(--adminlm-accent) 0%,
         #c800ff 50%,
-        var(--aiamsbs-magenta) 100%
+        var(--adminlm-magenta) 100%
     );
     -webkit-background-clip: text;
     background-clip: text;
     /* The actual stroke — modern WebKit / Blink render this; the
        fallback path in older browsers shows a solid cyan outline. */
-    -webkit-text-stroke: 1.5px var(--aiamsbs-accent);
+    -webkit-text-stroke: 1.5px var(--adminlm-accent);
     /* Multi-layer text-shadow = inner glow + outer bloom.
        Stack order: tight inner cyan glow -> wider outer bloom
        fading to transparent. The exact reference has BOTH a
@@ -1013,21 +1013,21 @@ a.aiamsbs-icon-button .ms {
     padding: 0.3rem 0;
     margin: 0 0 1rem 0;
 }
-.aiamsbs-cyberpunk-row {
+.adminlm-cyberpunk-row {
     display: flex;
     align-items: center;
     gap: 0.7rem;
     padding-bottom: 0.4rem;
-    border-bottom: 2px solid var(--aiamsbs-accent);
+    border-bottom: 2px solid var(--adminlm-accent);
     margin-bottom: 1rem;
 }
-.aiamsbs-cyberpunk-row .ms {
+.adminlm-cyberpunk-row .ms {
     /* Match the cyberpunk title's apparent visual height (~2.2rem
        = 35px baseline + glow + stroke). 44px lands visually balanced
        with the outlined title's letterforms without dwarfing it. */
     font-size: 44px;
     line-height: 1;
-    color: var(--aiamsbs-accent);
+    color: var(--adminlm-accent);
     text-shadow:
         0 0 8px rgba(0, 212, 255, 0.65),
         0 0 16px rgba(200, 0, 255, 0.40);
@@ -1045,14 +1045,14 @@ a.aiamsbs-icon-button .ms {
    Note: cyberpunk_title() emits icon-then-title in the row, so we
    use :has() to detect the sm-title class on a child element and
    shrink the icon. */
-.aiamsbs-cyberpunk-row:has(.aiamsbs-cyberpunk-sm) .ms {
+.adminlm-cyberpunk-row:has(.adminlm-cyberpunk-sm) .ms {
     font-size: 28px;
 }
 /* Solid-cyan fallback for browsers without -webkit-text-stroke.
    Still neon-ish, just less gradient. */
-.aiamsbs-cyberpunk-fallback {
-    color: var(--aiamsbs-accent);
-    -webkit-text-fill-color: var(--aiamsbs-accent);
+.adminlm-cyberpunk-fallback {
+    color: var(--adminlm-accent);
+    -webkit-text-fill-color: var(--adminlm-accent);
     background: none;
     -webkit-text-stroke: 0;
     font-weight: 800;
@@ -1063,7 +1063,7 @@ a.aiamsbs-icon-button .ms {
 
 /* Smaller variant for subheadings / inline labels (e.g. the
    "Recent playbook runs" rows on Home). */
-.aiamsbs-cyberpunk-sm {
+.adminlm-cyberpunk-sm {
     font-size: 1.4rem;
 }
 
@@ -1075,29 +1075,29 @@ a.aiamsbs-icon-button .ms {
    This reads as "data" rather than "title" — the page title
    does the heavy neon lifting and section headers stay readable.
    ============================================================ */
-.aiamsbs-section-header {
+.adminlm-section-header {
     font-family: 'Orbitron', 'Rajdhani', system-ui, -apple-system,
                  BlinkMacSystemFont, sans-serif;
     font-weight: 600;
     font-size: 1.15rem;
     letter-spacing: 0.03em;
     text-transform: uppercase;
-    color: var(--aiamsbs-accent);
+    color: var(--adminlm-accent);
     /* Solid fill — no gradient, no stroke, no glow. The accent
        underline border gives visual continuity with the cyberpunk
        title's bordered row above. */
-    -webkit-text-fill-color: var(--aiamsbs-accent);
+    -webkit-text-fill-color: var(--adminlm-accent);
     background: none;
     -webkit-text-stroke: 0;
     text-shadow: none;
     margin: 1.25rem 0 0.6rem 0;
     padding-bottom: 0.35rem;
-    border-bottom: 1px solid var(--aiamsbs-accent-dim);
+    border-bottom: 1px solid var(--adminlm-accent-dim);
 }
 
 /* Override Streamlit's native h2 / h3 styling so any remaining
    st.subheader() or st.markdown("## ...") calls also pick up the
-   theme. Less aggressive than .aiamsbs-section-header (no border)
+   theme. Less aggressive than .adminlm-section-header (no border)
    so it doesn't add noise where the developer chose not to use
    section_header(). */
 h2, h3,
@@ -1105,8 +1105,8 @@ h2, h3,
 [data-testid="stMarkdownContainer"] h3 {
     font-family: 'Orbitron', 'Rajdhani', system-ui, -apple-system,
                  BlinkMacSystemFont, sans-serif !important;
-    color: var(--aiamsbs-accent) !important;
-    -webkit-text-fill-color: var(--aiamsbs-accent) !important;
+    color: var(--adminlm-accent) !important;
+    -webkit-text-fill-color: var(--adminlm-accent) !important;
     text-shadow: none !important;
     font-weight: 600 !important;
     letter-spacing: 0.03em !important;

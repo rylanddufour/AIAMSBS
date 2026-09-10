@@ -37,11 +37,11 @@ from mcp_client import (
     loki_query,
 )
 from settings import load as load_settings
-from theme import AIAMSBS_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
+from theme import ADMINLM_FAVICON, apply_theme, cyberpunk_title, page_header, page_link_button, section_header
 
 st.set_page_config(
-    page_title="Inventory Search — AIAMSBS",
-    page_icon=AIAMSBS_FAVICON, layout="wide",
+    page_title="Inventory Search — AdminLM",
+    page_icon=ADMINLM_FAVICON, layout="wide",
 )
 
 if not require_auth():
@@ -252,7 +252,7 @@ if drill:
     with st.expander("All attributes (JSON)", expanded=False):
         st.code(json.dumps(drill, indent=2, default=str), language="json")
 
-    # Recent alerts: pull from Loki. We search job=aiamsbs-anomaly OR
+    # Recent alerts: pull from Loki. We search job=adminlm-anomaly OR
     # any log whose line mentions the hostname. Per the card's open
     # questions, this is "pull from Loki for v1.0".
     section_header("Recent alerts (Loki, last 24h)")
@@ -262,7 +262,7 @@ if drill:
         )
         if hostname_q:
             loki_lines = loki_query(
-                query=f'{{job=~"aiamsbs-anomaly|aiamsbs-ansible"}} |= "{hostname_q}"',
+                query=f'{{job=~"adminlm-anomaly|adminlm-ansible"}} |= "{hostname_q}"',
                 limit=25,
             )
             if loki_lines:
