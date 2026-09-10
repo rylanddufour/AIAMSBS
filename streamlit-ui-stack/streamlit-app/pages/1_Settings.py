@@ -158,24 +158,10 @@ _AUTH_SOURCE_LABELS = {
 }
 st.caption(_AUTH_SOURCE_LABELS.get(_admin_password_source(), "🔐 Auth: unknown"))
 
-_admin_header_cols = st.columns([0.85, 0.15])
-with _admin_header_cols[0]:
-    section_header("Admin Account")
-with _admin_header_cols[1]:
-    # BACKLOG #73 multi-paragraph help pattern: st.popover("?") instead of
-    # help= on the widget, so the content renders with markdown breaks.
-    with st.popover("?"):
-        st.markdown(
-            "- The new password takes effect on the **next login** — no "
-            "`docker compose restart` needed.\n"
-            "- All currently-active sessions stay logged in (their "
-            "bcrypt-verified cookies/session-state are not invalidated "
-            "by a hash change).\n"
-            "- To recover if you forget the password: "
-            "`docker exec streamlit-ui env | grep STREAMLIT_ADMIN` "
-            "shows the env fallback; edit `docker-compose.yml` defaults "
-            "+ `docker compose up -d streamlit-ui`."
-        )
+# Full-width section header (BACKLOG #79 — dropped the ? popover; help text
+# goes to customer-facing docs, not the form. The form is self-explanatory
+# once you're filling it in).
+section_header("Admin Account")
 
 
 # Show-passwords toggle: streamlit's `type` is set at widget creation,
