@@ -5,11 +5,15 @@ transport. Five required tools (kb_search, kb_add, kb_update, kb_list,
 kb_delete) plus two convenience source-management tools (kb_add_source,
 kb_list_sources).
 
-Also serves a bare HTML viewer at `/` and `/ui/` (BACKLOG #57) using
-`@mcp.custom_route()` — a tiny single-file SPA that calls the same
-tool functions via `/api/kb/list`, `/api/kb/entries/{id}` (GET + PATCH).
-No direct DB access from the UI; the existing MCP tool layer is the
-sole data path. The Svelte + ByteMD upgrade is a separate row (BACKLOG #55).
+BACKLOG #76 — Web UI commented out (kb-mcp is transport-only).
+The Streamlit front end (BACKLOG #64) replaces the standalone HTML
+viewer that used to live at `/`, `/ui/`, `/ui/` and the `/api/kb/*`
+JSON wrappers it called. The viewer routes and INDEX_HTML template are
+kept on disk in commented-out form (line-by-line "# " prefixes — Python
+triple-quoted strings are greedy and would close at the first inner
+docstring, not at the matching closer) so a future "revive the web UI"
+decision has the code ready to restore — strip the leading "# " from
+each line in the marked blocks. See BACKLOG #76 + #64 for context.
 
 MVP search strategy: FTS5 BM25 ranking only. No embeddings, no model
 calls, no network. Design justification in
@@ -557,9 +561,12 @@ def kb_list_sources() -> list[dict]:
 
 
 # ----------------------------------------------------------------------------
-# Bare HTML viewer (BACKLOG #57) — restored because the original /ui/
-# endpoint was lost in a kb-mcp rebase. Tiny single-file SPA; the Svelte +
-# ByteMD upgrade is a separate row (BACKLOG #55).
+# BACKLOG #76 — Bare HTML viewer (originally BACKLOG #57) is now DEACTIVATED.
+# The @mcp.custom_route() decorators that returned INDEX_HTML are commented
+# out (see the # BACKLOG #76 blocks above) so this template is no longer
+# served. Kept on disk + still assigned to INDEX_HTML so a future "revive
+# the web UI" decision has the template ready. The Svelte + ByteMD upgrade
+# is a separate row (BACKLOG #55, superseded by this deactivation).
 # ----------------------------------------------------------------------------
 
 INDEX_HTML = """<!DOCTYPE html>
@@ -941,95 +948,123 @@ loadList();
 </html>"""
 
 
-@mcp.custom_route("/", methods=["GET"])
-async def serve_root(request: Request) -> HTMLResponse:
-    """Root redirect-equivalent: serve the KB viewer HTML."""
-    return HTMLResponse(INDEX_HTML)
+# BACKLOG #76 — kb-mcp web UI commented out (transport-only). See BACKLOG #64.
+# The 6 routes below (/, /ui, /ui/, /api/kb/list, /api/kb/entries/{id} GET,
+# /api/kb/entries/{id} PATCH) and the INDEX_HTML template above are kept on
+# disk in commented-out form so a future "revive the web UI" decision has the
+# code ready to restore — strip the leading "# " from each line in the blocks
+# below (the "# BACKLOG #76 — commented out ..." openers and the "# --- end
+# BACKLOG #76 ---" closers mark the bounds).
+#
+# Why triple-quoted strings were NOT used: Python triple-quoted strings are
+# greedy, so a wrapping """...""" closes at the first inner docstring, not at
+# the matching closer — leaving the route bodies live. Line-by-line "# " is
+# the unambiguous form and is reversible with sed -i 's/^# //'.
 
+# --- BACKLOG #76 — commented out (transport-only). Restore by stripping the
+# leading "# " from every line in this block. See BACKLOG #64.
+# @mcp.custom_route("/", methods=["GET"])
+# async def serve_root(request: Request) -> HTMLResponse:
+#     """Root redirect-equivalent: serve the KB viewer HTML."""
+#     return HTMLResponse(INDEX_HTML)
+# --- end BACKLOG #76 ---
 
-@mcp.custom_route("/ui", methods=["GET"])
-async def serve_ui_short(request: Request) -> HTMLResponse:
-    """Bare KB viewer (BACKLOG #57). Same HTML as /."""
-    return HTMLResponse(INDEX_HTML)
+# --- BACKLOG #76 — commented out (transport-only). Restore by stripping the
+# leading "# " from every line in this block. See BACKLOG #64.
+# @mcp.custom_route("/ui", methods=["GET"])
+# async def serve_ui_short(request: Request) -> HTMLResponse:
+#     """Bare KB viewer (BACKLOG #57). Same HTML as /."""
+#     return HTMLResponse(INDEX_HTML)
+# --- end BACKLOG #76 ---
 
+# --- BACKLOG #76 — commented out (transport-only). Restore by stripping the
+# leading "# " from every line in this block. See BACKLOG #64.
+# @mcp.custom_route("/ui/", methods=["GET"])
+# async def serve_ui_slash(request: Request) -> HTMLResponse:
+#     """Trailing-slash alias for /ui (some clients/proxies double-slash)."""
+#     return HTMLResponse(INDEX_HTML)
+# --- end BACKLOG #76 ---
 
-@mcp.custom_route("/ui/", methods=["GET"])
-async def serve_ui_slash(request: Request) -> HTMLResponse:
-    """Trailing-slash alias for /ui (some clients/proxies double-slash)."""
-    return HTMLResponse(INDEX_HTML)
+# --- BACKLOG #76 — commented out (transport-only). The HTML viewer called
+# /api/kb/list + /api/kb/entries/{id} GET/PATCH via fetch() — now dead with
+# the viewer, these routes serve no remaining UI. Restore by stripping the
+# leading "# " from every line in this block. See BACKLOG #64.
+# @mcp.custom_route("/api/kb/list", methods=["GET"])
+# async def api_kb_list(request: Request) -> JSONResponse:
+#     """JSON wrapper around the kb_list MCP tool. No direct DB access."""
+#     try:
+#         # kb_list is a regular Python function (the @mcp.tool() decorator
+#         # only registers it with FastMCP — it remains callable directly).
+#         entries = kb_list()
+#         if entries and isinstance(entries[0], dict) and "error" in entries[0]:
+#             return JSONResponse({"error": entries[0]["error"]}, status_code=400)
+#         return JSONResponse({"data": entries, "count": len(entries)})
+#     except Exception as e:
+#         return JSONResponse({"error": str(e)}, status_code=500)
+# --- end BACKLOG #76 ---
 
+# --- BACKLOG #76 — commented out (transport-only). Restore by stripping the
+# leading "# " from every line in this block. See BACKLOG #64.
+# @mcp.custom_route("/api/kb/entries/{entry_id:int}", methods=["GET"])
+# async def api_kb_get(request: Request) -> JSONResponse:
+#     """JSON wrapper around a direct SELECT for one entry.
+#
+#     Note: there is no kb_get MCP tool — this endpoint uses the same DB
+#     layer (read-only, no joins) that kb_list uses. UI does not need to
+#     cross the MCP HTTP transport for read paths.
+#     """
+#     entry_id = request.path_params["entry_id"]
+#     try:
+#         conn = _connect()
+#         cur = conn.cursor()
+#         cur.execute("SELECT * FROM kb_entries WHERE id=?", (entry_id,))
+#         row = cur.fetchone()
+#         conn.close()
+#         if row is None:
+#             return JSONResponse({"error": "not found", "entry_id": entry_id},
+#                                 status_code=404)
+#         return JSONResponse({"data": _row_to_dict(row)})
+#     except Exception as e:
+#         return JSONResponse({"error": str(e)}, status_code=500)
+# --- end BACKLOG #76 ---
 
-@mcp.custom_route("/api/kb/list", methods=["GET"])
-async def api_kb_list(request: Request) -> JSONResponse:
-    """JSON wrapper around the kb_list MCP tool. No direct DB access."""
-    try:
-        # kb_list is a regular Python function (the @mcp.tool() decorator
-        # only registers it with FastMCP — it remains callable directly).
-        entries = kb_list()
-        if entries and isinstance(entries[0], dict) and "error" in entries[0]:
-            return JSONResponse({"error": entries[0]["error"]}, status_code=400)
-        return JSONResponse({"data": entries, "count": len(entries)})
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-
-@mcp.custom_route("/api/kb/entries/{entry_id:int}", methods=["GET"])
-async def api_kb_get(request: Request) -> JSONResponse:
-    """JSON wrapper around a direct SELECT for one entry.
-
-    Note: there is no kb_get MCP tool — this endpoint uses the same DB
-    layer (read-only, no joins) that kb_list uses. UI does not need to
-    cross the MCP HTTP transport for read paths.
-    """
-    entry_id = request.path_params["entry_id"]
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM kb_entries WHERE id=?", (entry_id,))
-        row = cur.fetchone()
-        conn.close()
-        if row is None:
-            return JSONResponse({"error": "not found", "entry_id": entry_id},
-                                status_code=404)
-        return JSONResponse({"data": _row_to_dict(row)})
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-
-@mcp.custom_route("/api/kb/entries/{entry_id:int}", methods=["PATCH"])
-async def api_kb_update(request: Request) -> JSONResponse:
-    """JSON wrapper around the kb_update MCP tool. No direct DB access.
-
-    Body JSON keys mirror kb_update kwargs: title, content, tags, status.
-    All fields optional; at least one must be supplied.
-    """
-    entry_id = request.path_params["entry_id"]
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"error": "invalid JSON body"}, status_code=400)
-    if not isinstance(body, dict):
-        return JSONResponse({"error": "body must be a JSON object"},
-                            status_code=400)
-    allowed = {"title", "content", "tags", "status"}
-    unknown = set(body) - allowed
-    if unknown:
-        return JSONResponse(
-            {"error": f"unknown fields: {sorted(unknown)}; allowed: {sorted(allowed)}"},
-            status_code=400,
-        )
-    if not body:
-        return JSONResponse(
-            {"error": "no fields to update; supply at least one of: title, content, tags, status"},
-            status_code=400,
-        )
-    try:
-        result = kb_update(entry_id=entry_id, **body)
-        if isinstance(result, dict) and "error" in result:
-            return JSONResponse(result, status_code=400)
-        return JSONResponse({"data": result})
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+# --- BACKLOG #76 — commented out (transport-only). Restore by stripping the
+# leading "# " from every line in this block. See BACKLOG #64.
+# @mcp.custom_route("/api/kb/entries/{entry_id:int}", methods=["PATCH"])
+# async def api_kb_update(request: Request) -> JSONResponse:
+#     """JSON wrapper around the kb_update MCP tool. No direct DB access.
+#
+#     Body JSON keys mirror kb_update kwargs: title, content, tags, status.
+#     All fields optional; at least one must be supplied.
+#     """
+#     entry_id = request.path_params["entry_id"]
+#     try:
+#         body = await request.json()
+#     except Exception:
+#         return JSONResponse({"error": "invalid JSON body"}, status_code=400)
+#     if not isinstance(body, dict):
+#         return JSONResponse({"error": "body must be a JSON object"},
+#                             status_code=400)
+#     allowed = {"title", "content", "tags", "status"}
+#     unknown = set(body) - allowed
+#     if unknown:
+#         return JSONResponse(
+#             {"error": f"unknown fields: {sorted(unknown)}; allowed: {sorted(allowed)}"},
+#             status_code=400,
+#         )
+#     if not body:
+#         return JSONResponse(
+#             {"error": "no fields to update; supply at least one of: title, content, tags, status"},
+#             status_code=400,
+#         )
+#     try:
+#         result = kb_update(entry_id=entry_id, **body)
+#         if isinstance(result, dict) and "error" in result:
+#             return JSONResponse(result, status_code=400)
+#         return JSONResponse({"data": result})
+#     except Exception as e:
+#         return JSONResponse({"error": str(e)}, status_code=500)
+# --- end BACKLOG #76 ---
 
 
 @mcp.custom_route("/api/kb/entries", methods=["POST"])
