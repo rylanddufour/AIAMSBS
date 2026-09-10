@@ -6,7 +6,7 @@
 # the operator is locked out and can't reach the form.
 #
 # Behavior:
-#   - Opens $HOME/AIAMSBS/streamlit-ui-stack/data/streamlit-ui.db on the host
+#   - Opens $HOME/adminlm/streamlit-ui-stack/data/streamlit-ui.db on the host
 #     (bind-mount source for the streamlit-ui container's /data volume) via
 #     Python stdlib sqlite3 + bcrypt.
 #   - Computes a fresh bcrypt hash of "admin".
@@ -30,7 +30,7 @@
 
 set -euo pipefail
 
-DB_PATH="${HOME}/AIAMSBS/streamlit-ui-stack/data/streamlit-ui.db"
+DB_PATH="${HOME}/adminlm/streamlit-ui-stack/data/streamlit-ui.db"
 DRY_RUN=0
 
 # ---- argparse (manual; bash getopts is fine for two flags) ----
@@ -64,8 +64,8 @@ if [[ ! -f "$DB_PATH" ]]; then
     echo "container's /data volume — the path resolves to the repo's" >&2
     echo "streamlit-ui-stack/data/ subdir relative to \$HOME)." >&2
     echo "" >&2
-    echo "If your AIAMSBS checkout lives elsewhere, pass --db-path /your/path/streamlit-ui.db" >&2
-    echo "(defaults to \${HOME}/AIAMSBS/streamlit-ui-stack/data/streamlit-ui.db)" >&2
+    echo "If your AdminLM checkout lives elsewhere, pass --db-path /your/path/streamlit-ui.db" >&2
+    echo "(defaults to \${HOME}/adminlm/streamlit-ui-stack/data/streamlit-ui.db)" >&2
     exit 1
 fi
 

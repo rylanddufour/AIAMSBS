@@ -125,7 +125,7 @@ class MCPClient:
             "params": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {"name": "aiamsbs-discover", "version": "1.0.0"},
+                "clientInfo": {"name": "adminlm-discover", "version": "1.0.0"},
             },
         })
         # notifications/initialized has no response body per the spec
@@ -163,7 +163,7 @@ def run_nmap(target: str, timeout: int = 300) -> str:
         raise SystemExit(
             f"nmap-discovery unreachable at {NMAP_URL}: {exc}\n"
             f"Is the nmap-discovery container running? Start it with:\n"
-            f"  cd /home/ansible/AIAMSBS/inventory-stack && \\\n"
+            f"  cd /home/ansible/adminlm/inventory-stack && \\\n"
             f"  sg docker -c 'docker compose --profile discovery up -d nmap-discovery'"
         )
 

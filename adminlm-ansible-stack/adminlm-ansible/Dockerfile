@@ -1,7 +1,7 @@
-# aiamsbs-ansible — stock Ansible runtime container.
+# adminlm-ansible — stock Ansible runtime container.
 #
 # v1.0 customer deployment (BACKLOG #64). Runs ansible-playbook invocations
-# triggered by aiamsbs-ansible-runner via docker exec. Has NO exposed port
+# triggered by adminlm-ansible-runner via docker exec. Has NO exposed port
 # and no docker socket — it is invoked, never invokes.
 #
 # Image philosophy: lean. ansible-core (NOT full ansible) + a small set of
@@ -70,7 +70,7 @@ COPY loki_logger.py /ansible/loki_logger.py
 # Entrypoint keeps the container alive indefinitely so the runner can
 # docker exec into it. The runner does NOT manage ansible processes
 # directly — it shells out to `docker exec` on this container.
-COPY aiamsbs-ansible/entrypoint.sh /ansible/entrypoint.sh
+COPY adminlm-ansible/entrypoint.sh /ansible/entrypoint.sh
 RUN chmod +x /ansible/entrypoint.sh
 
 # /ansible subpaths match the bind mounts in docker-compose.yml:

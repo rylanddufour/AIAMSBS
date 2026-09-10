@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test for AIAMSBS inventory-stack.
+# Smoke test for AdminLM inventory-stack.
 #
 # Exercises every tool exposed by the inventory-mcp container over MCP
 # streamable-http, plus a TCP-socket probe of the nmap-discovery wrapper,

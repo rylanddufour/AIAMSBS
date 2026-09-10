@@ -42,7 +42,7 @@ Documents the daily AdminLM stack backup workflow so the IT_ADMIN agent can run,
 
 - `GRAFANA_URL` — default `http://localhost:3000`
 - `GRAFANA_TOKEN_FILE` — default `~/.hermes/secrets/grafana-mcp.env`
-- `AIAMSBS_DIR` — default `~/AIAMSBS` (root of the AdminLM config tree)
+- `ADMINLM_DIR` — default `~/adminlm` (root of the AdminLM config tree)
 - `BACKUP_DIR` — default `~/backups`
 - `KEEP` — default `14` daily backups retained
 
@@ -110,7 +110,7 @@ The manifest is the quickest way to verify a backup:
 | `WARN: hermes not on PATH; skipping hermes backup` | `hermes` CLI not installed or not in the cron user's PATH. Install hermes-agent and re-run. |
 | `WARN: inventory-mcp container not running; skipping inventory DB` | The inventory stack is not deployed (or down). The rest of the backup still completes. If the inventory DB existed previously, the last good backup is your fallback. |
 | `WARN: kb-mcp container not running; skipping KB DB` | Same pattern for the KB stack. |
-| `WARN: missing /home/.../adminlm/config/<file>.yml` | The AIAMSBS repo is not at the expected path. Check `AIAMSBS_DIR` env override. |
+| `WARN: missing /home/.../adminlm/config/<file>.yml` | The AdminLM repo is not at the expected path. Check `ADMINLM_DIR` env override. |
 | No `adminlm-backup-*.tar.gz` files in `~/backups/` | Cron never ran. Check the Hermes cron state: `hermes cron list`, look for `AdminLM Backup`, check `last_status`. |
 | Cron registered in jobs.json with `state: scheduled` and `enabled: true` but never fires | The **hermes-gateway daemon is not running** — it is the daemon that ticks scheduled jobs. Check `sudo systemctl status hermes-gateway.service`; on a fresh install it should be `active (running)`. If `inactive` or `failed`, start it with `sudo systemctl start hermes-gateway.service` and inspect `journalctl -u hermes-gateway.service -n 50` for the cause. |
 | `last_status: error` on the cron | Read `last_error` from `~/.hermes/cron/jobs.json` or `hermes cron status <id>`. |
@@ -133,10 +133,10 @@ The manifest is the quickest way to verify a backup:
 ## Related
 
 - Script: `scripts/adminlm-backup.sh` (the workhorse)
-- Old script: `scripts/backup-dashboards.sh` — **removed** when scope grew to include hermes / inventory / KB / configs. If you see this file referenced anywhere, it's stale; the installer's cron job was renamed to `AdminLM Backup` and the old `AIAMSBS Dashboard Backup` cron should be replaced.
+- Old script: `scripts/backup-dashboards.sh` — **removed** when scope grew to include hermes / inventory / KB / configs. If you see this file referenced anywhere, it's stale; the installer's cron job was renamed to `AdminLM Backup` and the old `AdminLM Dashboard Backup` cron should be replaced.
 - Hermes backup CLI: https://hermes-agent.nousresearch.com/docs/reference/cli-commands (covers what `hermes backup` itself does)
 - Service account: `create_grafana_mcp_service_account()` in `bootstrap.sh`
-- Cron registration: `install_dashboard_backup_hermes_cron()` in `bootstrap.sh` (replaces the legacy `/etc/cron.d/aiamsbs-dashboard-backup` system cron)
+- Cron registration: `install_dashboard_backup_hermes_cron()` in `bootstrap.sh` (replaces the legacy `/etc/cron.d/adminlm-dashboard-backup` system cron)
 - Gateway (cron scheduler daemon): `install_hermes_gateway_service()` in `bootstrap.sh` — installs the system-level systemd service that ticks the cron
-- Legacy system cron: `/etc/cron.d/aiamsbs-dashboard-backup` — removed by the new install on re-bootstrap
+- Legacy system cron: `/etc/cron.d/adminlm-dashboard-backup` — removed by the new install on re-bootstrap
 - BACKLOG #6 (parent): "Backup script | Export config files and dashboards for disaster recovery" — **RESOLVED by this skill + script**

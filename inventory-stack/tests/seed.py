@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed the AIAMSBS inventory DB for smoke tests.
+"""Seed the AdminLM inventory DB for smoke tests.
 
 Runs seed.sql idempotently against /data/inventory.db. Because the DB lives
 inside the running `inventory-mcp` container (mounted at /data from the

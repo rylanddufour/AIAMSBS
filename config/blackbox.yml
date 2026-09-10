@@ -1,4 +1,4 @@
-# Blackbox Exporter configuration for AIAMSBS
+# Blackbox Exporter configuration for AdminLM
 # Probes hit localhost endpoints on the VM host.
 # All endpoints live on the VM that runs this compose stack.
 #

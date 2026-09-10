@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Install the 'AIAMSBS Backup' Hermes cron job.
+"""Install the 'AdminLM Backup' Hermes cron job.
 
 Idempotent: matches existing jobs by ``name`` (not ``id``) so that
-upgrades from the older ``aiamsbs-backup-it_admin`` id layout (when
+upgrades from the older ``adminlm-backup-it_admin`` id layout (when
 crons were mistakenly tagged with the it_admin profile name in their
 metadata) get rewritten in place rather than creating duplicates.
 
-Also removes the legacy /etc/cron.d/aiamsbs-dashboard-backup system
+Also removes the legacy /etc/cron.d/adminlm-dashboard-backup system
 cron if present (it ran the older backup-dashboards.sh via system cron
 before the migration to Hermes cron).
 
@@ -18,8 +18,8 @@ Usage: install_dashboard_backup_hermes_cron.py <hermes_home> [<profile>]
                ``profile`` field stored on the job is metadata only.
 
 The file name is kept for backward compatibility with bootstrap.sh callers.
-The job it installs was renamed from "AIAMSBS Dashboard Backup" to
-"AIAMSBS Backup" when the script scope grew to include the hermes state,
+The job it installs was renamed from "AdminLM Dashboard Backup" to
+"AdminLM Backup" when the script scope grew to include the hermes state,
 inventory + KB DBs, and Grafana-stack yml configs (not just dashboards).
 """
 import json
@@ -30,11 +30,11 @@ from pathlib import Path
 HERMES_HOME = Path(sys.argv[1])
 # Second positional arg is legacy (used to be the profile name). Ignored.
 # We hardcode "default" because that's where the cron actually runs.
-JOB_NAME = "AIAMSBS Backup"
-JOB_ID = "aiamsbs-backup"  # stable, deterministic for idempotency re-runs
+JOB_NAME = "AdminLM Backup"
+JOB_ID = "adminlm-backup"  # stable, deterministic for idempotency re-runs
 PROFILE = "default"  # metadata only; cron scheduler runs under default profile
 SCHEDULE_EXPR = "0 1 * * *"  # daily at 01:00, same as the old system cron
-LEGACY_CRON_FILE = Path("/etc/cron.d/aiamsbs-dashboard-backup")
+LEGACY_CRON_FILE = Path("/etc/cron.d/adminlm-dashboard-backup")
 
 jobs_file = HERMES_HOME / "cron" / "jobs.json"
 
@@ -46,28 +46,28 @@ except (FileNotFoundError, json.JSONDecodeError):
 
 # Idempotency: match by ``name``. If an existing job has the same name
 # (regardless of id), update it in place so we don't end up with two
-# AIAMSBS Backup crons after a re-bootstrap. Preserve schedule state
+# AdminLM Backup crons after a re-bootstrap. Preserve schedule state
 # (state, next_run_at, last_run_at, last_status, executions.db linkage)
 # by keeping the existing id.
 new_prompt = (
-    "You are running the AIAMSBS backup cron job. "
+    "You are running the AdminLM backup cron job. "
     "Execute this script and report the result:\n\n"
-    f"    {HERMES_HOME}/scripts/aiamsbs-backup.sh\n\n"
+    f"    {HERMES_HOME}/scripts/adminlm-backup.sh\n\n"
     "The script backs up Grafana dashboards (API + provisioning files), "
     "the hermes state, the inventory + KB SQLite databases, and the "
     "Grafana-stack yml configs into a single tarball at "
-    "~/backups/aiamsbs-backup-<timestamp>.tar.gz. Exit code 0 = success. "
+    "~/backups/adminlm-backup-<timestamp>.tar.gz. Exit code 0 = success. "
     "If exit code is non-zero, capture the last 20 lines of stderr and "
     "the exit code in your report. Otherwise report the archive path, size, "
     "and per-section counts (dashboards exported, dashboards provisioned, "
     "hermes zip bytes, inventory + KB DB bytes) from the script's stdout."
 )
-new_skills = ["aiamsbs-backup"]
+new_skills = ["adminlm-backup"]
 
 existing = next((j for j in data.get("jobs", []) if j.get("name") == JOB_NAME), None)
 if existing is not None:
     # Update in place. Preserve schedule state. Bump id if the existing
-    # job still carries the old "aiamsbs-backup-it_admin" id (legacy).
+    # job still carries the old "adminlm-backup-it_admin" id (legacy).
     old_id = existing.get("id", JOB_ID)
     if old_id != JOB_ID:
         print(f"[update] cron job {JOB_NAME!r} (old id={old_id}) — rewriting to id={JOB_ID}")
@@ -85,7 +85,7 @@ if existing is not None:
 else:
     # Build the new job. The shape mirrors the existing jobs in jobs.json
     # (see ~/.hermes/cron/jobs.json for reference). The prompt is a thin
-    # wrapper around the existing aiamsbs-backup.sh — the script is
+    # wrapper around the existing adminlm-backup.sh — the script is
     # the workhorse, the agent is a thin wrapper that provides logging.
     new_job = {
         "id": JOB_ID,

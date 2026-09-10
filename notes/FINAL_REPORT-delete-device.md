@@ -82,7 +82,7 @@ Design notes:
 
 ```
 NAME            IMAGE                   COMMAND                  SERVICE         CREATED         STATUS                   PORTS
-inventory-mcp   aiamsbs_inventory-mcp   "python server.py --…"   inventory-mcp   5 minutes ago   Up 5 minutes (healthy)   127.0.0.1:8001->8001/tcp
+inventory-mcp   adminlm_inventory-mcp   "python server.py --…"   inventory-mcp   5 minutes ago   Up 5 minutes (healthy)   127.0.0.1:8001->8001/tcp
 ```
 
 ### ✅ Step 3: tools/list shows 8 tools

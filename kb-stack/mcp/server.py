@@ -1,4 +1,4 @@
-"""AIAMSBS Knowledge Base MCP server (K1, BACKLOG #30).
+"""AdminLM Knowledge Base MCP server (K1, BACKLOG #30).
 
 Exposes a SQLite+FTS5 backed knowledge base over the MCP streamable-http
 transport. Five required tools (kb_search, kb_add, kb_update, kb_list,
@@ -17,7 +17,7 @@ each line in the marked blocks. See BACKLOG #76 + #64 for context.
 
 MVP search strategy: FTS5 BM25 ranking only. No embeddings, no model
 calls, no network. Design justification in
-`obsidian_vaults/agent vault/AIAMSBS_Docs_Diagrams/kb_workflow.md`.
+`obsidian_vaults/agent vault/adminlm_Docs_Diagrams/kb_workflow.md`.
 """
 
 from __future__ import annotations
@@ -573,7 +573,7 @@ INDEX_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>AIAMSBS KB Viewer</title>
+<title>AdminLM KB Viewer</title>
 <style>
   body { font-family: -apple-system, system-ui, sans-serif; max-width: 900px;
          margin: 2em auto; padding: 0 1em; color: #222; }
@@ -614,7 +614,7 @@ INDEX_HTML = """<!DOCTYPE html>
 </style>
 </head>
 <body>
-<h1>AIAMSBS KB Viewer</h1>
+<h1>AdminLM KB Viewer</h1>
 
 <div class="topbar">
   <a href="#" id="back">&larr; Back to list</a>
@@ -1203,7 +1203,7 @@ async def api_kb_delete(request: Request) -> JSONResponse:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="AIAMSBS kb-mcp server")
+    parser = argparse.ArgumentParser(description="AdminLM kb-mcp server")
     parser.add_argument("--host", default="0.0.0.0", help="bind host (default 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8002, help="bind port (default 8002)")
     args = parser.parse_args()

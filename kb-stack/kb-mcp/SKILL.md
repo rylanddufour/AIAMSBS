@@ -1,11 +1,11 @@
 ---
 name: kb-mcp
-title: AIAMSBS Knowledge Base MCP
-description: Search, add, update, list, and delete entries in the AIAMSBS knowledge base (SQLite + FTS5, served by kb-mcp on :8002). Runbooks, facts, and gotchas captured from agent and customer sources.
+title: AdminLM Knowledge Base MCP
+description: Search, add, update, list, and delete entries in the AdminLM knowledge base (SQLite + FTS5, served by kb-mcp on :8002). Runbooks, facts, and gotchas captured from agent and customer sources.
 trigger: When the user asks something that might be answered by a previously-captured runbook, fact, or gotcha. Also when the agent learns something worth remembering (a fix, a quirk, a customer-specific detail) and should record it for later.
 ---
 
-# AIAMSBS Knowledge Base MCP
+# AdminLM Knowledge Base MCP
 
 SQLite + FTS5 knowledge base exposed via FastMCP. Registers as `kb-mcp` in `default` and `it_admin` profiles. Server runs on `http://localhost:8002/mcp` after `bootstrap.sh` deploys the kb stack.
 

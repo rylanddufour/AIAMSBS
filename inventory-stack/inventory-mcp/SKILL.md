@@ -1,11 +1,11 @@
 ---
 name: inventory-mcp
-title: AIAMSBS Inventory MCP
-description: Look up, search, create, update, and delete network device records in the AIAMSBS inventory (SQLite-backed, served by inventory-mcp on :8001).
+title: AdminLM Inventory MCP
+description: Look up, search, create, update, and delete network device records in the AdminLM inventory (SQLite-backed, served by inventory-mcp on :8001).
 trigger: When a user asks about a device, host, IP, MAC, or anything that should be in the network inventory. Also when ingesting new devices from nmap discovery or other sources.
 ---
 
-# AIAMSBS Inventory MCP
+# AdminLM Inventory MCP
 
 SQLite-backed device inventory exposed via FastMCP. Registers as `inventory-mcp` in `default` and `it_admin` profiles. Server runs on `http://localhost:8001/mcp` after `bootstrap.sh` deploys the inventory stack.
 

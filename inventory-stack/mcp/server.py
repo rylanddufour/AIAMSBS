@@ -244,7 +244,7 @@ def get_device_relationships(device_id: str) -> list:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="AIAMSBS inventory MCP server")
+    parser = argparse.ArgumentParser(description="AdminLM inventory MCP server")
     parser.add_argument("--host", default="0.0.0.0", help="bind host (default 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8001, help="bind port (default 8001)")
     args = parser.parse_args()

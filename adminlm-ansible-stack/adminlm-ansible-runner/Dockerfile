@@ -1,13 +1,13 @@
-# aiamsbs-ansible-runner — thin FastAPI bridge.
+# adminlm-ansible-runner — thin FastAPI bridge.
 #
 # v1.0 customer deployment (BACKLOG #64). The ONLY container in v1.0 with
 # docker.sock access. Streamlit (Card 3) talks to this runner over HTTP,
-# which then does `docker exec` into aiamsbs-ansible. This pattern
+# which then does `docker exec` into adminlm-ansible. This pattern
 # eliminates the streamlit → docker.sock privilege escalation risk flagged
 # in the #64 prompt.
 #
 # Endpoints:
-#   GET  /health   — liveness check; verifies aiamsbs-ansible container
+#   GET  /health   — liveness check; verifies adminlm-ansible container
 #                    is reachable via the docker socket.
 #   POST /run      — execute a playbook. Body is HMAC-SHA256 signed with
 #                    RUNNER_HMAC_SECRET. Streams NDJSON back as the
@@ -34,11 +34,11 @@ WORKDIR /app
 # Copy the loki_logger module so runner-level events (auth failures, exec
 # start/stop, exit codes) ship to the same NDJSON directory as playbook
 # stdout. The bind mount in docker-compose.yml maps the host's
-# /home/ansible/AIAMSBS/aiamsbs-ansible-stack/logs to /ansible/logs inside
-# THIS container too — same as in aiamsbs-ansible. Both containers see
+# /home/ansible/adminlm/adminlm-ansible-stack/logs to /ansible/logs inside
+# THIS container too — same as in adminlm-ansible. Both containers see
 # the same files, alloy reads them once.
 COPY loki_logger.py /app/loki_logger.py
-COPY aiamsbs-ansible-runner/main.py /app/main.py
+COPY adminlm-ansible-runner/main.py /app/main.py
 
 EXPOSE 8000
 

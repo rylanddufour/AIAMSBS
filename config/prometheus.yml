@@ -1,10 +1,10 @@
-# Prometheus Configuration for AIAMSBS Monitoring Stack
+# Prometheus Configuration for AdminLM Monitoring Stack
 
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    cluster: 'aiamsbs'
+    cluster: 'adminlm'
     environment: 'production'
 
 # Scrape Prometheus itself
@@ -21,7 +21,7 @@ scrape_configs:
         labels:
           service: 'alloy'
     # BACKLOG #10 / #B: Alloy runs prometheus.exporter.unix "self" inside the container
-    # and remote_writes the AIAMSBS host metrics to this Prometheus. The exporter
+    # and remote_writes the AdminLM host metrics to this Prometheus. The exporter
     # does not emit a `host` label on its own, but Alloy stamps one on via
     # `prometheus.relabel "self_host"` in config/alloy.yml (using
     # `sys.env("HOSTNAME")` — resolves to the Docker container hostname, which
@@ -29,7 +29,7 @@ scrape_configs:
     # have their own hostnames picked up the same way.
 
   # Customer-host Alloy (BACKLOG #44 Step 3) — runs config/alloy/customer-linux.river.
-  # In dual-collect mode, this container runs ALONGSIDE the AIAMSBS-side alloy so
+  # In dual-collect mode, this container runs ALONGSIDE the AdminLM-side alloy so
   # we can verify parity before cutting customer hosts over to Alloy. The container
   # exposes the same Alloy self-metrics on port 12345; we scrape them on the
   # `monitoring` docker network. The customer-side alloy itself sets the `host`
@@ -168,7 +168,7 @@ scrape_configs:
   # the container. file_sd_configs re-reads the file on every scrape, so
   # the inventory-driven targets are picked up without a container restart.
   # Note: do NOT hardcode the 192.168.0.220:9115 replacement — that value
-  # is correct for the canonical AIAMSBS .220 deployment; on other hosts,
+  # is correct for the canonical AdminLM .220 deployment; on other hosts,
   # override via the BLACKBOX_EXPORTER_HOST env var on the prometheus
   # container. (Out of scope for v1 — single-host deployment.)
   - job_name: 'blackbox_inventory'

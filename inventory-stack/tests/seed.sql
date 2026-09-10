@@ -1,4 +1,4 @@
--- Smoke-test seed for AIAMSBS inventory MCP.
+-- Smoke-test seed for AdminLM inventory MCP.
 -- Idempotent: clears both tables before inserting fixtures.
 -- Designed to match the schema declared in inventory-stack/mcp/init_db.sql.
 

@@ -99,7 +99,7 @@ def test_search_with_source_type_filter(kb_db):
     """source_types filter restricts to entries from matching sources."""
     # Create a skill source and a runtime source.
     skill_src = kb_server.kb_add_source(
-        name="AIAMSBS skill", source_type="skill"
+        name="AdminLM skill", source_type="skill"
     )
     runtime_src = kb_server.kb_add_source(
         name="Runtime observation", source_type="runtime"

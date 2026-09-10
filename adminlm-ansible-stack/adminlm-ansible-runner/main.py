@@ -1,7 +1,7 @@
-# aiamsbs-ansible-runner FastAPI bridge.
+# adminlm-ansible-runner FastAPI bridge.
 #
 # Card 2 of BACKLOG #64. Receives HMAC-signed POST /run requests, shells
-# into the aiamsbs-ansible container via docker exec, streams ansible-playbook
+# into the adminlm-ansible container via docker exec, streams ansible-playbook
 # output back as NDJSON, and writes a parallel copy to /ansible/logs/*.log
 # (consumed by the host's Grafana Alloy → Loki pipeline).
 #
@@ -34,7 +34,7 @@ import loki_logger  # noqa: E402  (sibling on PYTHONPATH=/app)
 # Config
 # ---------------------------------------------------------------------------
 
-ANSIBLE_CONTAINER_NAME = os.environ.get("ANSIBLE_CONTAINER_NAME", "aiamsbs-ansible")
+ANSIBLE_CONTAINER_NAME = os.environ.get("ANSIBLE_CONTAINER_NAME", "adminlm-ansible")
 HMAC_SECRET = os.environ.get("RUNNER_HMAC_SECRET", "dev-secret-rotate-me")
 LISTEN_PORT = int(os.environ.get("RUNNER_PORT", "8000"))
 
@@ -101,7 +101,7 @@ def ansible_container():
 # FastAPI app
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="aiamsbs-ansible-runner", version="0.1.0")
+app = FastAPI(title="adminlm-ansible-runner", version="0.1.0")
 
 
 @app.get("/health")
@@ -145,7 +145,7 @@ async def health():
 
 @app.post("/run")
 async def run_playbook(request: Request):
-    """Execute ansible-playbook inside the aiamsbs-ansible container.
+    """Execute ansible-playbook inside the adminlm-ansible container.
 
     Body (JSON, raw bytes signed by HMAC):
         {

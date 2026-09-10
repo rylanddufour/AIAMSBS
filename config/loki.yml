@@ -1,9 +1,9 @@
-# Loki Configuration for AIAMSBS Monitoring Stack
+# Loki Configuration for AdminLM Monitoring Stack
 # Local configuration (no auth, no persistence)
 #
 # BACKLOG #45: loki 3.x's compiled-in default is multi-tenant mode when this
 # field is absent — every writer (alloy / promtail / Grafana) would need to
-# send X-Scope-OrgID or get a 401. AIAMSBS is single-tenant (one VM, one
+# send X-Scope-OrgID or get a 401. AdminLM is single-tenant (one VM, one
 # stack), so disable auth at the source. Any writer can push with no
 # tenant header; queries run against the single default tenant.
 
@@ -40,7 +40,7 @@ limits_config:
   reject_old_samples_max_age: 168h
   # BACKLOG #5: enforce 90-day global retention (was: no compactor configured,
   # chunks accumulated until disk filled). Single-tenant config, single policy
-  # for all streams (aiamsbs_host, network_device, future hermes-*).
+  # for all streams (adminlm_host, network_device, future hermes-*).
   retention_period: 2160h
   max_streams_matchers_per_query: 1000
   max_entries_limit_per_query: 5000

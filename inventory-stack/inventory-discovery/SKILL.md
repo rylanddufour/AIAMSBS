@@ -43,7 +43,7 @@ Trigger this skill when the user says any of:
 `scripts/discover.py`:
 
 1. Calls `GET http://localhost:8003/scan?target=<CIDR>` (the nmap-discovery
-   wrapper running on the AIAMSBS host in host-network mode).
+   wrapper running on the AdminLM host in host-network mode).
 2. Parses the XML output to extract every host:
    - IPv4 address
    - MAC address (if present)

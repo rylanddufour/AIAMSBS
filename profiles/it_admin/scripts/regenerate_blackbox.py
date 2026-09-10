@@ -62,7 +62,7 @@ def list_inventory_devices() -> list[dict]:
     init_resp, sid = http_post_json(INVENTORY_URL, {
         "jsonrpc": "2.0", "id": 1, "method": "initialize",
         "params": {"protocolVersion": "2024-11-05", "capabilities": {},
-                    "clientInfo": {"name": "aiamsbs-regen-blackbox", "version": "1.0.0"}},
+                    "clientInfo": {"name": "adminlm-regen-blackbox", "version": "1.0.0"}},
     })
     if not sid:
         raise SystemExit("inventory-mcp did not return a session id")

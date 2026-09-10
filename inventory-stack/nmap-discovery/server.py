@@ -66,7 +66,7 @@ def scan(target: str = "192.168.0.0/24", scan_type: str = "ping"):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="AIAMSBS nmap discovery service")
+    parser = argparse.ArgumentParser(description="AdminLM nmap discovery service")
     parser.add_argument("--host", default="127.0.0.1", help="bind host (default 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8003, help="bind port (default 8003)")
     args = parser.parse_args()

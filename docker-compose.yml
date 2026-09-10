@@ -45,14 +45,14 @@ services:
   alloy:
     image: grafana/alloy:latest
     container_name: alloy
-    # Pin the container's hostname to "aiamsbs-host" so that alloy's
+    # Pin the container's hostname to "adminlm-host" so that alloy's
     # `sys.env("HOSTNAME")` (used in the `self_host` relabel) returns the
-    # canonical AIAMSBS host label. Without this, Docker defaults the
+    # canonical AdminLM host label. Without this, Docker defaults the
     # container hostname to the container ID, which would surface in every
     # metric's `host` label and break dashboard templating. The VM's actual
     # OS hostname (e.g. `gstack-iac` on .220 today) is a different concern;
-    # the dashboards and per-host relabel contract use `aiamsbs-host` as
-    # the AIAMSBS host's role-based label.
+    # the dashboards and per-host relabel contract use `adminlm-host` as
+    # the AdminLM host's role-based label.
     hostname: adminlm-host
     ports:
       - "0.0.0.0:12345:12345"
@@ -100,15 +100,15 @@ services:
 
   # Customer-host Alloy (BACKLOG #44 Step 3) — simulates a customer Linux host
   # running Alloy with config/alloy/customer-linux.river. Reads from the
-  # AIAMSBS host's /proc, /sys, and /var/log/journal (the AIAMSBS host itself
+  # AdminLM host's /proc, /sys, and /var/log/journal (the AdminLM host itself
   # is the pilot — Steps 6/7 will cut real customer hosts over to this same
   # River config, at which point this container is removed). Runs ALONGSIDE
-  # the AIAMSBS-side alloy so both paths produce metrics + logs simultaneously
+  # the AdminLM-side alloy so both paths produce metrics + logs simultaneously
   # for parity verification (Step 4). Different UI port (12346) to avoid
   # colliding with the existing alloy container on 12345. Pin the
-  # container hostname to `aiamsbs-host` so the pilot's labels match the
-  # AIAMSBS-side alloy in the per-host dashboard (both end up with
-  # `host="aiamsbs-host"`). For real customer Docker installs, drop this
+  # container hostname to `adminlm-host` so the pilot's labels match the
+  # AdminLM-side alloy in the per-host dashboard (both end up with
+  # `host="adminlm-host"`). For real customer Docker installs, drop this
   # override and let Docker resolve from the OS hostname.
   alloy-customer:
     image: grafana/alloy:latest
@@ -131,8 +131,8 @@ services:
       # The container's `host` label resolves to whatever HOSTNAME is set to
       # via alloy's `sys.env("HOSTNAME")` (see config/alloy/customer-linux.river).
       # On .220 the docker daemon auto-sets HOSTNAME to /etc/hostname of the
-      # host (`aiamsbs-host`), so the pilot parity box picks up the same label
-      # as the AIAMSBS-side alloy without an explicit override. For a real
+      # host (`adminlm-host`), so the pilot parity box picks up the same label
+      # as the AdminLM-side alloy without an explicit override. For a real
       # customer install, set `- HOSTNAME=<customer-hostname>` (or let Docker
       # resolve it from the OS hostname on bare-metal).
       # Default URLs match the in-network targets (config/alloy/customer-linux.river
@@ -199,7 +199,7 @@ services:
   # runner container (next) does `docker exec` into this one.
   adminlm-ansible:
     build:
-      context: ./aiamsbs-ansible-stack
+      context: ./adminlm-ansible-stack
       dockerfile: adminlm-ansible/Dockerfile
     image: adminlm_adminlm-ansible
     container_name: adminlm-ansible
@@ -214,7 +214,7 @@ services:
       # Loki log directory. The main alloy container already bind-mounts
       # $HOME/.hermes/logs (read-only) as /var/lib/hermes/logs, so writing
       # to a subdir here is visible to alloy without editing the main
-      # compose. See aiamsbs-ansible-stack/docker-compose.yml comments for
+      # compose. See adminlm-ansible-stack/docker-compose.yml comments for
       # the full rationale.
       - ${HOME}/.hermes/logs/adminlm-ansible:/ansible/logs:rw
     restart: unless-stopped
@@ -224,7 +224,7 @@ services:
   # instead of mounting the socket itself. No host port.
   adminlm-ansible-runner:
     build:
-      context: ./aiamsbs-ansible-stack
+      context: ./adminlm-ansible-stack
       dockerfile: adminlm-ansible-runner/Dockerfile
     image: adminlm_adminlm-ansible-runner
     container_name: adminlm-ansible-runner
@@ -243,7 +243,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${HOME}/.hermes/logs/adminlm-ansible:/ansible/logs:rw
-      - ./aiamsbs-ansible-stack/loki_logger.py:/app/loki_logger.py:ro
+      - ./adminlm-ansible-stack/loki_logger.py:/app/loki_logger.py:ro
     environment:
       - RUNNER_HMAC_SECRET=${RUNNER_HMAC_SECRET:-dev-secret-rotate-me}
       - ANSIBLE_CONTAINER_NAME=adminlm-ansible
@@ -279,15 +279,15 @@ services:
       - ./streamlit-ui-stack/streamlit-app:/app/streamlit-app:ro
       # loki_logger.py is Card 2's shared log-shipper module. The
       # ./streamlit-ui-stack/streamlit-app directory contains a SYMLINK
-      # at loki_logger.py pointing to ../../aiamsbs-ansible-stack/loki_logger.py.
+      # at loki_logger.py pointing to ../../adminlm-ansible-stack/loki_logger.py.
       # On the host that resolves correctly. Inside the container, Python's
       # import machinery can't resolve the symlink's relative target (it
       # crosses a bind-mount boundary), so we mount the file at the
       # resolved path AND set PYTHONPATH below to point at the mounted
       # target dir. We mount JUST this one file (not the whole
-      # aiamsbs-ansible-stack dir) to keep Card 2's other internals out
+      # adminlm-ansible-stack dir) to keep Card 2's other internals out
       # of the streamlit-ui container. Source-of-truth:
-      # ~/AIAMSBS/aiamsbs-ansible-stack/loki_logger.py exists on .220.
+      # ~/adminlm/adminlm-ansible-stack/loki_logger.py exists on .220.
       - ./adminlm-ansible-stack/loki_logger.py:/app/adminlm-ansible-stack/loki_logger.py:ro
       - ./adminlm-ansible-stack/playbooks:/ansible/playbooks:ro
       - ./adminlm-ansible-stack/inventory:/ansible/inventory:ro

@@ -1,15 +1,15 @@
 # loki_logger.py
-# Shared log shipper for the AIAMSBS v1.0 customer Ansible stack.
+# Shared log shipper for the AdminLM v1.0 customer Ansible stack.
 #
 # Pattern: append-only NDJSON to /ansible/logs/<stream>.log. The host's
 # Grafana Alloy tails this directory (config/alloy.yml — loki.source.file
-# block "aiamsbs_ansible") and pushes to Loki with stable labels:
-#     job="aiamsbs-ansible"
-#     source="aiamsbs_host"      (or customer host, same idea)
+# block "adminlm_ansible") and pushes to Loki with stable labels:
+#     job="adminlm-ansible"
+#     source="adminlm_host"      (or customer host, same idea)
 #     stream="<stream>"          (set per event via log_event(stream=...))
 #
-# Mounted into both aiamsbs-ansible (for in-container use by playbooks) and
-# aiamsbs-ansible-runner (for runner-level events like auth, exec start/stop,
+# Mounted into both adminlm-ansible (for in-container use by playbooks) and
+# adminlm-ansible-runner (for runner-level events like auth, exec start/stop,
 # exit codes). Both containers write to the SAME path on the host, so the
 # alloy config needs only one loki.source.file block.
 #

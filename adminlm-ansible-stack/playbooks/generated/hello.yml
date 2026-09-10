@@ -9,4 +9,4 @@
   tasks:
     - name: Print hi
       ansible.builtin.debug:
-        msg: "hello from aiamsbs-ansible"
+        msg: "hello from adminlm-ansible"

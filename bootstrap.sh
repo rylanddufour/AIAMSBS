@@ -1,6 +1,6 @@
 #!/bin/bash
 # Hermes Infrastructure Bootstrap Script v2.1
-# Usage: curl -fsSL https://raw.githubusercontent.com/rylanddufour/AIAMSBS/main/bootstrap.sh | bash -s -- --api-key YOUR_KEY --provider openrouter
+# Usage: curl -fsSL https://raw.githubusercontent.com/rylanddufour/adminlm/main/bootstrap.sh | bash -s -- --api-key YOUR_KEY --provider openrouter
 #
 # Options:
 #   --api-key KEY       Your LLM provider API key (required for non-interactive)
@@ -18,7 +18,7 @@ set -e
 # Configuration
 # ============================================
 
-INFRA_REPO="${INFRA_REPO:-https://github.com/rylanddufour/AIAMSBS.git}"
+INFRA_REPO="${INFRA_REPO:-https://github.com/rylanddufour/adminlm.git}"
 INFRA_BRANCH="${INFRA_BRANCH:-main}"
 INSTALL_BASE_DIR="${INSTALL_BASE_DIR:-$HOME}"
 HERMES_HOME="${HERMES_HOME:-$INSTALL_BASE_DIR/.hermes}"

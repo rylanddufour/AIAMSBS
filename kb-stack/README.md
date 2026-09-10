@@ -1,6 +1,6 @@
 # kb-stack
 
-AIAMSBS Runtime Knowledge Base — K1 (BACKLOG #30).
+AdminLM Runtime Knowledge Base — K1 (BACKLOG #30).
 
 A FastMCP server backed by SQLite + FTS5 that exposes five knowledge-base
 tools over MCP streamable-http. This card is greenfield inside
@@ -16,7 +16,7 @@ via `kb_update`.
 
 Search is FTS5-only — BM25 ranked, no embeddings, no model calls, no
 network. The justification is in
-`obsidian_vaults/agent vault/AIAMSBS_Docs_Diagrams/kb_workflow.md`.
+`obsidian_vaults/agent vault/adminlm_Docs_Diagrams/kb_workflow.md`.
 
 ## Layout
 
@@ -102,7 +102,7 @@ uses:
 
 ## Where the design lives
 
-`obsidian_vaults/agent vault/AIAMSBS_Docs_Diagrams/kb_workflow.md`
+`obsidian_vaults/agent vault/adminlm_Docs_Diagrams/kb_workflow.md`
 (via rclone `onedrive:`).
 
 ## Card status

@@ -12,7 +12,7 @@ def _add_mixed_fixture(kb_db):
 
     Returns the source ids so other tests can reuse.
     """
-    skill = kb_server.kb_add_source(name="aiamsbs skill", source_type="skill")
+    skill = kb_server.kb_add_source(name="adminlm skill", source_type="skill")
     customer_doc = kb_server.kb_add_source(
         name="customer network doc", source_type="customer_doc"
     )

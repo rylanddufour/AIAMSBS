@@ -1,13 +1,13 @@
-# aiamsbs-ansible-stack
+# adminlm-ansible-stack
 
-AIAMSBS v1.0 customer Ansible execution side (BACKLOG #64, Card 2).
+AdminLM v1.0 customer Ansible execution side (BACKLOG #64, Card 2).
 
 Two sibling containers on the shared `monitoring` Docker network:
 
 | Container                | Purpose                                                       | Exposed?      |
 |--------------------------|---------------------------------------------------------------|---------------|
-| `aiamsbs-ansible`        | Stock Ansible runtime (`ansible-core` + 3 OEM collections)    | No            |
-| `aiamsbs-ansible-runner` | Thin FastAPI bridge with HMAC verification + docker socket    | No            |
+| `adminlm-ansible`        | Stock Ansible runtime (`ansible-core` + 3 OEM collections)    | No            |
+| `adminlm-ansible-runner` | Thin FastAPI bridge with HMAC verification + docker socket    | No            |
 
 The runner is the **only** container in v1.0 with `/var/run/docker.sock`
 mounted. Streamlit (Card 3) talks to the runner over HTTP on the monitoring
@@ -16,25 +16,25 @@ streamlit → docker.sock privilege escalation risk flagged in the #64
 prompt.
 
 Both containers write to a shared `/ansible/logs/*.log` (NDJSON) on the
-host; the existing AIAMSBS `alloy` container tails that directory and
-ships it to `loki:3100` with labels `{job="aiamsbs-ansible", source="aiamsbs_host"}`.
+host; the existing AdminLM `alloy` container tails that directory and
+ships it to `loki:3100` with labels `{job="adminlm-ansible", source="adminlm_host"}`.
 
 ## Layout
 
 ```
-aiamsbs-ansible-stack/
-├── docker-compose.yml              # aiamsbs-ansible + aiamsbs-ansible-runner
+adminlm-ansible-stack/
+├── docker-compose.yml              # adminlm-ansible + adminlm-ansible-runner
 ├── README.md                       # this file
 ├── loki_logger.py                  # shared log shipper (NDJSON append)
-├── aiamsbs-ansible/
+├── adminlm-ansible/
 │   ├── Dockerfile                  # python:3.12-slim + ansible-core 2.16.3
 │   └── entrypoint.sh               # sleep infinity (so docker exec works)
-├── aiamsbs-ansible-runner/
+├── adminlm-ansible-runner/
 │   ├── Dockerfile                  # python:3.12-slim + fastapi + docker SDK
 │   └── main.py                     # FastAPI: POST /run + GET /health + HMAC
 ├── playbooks/
 │   ├── customer/                   # customer-authored playbooks (rw)
-│   └── generated/                  # AIAMSBS-generated playbooks (rw)
+│   └── generated/                  # AdminLM-generated playbooks (rw)
 │       └── hello.yml               # trivial test playbook for E2E verify
 ├── inventory/
 │   ├── static/                     # hand-edited inventories (rw)
@@ -47,12 +47,12 @@ aiamsbs-ansible-stack/
 ## Bring it up
 
 ```bash
-cd /home/ansible/AIAMSBS
-docker compose -f aiamsbs-ansible-stack/docker-compose.yml up -d --build
+cd /home/ansible/adminlm
+docker compose -f adminlm-ansible-stack/docker-compose.yml up -d --build
 ```
 
 Both containers join the existing `monitoring` Docker network (external;
-defined by the main AIAMSBS `docker-compose.yml`).
+defined by the main AdminLM `docker-compose.yml`).
 
 ## Test the runner
 
@@ -62,9 +62,9 @@ Reach it via the container's IP on that network:
 ```bash
 RUNNER_IP=$(docker inspect -f \
     '{{.NetworkSettings.Networks.monitoring.IPAddress}}' \
-    aiamsbs-ansible-runner)
+    adminlm-ansible-runner)
 curl -s http://${RUNNER_IP}:8000/health
-# → {"status":"ok","containers":["aiamsbs-ansible"]}
+# → {"status":"ok","containers":["adminlm-ansible"]}
 ```
 
 Sign a test request and POST `/run`:
@@ -95,7 +95,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" -X POST http://${RUNNER_IP}:8000/run \
 
 ```bash
 curl -s -G http://localhost:3100/loki/api/v1/query \
-    --data-urlencode 'query={job="aiamsbs-ansible"}' \
+    --data-urlencode 'query={job="adminlm-ansible"}' \
     | jq '.data.result | length'
 # → ≥ 1 within ~30s of the run
 ```
@@ -106,14 +106,14 @@ The runner reads `RUNNER_HMAC_SECRET` from the container environment. For
 local dev it defaults to `dev-secret-rotate-me` (matches the example
 above). For production:
 
-1. Create `/home/ansible/AIAMSBS/.env` (gitignored) with:
+1. Create `/home/ansible/adminlm/.env` (gitignored) with:
    ```
    RUNNER_HMAC_SECRET=<long-random-string>
    ```
 2. Re-deploy:
    ```bash
-   docker compose -f aiamsbs-ansible-stack/docker-compose.yml \
-       --env-file /home/ansible/AIAMSBS/.env \
+   docker compose -f adminlm-ansible-stack/docker-compose.yml \
+       --env-file /home/ansible/adminlm/.env \
        up -d --build
    ```
 3. All callers (Streamlit in Card 3, any external client) must use the
@@ -128,7 +128,7 @@ and the customer-side overlay compose.
 | Host path                                            | Container path          | Notes                                                |
 |------------------------------------------------------|-------------------------|------------------------------------------------------|
 | `./playbooks/customer`                               | `/ansible/playbooks/customer` | rw; customer-authored playbooks                |
-| `./playbooks/generated`                              | `/ansible/playbooks/generated` | rw; AIAMSBS-generated playbooks (Card 4+)     |
+| `./playbooks/generated`                              | `/ansible/playbooks/generated` | rw; AdminLM-generated playbooks (Card 4+)     |
 | `./inventory/static`                                 | `/ansible/inventory/static` | rw; hand-edited inventories                    |
 | `./inventory/generated`                              | `/ansible/inventory/generated` | rw; script-built inventories (Card 6)       |
 | `./artifacts`                                        | `/ansible/artifacts`    | rw; ansible facts cache + callback output            |
@@ -156,7 +156,7 @@ SMB network device / Windows server automation.
 - Card 2 (this card): containers + Loki plumbing + E2E verify on .220.
 - Card 3: Streamlit sibling stack — own card.
 - Card 4: Run Playbook UI — owns the confirmation flow + HMAC client.
-- Card 7: E2E + bootstrap — owns `deploy_aiamsbs_ansible_stack()` and
+- Card 7: E2E + bootstrap — owns `deploy_adminlm_ansible_stack()` and
   the customer overlay compose.
 
 ---
@@ -168,27 +168,27 @@ host. The customer-facing install path is the overlay compose at the
 repo root:
 
 ```bash
-cd ~/AIAMSBS
+cd ~/adminlm
 docker compose -f docker-compose.yml -f docker-compose.v1-private.yml up -d
 ```
 
-The overlay `include:`s `aiamsbs-ansible-stack/docker-compose.yml` (this
+The overlay `include:`s `adminlm-ansible-stack/docker-compose.yml` (this
 file) and `streamlit-ui-stack/docker-compose.yml`, so the bind mounts,
 env vars, healthchecks, and image tags defined here flow through
-unchanged. The overlay only adds a `aiamsbs-v1-private=true` label to
-the three v1.0 services (so `docker ps --filter label=aiamsbs-v1-private`
+unchanged. The overlay only adds a `adminlm-v1-private=true` label to
+the three v1.0 services (so `docker ps --filter label=adminlm-v1-private`
 is the canonical "is the v1.0 stack up?" check).
 
 `bootstrap.sh` gains two new functions called from `main()`:
 
-- `deploy_aiamsbs_ansible_stack()` — gated on `AIAMSBS_DEPLOY_V1_PRIVATE=true`
+- `deploy_adminlm_ansible_stack()` — gated on `ADMINLM_DEPLOY_V1_PRIVATE=true`
   (or `--v1-private`). Calls
   `docker compose -f docker-compose.yml -f docker-compose.v1-private.yml up -d
-  aiamsbs-ansible aiamsbs-ansible-runner`.
+  adminlm-ansible adminlm-ansible-runner`.
 - `deploy_streamlit_ui_stack()` — same gate, scopes to `streamlit-ui`.
 
 Both functions are idempotent (a no-op on a healthy install) and
 hard-gated (the main branch never deploys v1.0 features unless the
 customer opts in). The pre-Card 7 standalone `docker compose -f
-aiamsbs-ansible-stack/docker-compose.yml up -d` invocation still works
+adminlm-ansible-stack/docker-compose.yml up -d` invocation still works
 for dev, but is **not** the customer path.

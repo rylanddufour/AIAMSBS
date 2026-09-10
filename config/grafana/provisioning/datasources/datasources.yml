@@ -28,15 +28,15 @@ datasources:
       # workaround landed in PR #28 and is removed here.
 
   # Required for Grafana 13 Unified Alerting file-provisioned rules.
-  # The threshold/reduce expression engine (UID "__expr") is not auto-registered
-  # in Grafana 13.0.x on a fresh install. Without this stub entry, every alert
-  # rule with a threshold condition fails evaluation with:
+  # The threshold/reduce expression engine UID is "__expr__" (Grafana internal
+  # convention). Without this stub entry, every alert rule with a threshold
+  # condition fails evaluation with:
   #   "failed to build query 'C': data source not found"
   #   "the result-set has errors that can be retried: [plugin.notRegistered]"
   # Pointing it at the built-in "mixed" data source type wires the
   # expression engine in. Not user-editable.
   - name: Expression
-    uid: __expr
+    uid: __expr__
     type: mixed
     access: proxy
     editable: false

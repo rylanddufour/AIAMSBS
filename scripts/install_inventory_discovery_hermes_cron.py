@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the 'AIAMSBS Inventory Discovery' Hermes cron job.
+"""Install the 'AdminLM Inventory Discovery' Hermes cron job.
 
 Idempotent: matches existing jobs by ``name`` (not ``id``) so that
 upgrades from the older ``inventory-discovery-it_admin`` id layout (when
@@ -28,7 +28,7 @@ agent prompt does not need to pre-detect the subnet.
 
 Step 2 invokes the script via ``python3`` explicitly so the script does
 not need to be marked executable. The repo file lives at
-``~/AIAMSBS/profiles/it_admin/scripts/regenerate_blackbox.py`` (mode
+``~/adminlm/profiles/it_admin/scripts/regenerate_blackbox.py`` (mode
 ``-rw-rw-r--`` — no execute bit). Running it via the interpreter avoids
 the Permission denied exit code 126 that bash returns when trying to
 exec a non-executable file.
@@ -40,7 +40,7 @@ from pathlib import Path
 HERMES_HOME = Path(sys.argv[1])
 # Second positional arg is legacy (used to be the profile name). Ignored.
 # We hardcode "default" because that's where the cron actually runs.
-JOB_NAME = "AIAMSBS Inventory Discovery"
+JOB_NAME = "AdminLM Inventory Discovery"
 JOB_ID = "inventory-discovery"  # stable, deterministic for idempotency re-runs
 PROFILE = "default"  # metadata only; cron scheduler runs under default profile
 SCHEDULE_EXPR = "0 2 * * *"  # daily at 02:00 local, after the 01:00 backup
@@ -59,7 +59,7 @@ except (FileNotFoundError, json.JSONDecodeError):
 # state (state, next_run_at, last_run_at, last_status, executions.db
 # linkage) by updating the existing record in place.
 new_prompt = (
-    "You are running the AIAMSBS inventory discovery cron job.\n\n"
+    "You are running the AdminLM inventory discovery cron job.\n\n"
     "Execute these steps and report the result. The discover.py step\n"
     "handles subnet auto-detection internally — you don't need to\n"
     "figure out the subnet yourself.\n\n"
@@ -67,7 +67,7 @@ new_prompt = (
     f"       {HERMES_HOME}/skills/inventory-discovery/scripts/discover.py \\\n"
     "         --auto-detect-subnet --timeout 600\n\n"
     "  2. Regenerate the blackbox inventory targets file:\n"
-    "       python3 $HOME/AIAMSBS/profiles/it_admin/scripts/regenerate_blackbox.py\n\n"
+    "       python3 $HOME/adminlm/profiles/it_admin/scripts/regenerate_blackbox.py\n\n"
     "  3. Trigger Prometheus reload:\n"
     "       curl -sf -XPOST http://localhost:9090/-/reload || true\n\n"
     "Report: devices found, inserted vs updated, blackbox targets\n"
@@ -95,7 +95,7 @@ if existing is not None:
     jobs_file.write_text(json.dumps(data, indent=2, sort_keys=False))
     jobs_file.chmod(0o600)
 else:
-    # Build the new job. Shape mirrors the existing AIAMSBS Backup job
+    # Build the new job. Shape mirrors the existing AdminLM Backup job
     # in jobs.json. The prompt is self-contained — the cron fires at
     # 02:00 with no prior context, so the prompt must spell out the
     # three steps and the expected exit semantics. discover.py's
