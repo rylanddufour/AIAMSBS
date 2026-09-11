@@ -1079,6 +1079,18 @@ install_hermes_gateway_service() {
     # --run-as-user is just $USER. If a customer runs bootstrap as root
     # (uncommon — they would have lost docker group on next login), we
     # pass --run-as-user root explicitly to keep the install non-fatal.
+    # Tier 2 (BACKLOG #83 follow-on): flip the unit to Type=notify with a
+    # 120-second watchdog so systemd's is-active reflects the gateway's
+    # sd_notify READY=1, not just "PID exists." Default unit is Type=simple
+    # — which considers the service "active" the instant its PID forks,
+    # before :8642/:9119 bind. With Type=notify, "service alive but ports
+    # not bound" is structurally impossible. BACKLOG #83 confirmed this
+    # race on a fresh VM during Step 6 E2E. Set BEFORE the install so the
+    # gateway-install CLI emits a notify-type unit; harmless re-runs (the
+    # config set is idempotent).
+    sudo -n "$hermes_bin" config set gateway.systemd_watchdog_seconds 120 >/dev/null 2>&1 || \
+        log_warn "Could not set gateway.systemd_watchdog_seconds=120; unit may stay Type=simple"
+
     if [ ! -f /etc/systemd/system/hermes-gateway.service ]; then
         log_info "Installing hermes-gateway as a system service (user=$hermes_user)..."
         local run_as_flag=()
@@ -1095,6 +1107,20 @@ install_hermes_gateway_service() {
         log_success "Installed systemd unit: hermes-gateway.service (system, user=$hermes_user)"
     else
         log_info "hermes-gateway.service already installed; skipping (use --force to refresh)"
+        # Re-emit the unit if it pre-dates the watchdog config (Type=notify
+        # only). --force overwrites the existing unit; harmless on re-runs
+        # (same content for Type=simple units that were already notify).
+        if sudo grep -q '^Type=simple' /etc/systemd/system/hermes-gateway.service 2>/dev/null; then
+            log_info "  Refreshing unit to Type=notify (watchdog enabled)..."
+            local run_as_flag=()
+            if [ "$hermes_user" = "root" ]; then
+                run_as_flag=(--run-as-user root)
+            else
+                run_as_flag=(--run-as-user "$hermes_user")
+            fi
+            sudo "$hermes_bin" gateway install --system --force "${run_as_flag[@]}" >/dev/null 2>&1 || \
+                log_warn "  Unit refresh failed; existing Type=simple unit kept"
+        fi
     fi
 
     # Start the service. Idempotent: `systemctl start` on an already-
@@ -2629,11 +2655,27 @@ except Exception:
     # independently of the docker block above: a healthy gateway matters
     # even on a host where docker is down.
     if command -v systemctl >/dev/null 2>&1 && sudo test -f /etc/systemd/system/hermes-gateway.service 2>/dev/null; then
-        log_info "Checking hermes-gateway.service status..."
-        if sudo systemctl is-active --quiet hermes-gateway.service; then
-            log_success "  ✓ Hermes Gateway: active (system service)"
+        log_info "Checking hermes-gateway.service status (with port-bind probe)..."
+        # Tier 1 (BACKLOG #83 follow-on): poll for up to 30 s. A one-shot
+        # is-active can land inside the systemd restart-flap window (Type=simple
+        # returns "active" the instant the PID exists, before any port bind;
+        # Type=notify waits for sd_notify READY=1 — still a few seconds). The
+        # port-bind probe on :8642/:9119 is the actual proof-of-life; an
+        # "active" unit whose ports never came up is the bug we just fixed.
+        local gw_ok=0
+        for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if sudo systemctl is-active --quiet hermes-gateway.service \
+                && curl -fsS -m 2 -o /dev/null http://127.0.0.1:9119/ \
+                && curl -fsS -m 2 -o /dev/null http://127.0.0.1:8642/v1/models; then
+                gw_ok=1
+                break
+            fi
+            sleep 3
+        done
+        if [ "$gw_ok" = "1" ]; then
+            log_success "  ✓ Hermes Gateway: active and :8642/:9119 bound"
         else
-            log_error "  ✗ Hermes Gateway: installed but not active"
+            log_error "  ✗ Hermes Gateway: installed but not healthy (unit not active OR ports not bound)"
             log_info "    Diagnose: sudo systemctl status hermes-gateway.service"
             log_info "    Logs:    sudo journalctl -u hermes-gateway.service -n 50"
             errors=$((errors+1))
