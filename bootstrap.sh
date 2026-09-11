@@ -304,6 +304,13 @@ check_prerequisites() {
     if [ ${#missing_libs[@]} -ne 0 ]; then
         log_info "Installing Node runtime libs + C++ toolchain: ${missing_libs[*]}"
         wait_for_dpkg_lock || return 1
+        # Refresh the apt index BEFORE the install. On a fresh VM the
+        # mirror's Packages.gz can be stale (e.g. bzip2 1.0.8-5.1build0.1
+        # listed but the .deb is gone), which would 404 the install and
+        # bail bootstrap mid-stream. Hit 2026-09-11 during the BACKLOG
+        # #78 step 6 fresh install. Idempotent on re-runs.
+        sudo apt update
+        wait_for_dpkg_lock || return 1
         sudo apt install -y "${missing_libs[@]}"
     fi
 
