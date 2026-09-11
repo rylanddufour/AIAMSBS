@@ -286,13 +286,23 @@ check_prerequisites() {
     # pre-install snapshot and the bootstrap bailed at install_hermes() with
     # the libatomic.so.1 error. Install here so install_hermes() can't fail.
     local missing_libs=()
-    for lib in libatomic1 libstdc++6 libgcc-s1; do
+    # libatomic1 etc. are Node runtime deps (BACKLOG #40). build-essential is
+    # the C/C++ toolchain the Hermes docs-site installer needs to compile
+    # native modules (e.g. node-pty, bcrypt Node bindings). Without it, the
+    # docs-site installer's Node bootstrap step prints "Could not install a
+    # C++ compiler automatically" and exits with the toolchain missing,
+    # which surfaces on fresh Ubuntu 24.04 VMs where build-essential is NOT
+    # preinstalled. Build-essential is multi-MB but apt skips if installed.
+    # 2026-09-10: surfaced during fresh AdminLM install (BACKLOG #78 step 6
+    # E2E); the docs-site installer started requiring a C++ toolchain that
+    # wasn't needed for earlier Hermes versions.
+    for lib in libatomic1 libstdc++6 libgcc-s1 build-essential; do
         if ! dpkg -s "$lib" >/dev/null 2>&1; then
             missing_libs+=("$lib")
         fi
     done
     if [ ${#missing_libs[@]} -ne 0 ]; then
-        log_info "Installing Node runtime libs: ${missing_libs[*]}"
+        log_info "Installing Node runtime libs + C++ toolchain: ${missing_libs[*]}"
         wait_for_dpkg_lock || return 1
         sudo apt install -y "${missing_libs[@]}"
     fi
