@@ -273,14 +273,21 @@ verify_gateway_port_bind() {
 
     while [ "$attempt" -lt "$max_attempts" ]; do
         attempt=$((attempt + 1))
-        if curl -fsS -m 2 -o /dev/null http://127.0.0.1:8642/v1/models \
-            && curl -fsS -m 2 -o /dev/null http://127.0.0.1:9119/; then
-            log_success "  ✓ hermes-gateway ports bound (${label}, attempt $attempt)"
+        # Use `curl -s -o /dev/null` (no -f). The `-f` flag treats any
+        # HTTP error as a connection failure, but /v1/models returns
+        # 401 (correctly — it expects auth). A 401 still proves the
+        # port is bound and the server is answering. Use `-w '%{http_code}'`
+        # to capture the status without exiting non-zero on >=400.
+        local p9119_code p8642_code
+        p9119_code=$(curl -s -m 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:9119/)
+        p8642_code=$(curl -s -m 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:8642/v1/models)
+        if [ -n "$p9119_code" ] && [ -n "$p8642_code" ] && [ "$p9119_code" != "000" ] && [ "$p8642_code" != "000" ]; then
+            log_success "  ✓ hermes-gateway ports bound (${label}, attempt $attempt; :9119=$p9119_code, :8642=$p8642_code)"
             return 0
         fi
 
         if [ "$attempt" -lt "$max_attempts" ]; then
-            log_warn "  ! hermes-gateway ports not bound (${label}, attempt $attempt/$max_attempts); restarting..."
+            log_warn "  ! hermes-gateway ports not bound (${label}, attempt $attempt/$max_attempts; :9119=$p9119_code, :8642=$p8642_code); restarting..."
             if sudo systemctl restart hermes-gateway.service 2>&1 | tail -3; then
                 sleep "$wait_s"
             else
