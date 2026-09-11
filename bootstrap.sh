@@ -252,6 +252,49 @@ wait_for_dpkg_lock() {
     return 0
 }
 
+# Verify the hermes-gateway.service is actually listening on :8642 and :9119.
+# Default unit is Type=simple, which systemd considers "active" the
+# instant the PID exists — before any socket bind. If the gateway is in
+# the restart-flap window (Restart=always + RestartSec=5) when probed,
+# is-active may report active but the ports are unbound. Probing the
+# actual ports is the proof-of-life.
+#
+# On probe failure: try systemctl restart once + re-probe. If still
+# down after restart, surface as hard failure (don't infinite-loop).
+#
+# Args:
+#   $1 = label for log lines (e.g. "install-time" or "verify-time")
+# Returns 0 on success, 1 on hard failure.
+verify_gateway_port_bind() {
+    local label="${1:-port-bind check}"
+    local attempt=0
+    local max_attempts=3
+    local wait_s=15
+
+    while [ "$attempt" -lt "$max_attempts" ]; do
+        attempt=$((attempt + 1))
+        if curl -fsS -m 2 -o /dev/null http://127.0.0.1:8642/v1/models \
+            && curl -fsS -m 2 -o /dev/null http://127.0.0.1:9119/; then
+            log_success "  ✓ hermes-gateway ports bound (${label}, attempt $attempt)"
+            return 0
+        fi
+
+        if [ "$attempt" -lt "$max_attempts" ]; then
+            log_warn "  ! hermes-gateway ports not bound (${label}, attempt $attempt/$max_attempts); restarting..."
+            if sudo systemctl restart hermes-gateway.service 2>&1 | tail -3; then
+                sleep "$wait_s"
+            else
+                log_warn "  ! systemctl restart returned non-zero (${label})"
+            fi
+        fi
+    done
+
+    log_error "  ✗ hermes-gateway ports still unbound after $max_attempts attempts (${label})"
+    log_error "    Diagnose: sudo systemctl status hermes-gateway.service"
+    log_error "    Logs:    sudo journalctl -u hermes-gateway.service -n 50"
+    return 1
+}
+
 check_prerequisites() {
     log_info "Running prerequisites check..."
 
@@ -1155,6 +1198,18 @@ install_hermes_gateway_service() {
     else
         log_warn "hermes-gateway.service is installed but not active; check journalctl -u hermes-gateway"
         return 0
+    fi
+
+    # Install-time gate: prove the gateway is actually listening on
+    # :8642 + :9119 BEFORE returning. Without this, downstream services
+    # (streamlit Agent Chat, MCP servers, cron jobs) can race against
+    # the gateway's first-boot bind. The helper retries up to 3x with
+    # systemctl restart between attempts. Hit on a fresh VM 2026-09-11
+    # — gateway was "active" but ports unbound for ~2 min after start.
+    if ! verify_gateway_port_bind "install-time"; then
+        log_warn "hermes-gateway port-bind failed after retries; downstream services may not connect"
+        # Don't return 1 — bootstrap continues. The verify_installation
+        # step at the end of bootstrap will catch this again.
     fi
 }
 
@@ -2669,24 +2724,14 @@ except Exception:
     # independently of the docker block above: a healthy gateway matters
     # even on a host where docker is down.
     if command -v systemctl >/dev/null 2>&1 && sudo test -f /etc/systemd/system/hermes-gateway.service 2>/dev/null; then
-        log_info "Checking hermes-gateway.service status (with port-bind probe)..."
-        # Tier 1 (BACKLOG #83 follow-on): poll for up to 30 s. A one-shot
-        # is-active can land inside the systemd restart-flap window (Type=simple
-        # returns "active" the instant the PID exists, before any port bind;
-        # Type=notify waits for sd_notify READY=1 — still a few seconds). The
-        # port-bind probe on :8642/:9119 is the actual proof-of-life; an
-        # "active" unit whose ports never came up is the bug we just fixed.
-        local gw_ok=0
-        for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            if sudo systemctl is-active --quiet hermes-gateway.service \
-                && curl -fsS -m 2 -o /dev/null http://127.0.0.1:9119/ \
-                && curl -fsS -m 2 -o /dev/null http://127.0.0.1:8642/v1/models; then
-                gw_ok=1
-                break
-            fi
-            sleep 3
-        done
-        if [ "$gw_ok" = "1" ]; then
+        log_info "Checking hermes-gateway.service status..."
+        # Tier 1 (BACKLOG #83 follow-on): port-bind probe with restart
+        # fallback. Same helper used at install-time. One-shot helper
+        # call here — does up to 3 attempts with systemctl restart
+        # between failures. If the helper returns non-zero, surface as
+        # a verify_installation failure (don't auto-fix silently —
+        # operators want to know).
+        if verify_gateway_port_bind "verify-time"; then
             log_success "  ✓ Hermes Gateway: active and :8642/:9119 bound"
         else
             log_error "  ✗ Hermes Gateway: installed but not healthy (unit not active OR ports not bound)"
