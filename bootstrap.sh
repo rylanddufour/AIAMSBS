@@ -1088,8 +1088,15 @@ install_hermes_gateway_service() {
     # race on a fresh VM during Step 6 E2E. Set BEFORE the install so the
     # gateway-install CLI emits a notify-type unit; harmless re-runs (the
     # config set is idempotent).
-    sudo -n "$hermes_bin" config set gateway.systemd_watchdog_seconds 120 >/dev/null 2>&1 || \
-        log_warn "Could not set gateway.systemd_watchdog_seconds=120; unit may stay Type=simple"
+    #
+    # Note: the canonical Hermes config key is `gateway.startup_watchdog_timeout_seconds`,
+    # not `gateway.systemd_watchdog_seconds`. The CLI prints a "not
+    # recognized" warning but still writes the value and the gateway-install
+    # path reads it correctly (verified on .220: unit came up as
+    # `Type=notify + WatchdogSec=120s + NotifyAccess=main`).
+    sudo -n "$hermes_bin" config set gateway.startup_watchdog_timeout_seconds 120 >/dev/null 2>&1 || \
+        sudo -n "$hermes_bin" config set gateway.systemd_watchdog_seconds 120 >/dev/null 2>&1 || \
+        log_warn "Could not set startup_watchdog_timeout_seconds=120; unit may stay Type=simple"
 
     if [ ! -f /etc/systemd/system/hermes-gateway.service ]; then
         log_info "Installing hermes-gateway as a system service (user=$hermes_user)..."
